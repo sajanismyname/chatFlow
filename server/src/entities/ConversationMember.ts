@@ -13,11 +13,11 @@ export class ConversationMember {
     @PrimaryGeneratedColumn()
     id!: number;
 
-    @ManyToOne(() => User)
+    @ManyToOne(() => User, { nullable: false })
     @JoinColumn({ name: "user_id" })
     user!: User;
 
-    @ManyToOne(() => Conversation)
+    @ManyToOne(() => Conversation, { nullable: false })
     @JoinColumn({ name: "conversation_id" })
     conversation!: Conversation;
 }

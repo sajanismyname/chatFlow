@@ -1,20 +1,22 @@
 import "reflect-metadata";
-import express from "express"
-import cors from "cors"
+import "dotenv/config";
 
-const app=express()
+import { createServer } from "http";
+import app from "./app.js";
+import { AppDataSource } from "./config/dataSource.js";
 
-app.use(cors())
-app.use(express.json())
+const httpServer = createServer(app);
 
-app.get("/", (req, res)=>{
-    res.json({
-        message:"ChatFlow api is running"
+const PORT=process.env.PORT || 5000;
+
+AppDataSource.initialize()
+    .then(() => {
+        console.log("TypeORM connected successfully");
+
+        httpServer.listen(PORT, () => {
+        console.log(`Server running on http://localhost:${PORT}`);
+        });
     })
-})
-
-const PORT=5000;
-
-app.listen(PORT,()=>{
-    console.log(`Server running on http://localhost:${PORT}`)
-})
+    .catch((error) => {
+        console.error("Database connection failed:", error);
+});

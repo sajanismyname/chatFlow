@@ -18,11 +18,11 @@ export class Message {
     @Column({ type: "text" })
     content!: string;
 
-    @ManyToOne(() => User)
+    @ManyToOne(() => User, { nullable: false })
     @JoinColumn({ name: "sender_id" })
     sender!: User;
 
-    @ManyToOne(() => Conversation)
+    @ManyToOne(() => Conversation, { nullable: false })
     @JoinColumn({ name: "conversation_id" })
     conversation!: Conversation;
 

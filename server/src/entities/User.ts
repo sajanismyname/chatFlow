@@ -14,20 +14,17 @@ export class User {
     @PrimaryGeneratedColumn()
     id!: number;
 
-    @Column({ unique: true })
+    @Column({ type: "varchar", unique: true })
     googleId!: string;
 
-    @Column({ unique: true })
+    @Column({ type: "varchar", unique: true })
     email!: string;
 
-    @Column()
+    @Column({ type: "varchar" })
     name!: string;
 
-    @Column({ nullable: true })
+    @Column({ type: "varchar", nullable: true })
     avatar!: string | null;
-
-    @CreateDateColumn()
-    createdAt!: Date;
 
     @OneToMany(() => Message, (message) => message.sender)
     messages!: Message[];
