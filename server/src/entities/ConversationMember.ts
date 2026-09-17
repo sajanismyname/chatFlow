@@ -1,34 +1,23 @@
 import {
     Entity,
     PrimaryGeneratedColumn,
-    Column,
     ManyToOne,
     JoinColumn,
-    CreateDateColumn,
 } from "typeorm";
 
 import { User } from "./User.js";
 import { Conversation } from "./Conversation.js";
 
-@Entity("messages")
-export class Message {
+@Entity("conversation_members")
+export class ConversationMember {
     @PrimaryGeneratedColumn()
     id!: number;
 
-    @Column({ type: "text" })
-    content!: string;
-
     @ManyToOne(() => User)
-    @JoinColumn({ name: "sender_id" })
-    sender!: User;
+    @JoinColumn({ name: "user_id" })
+    user!: User;
 
     @ManyToOne(() => Conversation)
     @JoinColumn({ name: "conversation_id" })
     conversation!: Conversation;
-
-    @CreateDateColumn()
-    createdAt!: Date;
-
-    @Column({ type: "timestamp", nullable: true })
-    readAt!: Date | null;
 }
