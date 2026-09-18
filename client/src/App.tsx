@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
 import AuthCallback from "./pages/AuthCallback";
+import Register from "./pages/Register";
+import ChatFlow from "./pages/ChatFlow";
 
 function App() {
     return (
@@ -10,6 +12,11 @@ function App() {
                     path="/login"
                     element={<Login />}
                 />
+                
+                <Route
+                    path="/register"
+                    element={<Register />}
+                />
 
                 <Route
                     path="/auth/callback"
@@ -18,7 +25,7 @@ function App() {
 
                 <Route
                     path="/"
-                    element={<h1>ChatFlow</h1>}
+                    element={<ChatFlow />}
                 />
             </Routes>
         </BrowserRouter>

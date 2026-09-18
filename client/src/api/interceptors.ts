@@ -3,11 +3,12 @@ import {store} from "../app/store";
 import {
     setAccessToken,
     logout,
-} from "../auth/authSlice";
+} from "../features/auth/authSlice";
 
 api.interceptors.request.use((config) => {
     const accessToken =
-        store.getState().auth.accessToken;
+        (store.getState() as { auth: { accessToken?: string } })
+            .auth.accessToken;
 
     if (accessToken) {
         config.headers.Authorization =

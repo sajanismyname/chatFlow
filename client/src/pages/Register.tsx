@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "../app/store";
-import { login } from "../features/auth/authSlice";
+import { register } from "../features/auth/authSlice";
 import { useNavigate } from "react-router-dom";
 
-function Login() {
+function Register() {
     const dispatch = useDispatch<AppDispatch>();
-    const navigate=useNavigate()
+    const navigate = useNavigate()
 
     const { loading, error } = useSelector(
         (state: RootState) => state.auth as {
@@ -15,26 +15,27 @@ function Login() {
         }
     );
 
+    const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
 
     const handleSubmit = async (
-    e: React.FormEvent
-) => {
-    e.preventDefault();
+                e: React.FormEvent
+            ) => {
+                e.preventDefault();
 
-    const result = await dispatch(
-        login({
-            email,
-            password,
-        })
-    );
+                const result = await dispatch(
+                    register({
+                        name,
+                        email,
+                        password,
+                    })
+                );
 
-    if (login.fulfilled.match(result)) {
-        navigate("/");
-    }
-};
-
+                if (register.fulfilled.match(result)) {
+                    navigate("/");
+                }
+        };
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
@@ -43,11 +44,11 @@ function Login() {
 
                 <div className="text-center mb-8">
                     <h1 className="text-3xl font-bold">
-                        Welcome back
+                        Create your account
                     </h1>
 
                     <p className="text-gray-500 mt-2">
-                        Sign in to your ChatFlow account
+                        Join ChatFlow today
                     </p>
                 </div>
 
@@ -61,6 +62,23 @@ function Login() {
                     onSubmit={handleSubmit}
                     className="space-y-5"
                 >
+
+                    <div>
+                        <label className="block text-sm font-medium mb-2">
+                            Name
+                        </label>
+
+                        <input
+                            type="text"
+                            value={name}
+                            onChange={(e) =>
+                                setName(e.target.value)
+                            }
+                            placeholder="Your name"
+                            className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-black"
+                            required
+                        />
+                    </div>
 
                     <div>
                         <label className="block text-sm font-medium mb-2">
@@ -102,8 +120,8 @@ function Login() {
                         className="w-full rounded-lg bg-black py-3 text-white font-medium hover:bg-gray-800 disabled:opacity-50"
                     >
                         {loading
-                            ? "Signing in..."
-                            : "Sign in"}
+                            ? "Creating account..."
+                            : "Create account"}
                     </button>
 
                 </form>
@@ -130,12 +148,12 @@ function Login() {
                 </button>
 
                 <p className="text-center text-sm text-gray-500 mt-6">
-                    Don't have an account?{" "}
+                    Already have an account?{" "}
                     <a
-                        href="/register"
+                        href="/login"
                         className="font-medium text-black hover:underline"
                     >
-                        Create one
+                        Sign in
                     </a>
                 </p>
 
@@ -144,4 +162,4 @@ function Login() {
     );
 }
 
-export default Login;
+export default Register;

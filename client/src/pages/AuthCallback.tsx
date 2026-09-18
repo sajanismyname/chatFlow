@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useAppDispatch } from "../app/hooks";
-import { initializeAuth } from "../auth/authSlice";
+import { initializeAuth } from "../features/auth/authSlice";
 
 function AuthCallback() {
     const dispatch = useAppDispatch();
