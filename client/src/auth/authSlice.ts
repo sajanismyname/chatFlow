@@ -1,27 +1,22 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../api/axios";
+import type {
+    AuthState,
+    AuthResponse,
+    LoginCredentials,
+    RegisterCredentials,
+    User,
+} from "./authTypes";
 
-interface User{
-    id: number;
-    name: string;
-    email: string;
-    avatar?: string;
-}
-
-interface AuthState{
-    user: User | null;
-    accessToken: string | null;
-    isAuthenticated: boolean;
-    isInitializing: boolean;
-}
 
 const initialState: AuthState = {
     user: null,
     accessToken: null,
     isAuthenticated: false,
-    isInitializing: true,
-}
+    loading: false,
+    error: null,
+};
 
 const authSlice = createSlice({
     name: "auth",
@@ -56,21 +51,42 @@ const authSlice = createSlice({
         },
     },
 
-    extraReducers: (builder) => {
+extraReducers: (builder) => {
     builder
-        .addCase(initializeAuth.pending, (state) => {
-            state.isInitializing = true;
+        .addCase(login.pending, (state) => {
+            state.loading = true;
+            state.error = null;
         })
-        .addCase(initializeAuth.fulfilled, (state) => {
-            state.isInitializing = false;
+        .addCase(login.fulfilled, (state, action) => {
+            state.loading = false;
+            state.user = action.payload.user;
+            state.accessToken = action.payload.accessToken;
+            state.isAuthenticated = true;
         })
-        .addCase(initializeAuth.rejected, (state) => {
-            state.isInitializing = false;
-            state.isAuthenticated = false;
-        });
-}
-
+        .addCase(login.rejected, (state, action) => {
+            state.loading = false;
+            state.error =
+                action.payload || "Login failed";
+        })
+        .addCase(register.pending, (state) => {
+            state.loading = true;
+            state.error = null;
+        })
+        .addCase(register.fulfilled, (state, action) => {
+            state.loading = false;
+            state.user = action.payload.user;
+            state.accessToken = action.payload.accessToken;
+            state.isAuthenticated = true;
+        })
+        .addCase(register.rejected, (state, action) => {
+            state.loading = false;
+            state.error =
+                action.payload || "Registration failed";
 })
+
+},
+})
+
 
 export const initializeAuth = createAsyncThunk(
     "auth/initialize",
@@ -85,6 +101,55 @@ export const initializeAuth = createAsyncThunk(
             return response.data.accessToken;
         } catch (error) {
             return rejectWithValue(null);
+        }
+    }
+);
+
+export const login = createAsyncThunk<
+    AuthResponse,
+    LoginCredentials,
+    { rejectValue: string }
+>(
+    "auth/login",
+    async ({ email, password }, { rejectWithValue }) => {
+        try {
+            const response = await api.post<AuthResponse>(
+                "/auth/login",
+                {
+                    email,
+                    password,
+                }
+            );
+
+            return response.data;
+        } catch (error: any) {
+            return rejectWithValue(
+                error.response?.data?.message ||
+                "Login failed"
+            );
+        }
+    }
+);
+
+export const register = createAsyncThunk<
+    AuthResponse,
+    RegisterCredentials,
+    { rejectValue: string }
+>(
+    "auth/register",
+    async (credentials, { rejectWithValue }) => {
+        try {
+            const response = await api.post<AuthResponse>(
+                "/auth/register",
+                credentials
+            );
+
+            return response.data;
+        } catch (error: any) {
+            return rejectWithValue(
+                error.response?.data?.message ||
+                "Registration failed"
+            );
         }
     }
 );
