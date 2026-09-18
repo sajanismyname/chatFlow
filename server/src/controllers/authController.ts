@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import bcrypt from "bcrypt"
 import { Request, Response } from "express";
 import { AppDataSource } from "../config/dataSource.js";
 import { RefreshToken } from "../entities/refreshToken.js";
@@ -10,6 +11,132 @@ import { createRefreshToken } from "../services/refreshTokenService.js";
 
 const userRepository = AppDataSource.getRepository(User)
 const refreshTokenRepository = AppDataSource.getRepository(RefreshToken);
+
+export const login = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    try {
+        const { email, password } = req.body;
+
+        if (!email || !password) {
+            res.status(400).json({
+                message: "Email and password are required",
+            });
+            return;
+        }
+
+        const user = await userRepository.findOne({
+            where: { email },
+        });
+
+        if (!user) {
+            res.status(401).json({
+                message: "Invalid email or password",
+            });
+            return;
+        }
+
+        const isPasswordValid = await bcrypt.compare(
+            password,
+            user.password!
+        );
+
+        if (!isPasswordValid) {
+            res.status(401).json({
+                message: "Invalid email or password",
+            });
+            return;
+        }
+
+        const accessToken = generateAccessToken(user.id);
+
+        const { rawToken } = await createRefreshToken(
+            user.id
+        );
+
+        res.cookie("refreshToken", rawToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+        });
+
+        res.json({
+            message: "Login successful",
+            accessToken,
+            user,
+        });
+    } catch (error) {
+        console.error(error);
+
+        res.status(500).json({
+            message: "Login failed",
+        });
+    }
+};
+
+export const register = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    try {
+        const { name, email, password } = req.body;
+
+        if (!name || !email || !password) {
+            res.status(400).json({
+                message: "Name, email and password are required",
+            });
+            return;
+        }
+
+        const existingUser = await userRepository.findOne({
+            where: { email },
+        });
+
+        if (existingUser) {
+            res.status(409).json({
+                message: "User already exists",
+            });
+            return;
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const user = userRepository.create({
+            name,
+            email,
+            password: hashedPassword,
+        });
+
+        const savedUser = await userRepository.save(user);
+
+        const accessToken = generateAccessToken(savedUser.id);
+
+        const { rawToken } = await createRefreshToken(
+            savedUser.id
+        );
+
+        res.cookie("refreshToken", rawToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+        });
+
+        res.status(201).json({
+            message: "Registration successful",
+            accessToken,
+            user: savedUser,
+        });
+    } catch (error) {
+        console.error(error);
+
+        res.status(500).json({
+            message: "Registration failed",
+        });
+    }
+};
 
 export const getUser = async (
     req: Request,

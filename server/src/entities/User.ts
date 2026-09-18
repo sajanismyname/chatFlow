@@ -14,14 +14,17 @@ export class User {
     @PrimaryGeneratedColumn()
     id!: number;
 
-    @Column({ type: "varchar", unique: true })
-    googleId!: string;
+    @Column({ type: "varchar", unique: true, nullable: true })
+    googleId!: string | null;
 
     @Column({ type: "varchar", unique: true })
     email!: string;
 
     @Column({ type: "varchar" })
     name!: string;
+
+    @Column({ type: "varchar", nullable: true })
+    password!: string | null;
 
     @Column({ type: "varchar", nullable: true })
     avatar!: string | null;
