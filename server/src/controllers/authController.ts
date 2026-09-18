@@ -3,6 +3,7 @@ import { AppDataSource } from "../config/dataSource.js";
 import { User } from "../entities/User.js";
 import {google} from "googleapis"
 import { googleClient } from "../config/google.js";
+import { generateAccessToken } from "../utils/jwt.js";
 
 const userRepository = AppDataSource.getRepository(User)
 
@@ -81,8 +82,12 @@ export const googleCallback = async (
         })
 
         if(existingUser){
+
+            const accessToken = generateAccessToken(existingUser.id)
+
         res.json({
             message: "User already exists",
+            accessToken,
             user: existingUser,
         });
 
@@ -98,8 +103,11 @@ export const googleCallback = async (
 
         const savedUser =await userRepository.save(newUser)
 
+        const accessToken = generateAccessToken(savedUser.id)
+
         res.json({
         message: "User created successfully",
+        accessToken,
         user: savedUser,
         });
     } catch (error) {
