@@ -1,12 +1,13 @@
 import api from "./axios";
-import { store } from "../app/store";
+import {store} from "../app/store";
 import {
     setAccessToken,
     logout,
 } from "../auth/authSlice";
 
 api.interceptors.request.use((config) => {
-    const accessToken = store.getState().auth.accessToken;
+    const accessToken =
+        store.getState().auth.accessToken;
 
     if (accessToken) {
         config.headers.Authorization =
@@ -16,6 +17,7 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
+
 api.interceptors.response.use(
     (response) => response,
 
@@ -24,13 +26,15 @@ api.interceptors.response.use(
 
         if (
             error.response?.status === 401 &&
-            !originalRequest._retry
+            !originalRequest._retry &&
+            !originalRequest.url?.includes("/auth/refresh")
         ) {
             originalRequest._retry = true;
 
             try {
-                const response =
-                    await api.post("/auth/refresh");
+                const response = await api.post(
+                    "/auth/refresh"
+                );
 
                 const newAccessToken =
                     response.data.accessToken;
@@ -43,15 +47,16 @@ api.interceptors.response.use(
                     `Bearer ${newAccessToken}`;
 
                 return api(originalRequest);
+
             } catch (refreshError) {
                 store.dispatch(logout());
 
-                return Promise.reject(refreshError);
+                return Promise.reject(
+                    refreshError
+                );
             }
         }
 
         return Promise.reject(error);
     }
 );
-
-export default api;
