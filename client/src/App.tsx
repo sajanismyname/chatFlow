@@ -1,9 +1,28 @@
-import './App.css'
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Login from "./pages/Login";
+import AuthCallback from "./pages/AuthCallback";
 
-function App(){
+function App() {
     return (
-      <h1>hell0</h1>
-    )
+        <BrowserRouter>
+            <Routes>
+                <Route
+                    path="/login"
+                    element={<Login />}
+                />
+
+                <Route
+                    path="/auth/callback"
+                    element={<AuthCallback />}
+                />
+
+                <Route
+                    path="/"
+                    element={<h1>ChatFlow</h1>}
+                />
+            </Routes>
+        </BrowserRouter>
+    );
 }
 
-export default App
+export default App;

@@ -106,11 +106,8 @@ export const googleCallback = async (
             maxAge: 7 * 24 * 60 * 60 * 1000,
         });
 
-        res.json({
-            message: "Google login successful",
-            accessToken,
-            user,
-        });
+        res.redirect("http://localhost:5173/auth/callback");
+        
     } catch (error) {
         console.error(error);
 

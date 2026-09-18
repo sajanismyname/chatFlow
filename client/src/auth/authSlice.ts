@@ -1,4 +1,6 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import { createAsyncThunk } from "@reduxjs/toolkit";
+import api from "../api/axios";
 
 interface User{
     id: number;
@@ -11,12 +13,14 @@ interface AuthState{
     user: User | null;
     accessToken: string | null;
     isAuthenticated: boolean;
+    isInitializing: boolean;
 }
 
 const initialState: AuthState = {
     user: null,
     accessToken: null,
     isAuthenticated: false,
+    isInitializing: true,
 }
 
 const authSlice = createSlice({
@@ -50,8 +54,40 @@ const authSlice = createSlice({
             state.accessToken = action.payload;
             state.isAuthenticated = true;
         },
-    }
+    },
+
+    extraReducers: (builder) => {
+    builder
+        .addCase(initializeAuth.pending, (state) => {
+            state.isInitializing = true;
+        })
+        .addCase(initializeAuth.fulfilled, (state) => {
+            state.isInitializing = false;
+        })
+        .addCase(initializeAuth.rejected, (state) => {
+            state.isInitializing = false;
+            state.isAuthenticated = false;
+        });
+}
+
 })
+
+export const initializeAuth = createAsyncThunk(
+    "auth/initialize",
+    async (_, { dispatch, rejectWithValue }) => {
+        try {
+            const response = await api.post("/auth/refresh");
+
+            dispatch(
+                setAccessToken(response.data.accessToken)
+            );
+
+            return response.data.accessToken;
+        } catch (error) {
+            return rejectWithValue(null);
+        }
+    }
+);
 
 export const { setCredentials, logout, setAccessToken, } = authSlice.actions;
 
