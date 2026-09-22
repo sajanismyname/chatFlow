@@ -7,8 +7,7 @@ import {
 
 api.interceptors.request.use((config) => {
     const accessToken =
-        (store.getState() as { auth: { accessToken?: string } })
-            .auth.accessToken;
+    store.getState().auth.accessToken;
 
     if (accessToken) {
         config.headers.Authorization =

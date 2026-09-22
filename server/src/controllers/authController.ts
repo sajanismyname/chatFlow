@@ -249,6 +249,7 @@ export const refreshAccessToken = async (
     res: Response
 ): Promise<void> => {
     try {
+        console.log("Refresh cookie:", req.cookies?.refreshToken);
         const rawToken = req.cookies.refreshToken;
 
         if (!rawToken) {
