@@ -24,6 +24,7 @@ const initialState: AuthState = {
     isAuthenticated: false,
     loading: false,
     error: null,
+    initialized: false,
 };
 
 
@@ -99,12 +100,13 @@ export const initializeAuth = createAsyncThunk(
             );
 
             dispatch(
-                setAccessToken(
-                    response.data.accessToken
-                )
+                setCredentials({
+                    user: response.data.user,
+                    accessToken: response.data.accessToken,
+                })
             );
 
-            return response.data.accessToken;
+            return response.data;
         } catch {
             return rejectWithValue(null);
         }
@@ -207,14 +209,16 @@ const authSlice = createSlice({
 
             .addCase(initializeAuth.fulfilled, (state) => {
                 state.loading = false;
+                state.initialized = true;
             })
 
             .addCase(initializeAuth.rejected, (state) => {
                 state.loading = false;
+                state.initialized = true;
                 state.user = null;
                 state.accessToken = null;
                 state.isAuthenticated = false;
-            });
+            })
     },
 });
 

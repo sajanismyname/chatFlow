@@ -29,6 +29,7 @@ export interface AuthState {
     isAuthenticated: boolean;
     loading: boolean;
     error: string | null;
+    initialized: boolean;
 }
 
 export interface UserSearchProps {

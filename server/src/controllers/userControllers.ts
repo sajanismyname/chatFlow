@@ -44,7 +44,7 @@ export const searchUser = async (
         })
 
         const filteredUsers = users.filter(
-            (user)=>user.id! == currentUserId
+            (user)=>user.id !== currentUserId
         )
 
         res.status(200).json({

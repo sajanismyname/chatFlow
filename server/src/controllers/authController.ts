@@ -249,7 +249,7 @@ export const refreshAccessToken = async (
     res: Response
 ): Promise<void> => {
     try {
-        console.log("Refresh cookie:", req.cookies?.refreshToken);
+
         const rawToken = req.cookies.refreshToken;
 
         if (!rawToken) {
@@ -306,8 +306,24 @@ export const refreshAccessToken = async (
             storedToken.userId
         );
 
+        const user = await userRepository.findOne({
+            where: {
+                id: storedToken.userId,
+            },
+        });
+
+        if (!user) {
+            res.status(401).json({
+                message: "User not found",
+            });
+            return;
+        }
+
+        console.log("Refresh user:", user?.id);
+
         res.json({
             accessToken: newAccessToken,
+            user
         });
     } catch (error) {
         console.error(error);

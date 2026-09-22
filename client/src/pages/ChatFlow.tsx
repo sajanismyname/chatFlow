@@ -12,6 +12,9 @@ import {
     fetchMessages,
     sendMessage,
 } from "../features/messages/messageSlice";
+import {
+    fetchConversations,
+} from "../features/conversation/conversationSlice";
 
 function ChatFlow() {
     const [selectedConversation, setSelectedConversation] =
@@ -23,14 +26,18 @@ function ChatFlow() {
     );
 
     useEffect(() => {
-    if (!selectedConversation) {
-        return;
-    }
+        if (!selectedConversation) {
+            return;
+        }
 
-    dispatch(
-        fetchMessages(selectedConversation)
-    );
+        dispatch(
+            fetchMessages(selectedConversation)
+        );
     }, [selectedConversation, dispatch]);
+
+    useEffect(() => {
+    dispatch(fetchConversations());
+    }, [dispatch]);
 
     const conversations = useAppSelector(
     (state) => state.conversations.conversations
