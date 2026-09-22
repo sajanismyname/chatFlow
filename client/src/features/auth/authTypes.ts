@@ -30,3 +30,8 @@ export interface AuthState {
     loading: boolean;
     error: string | null;
 }
+
+export interface userSearchProps{
+    onSelectUser: (user: User) => void;
+    onClose: () => void;
+}

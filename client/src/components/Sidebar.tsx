@@ -1,10 +1,20 @@
 import { useState } from "react";
+
+import api from "../api/axios";
 import ConversationItem from "./ConversationItem";
+import UserSearch from "./UserSearch";
 
 interface Conversation {
     id: number;
     name: string;
     lastMessage: string;
+}
+
+interface User {
+    id: number;
+    name: string;
+    email: string;
+    avatar: string | null;
 }
 
 interface SidebarProps {
@@ -18,21 +28,54 @@ function Sidebar({
     conversations,
     selectedConversation,
     onSelectConversation,
-    onNewChat,
 }: SidebarProps) {
     const [search, setSearch] = useState("");
+    const [showUserSearch, setShowUserSearch] =
+        useState(false);
 
-    const filteredConversations = conversations.filter(
-        (conversation) =>
+    const filteredConversations =
+        conversations.filter((conversation) =>
             conversation.name
                 .toLowerCase()
                 .includes(search.toLowerCase())
-    );
+        );
+
+    const handleSelectUser = async (user: User) => {
+        try {
+            const response = await api.post(
+                "/conversations",
+                {
+                    userId: user.id,
+                }
+            );
+
+            const conversation =
+                response.data.conversation;
+
+            console.log(
+                "Conversation created:",
+                conversation
+            );
+
+            setShowUserSearch(false);
+
+            /*
+             * Select the newly created conversation.
+             */
+            onSelectConversation(conversation.id);
+
+        } catch (error) {
+            console.error(
+                "Failed to create conversation:",
+                error
+            );
+        }
+    };
 
     return (
-        <aside className="w-80 shrink-0 border-r bg-white flex flex-col">
+        <aside className="relative w-80 shrink-0 border-r bg-white flex flex-col">
 
-            {/* Sidebar Header */}
+            {/* ================= SIDEBAR HEADER ================= */}
 
             <div className="p-5 border-b">
 
@@ -43,7 +86,9 @@ function Sidebar({
                     </h2>
 
                     <button
-                        onClick={onNewChat}
+                        onClick={() =>
+                            setShowUserSearch(true)
+                        }
                         className="rounded-lg bg-black px-3 py-2 text-sm text-white hover:bg-gray-800"
                     >
                         + New
@@ -64,7 +109,7 @@ function Sidebar({
             </div>
 
 
-            {/* Conversation List */}
+            {/* ================= CONVERSATION LIST ================= */}
 
             <div className="flex-1 overflow-y-auto">
 
@@ -96,6 +141,18 @@ function Sidebar({
                 )}
 
             </div>
+
+
+            {/* ================= USER SEARCH ================= */}
+
+            {showUserSearch && (
+                <UserSearch
+                    onClose={() =>
+                        setShowUserSearch(false)
+                    }
+                    onSelectUser={handleSelectUser}
+                />
+            )}
 
         </aside>
     );

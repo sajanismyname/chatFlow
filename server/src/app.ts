@@ -4,6 +4,8 @@ import cookieParser from "cookie-parser";
 
 import authRoutes from "./routes/authRoute.js"
 import testRoutes from "./routes/testRoues.js"
+import conversationRoutes from "./routes/conversationRoutes.js"
+import userRoutes from "./routes/userRoutes.js"
 
 const app=express()
 
@@ -20,5 +22,7 @@ app.use(
 
 app.use("/api/auth", authRoutes)
 app.use("/api/test", testRoutes)
+app.use("/api/conversation", conversationRoutes)
+app.use("/api/users", userRoutes)
 
 export default app;
