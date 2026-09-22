@@ -3,8 +3,9 @@ import { useState } from "react";
 import api from "../api/axios";
 import ConversationItem from "./ConversationItem";
 import UserSearch from "./UserSearch";
-import type { User, SidebarProps } from "../features/auth/authTypes";
-
+import type { Conversation } from "../features/conversation/conversationTypes";
+import type { User } from "../features/auth/authTypes";
+import type { SidebarProps } from "../features/types/sidebarType"
 
 function Sidebar({
     conversations,
@@ -15,9 +16,31 @@ function Sidebar({
     const [showUserSearch, setShowUserSearch] =
         useState(false);
 
+    const getConversationName = (
+        conversation: Conversation
+    ) => {
+        const otherMember =
+            conversation.members.find(
+                (member) =>
+                    member.user.id !==
+                    getCurrentUserId()
+            );
+
+        return (
+            otherMember?.user.name ||
+            "Unknown user"
+        );
+    };
+
+    const getCurrentUserId = () => {
+        // Temporary placeholder.
+        // We will replace this with Redux auth state.
+        return -1;
+    };
+
     const filteredConversations =
         conversations.filter((conversation) =>
-            conversation.name
+            getConversationName(conversation)
                 .toLowerCase()
                 .includes(search.toLowerCase())
         );
@@ -34,17 +57,11 @@ function Sidebar({
             const conversation =
                 response.data.conversation;
 
-            console.log(
-                "Conversation created:",
-                conversation
-            );
-
             setShowUserSearch(false);
 
-            /*
-             * Select the newly created conversation.
-             */
-            onSelectConversation(conversation.id);
+            onSelectConversation(
+                conversation.id
+            );
 
         } catch (error) {
             console.error(
@@ -57,7 +74,7 @@ function Sidebar({
     return (
         <aside className="relative w-80 shrink-0 border-r bg-white flex flex-col">
 
-            {/* ================= SIDEBAR HEADER ================= */}
+            {/* Header */}
 
             <div className="p-5 border-b">
 
@@ -90,8 +107,7 @@ function Sidebar({
 
             </div>
 
-
-            {/* ================= CONVERSATION LIST ================= */}
+            {/* Conversations */}
 
             <div className="flex-1 overflow-y-auto">
 
@@ -100,10 +116,10 @@ function Sidebar({
                         (conversation) => (
                             <ConversationItem
                                 key={conversation.id}
-                                name={conversation.name}
-                                lastMessage={
-                                    conversation.lastMessage
-                                }
+                                name={getConversationName(
+                                    conversation
+                                )}
+                                lastMessage=""
                                 active={
                                     selectedConversation ===
                                     conversation.id
@@ -124,15 +140,16 @@ function Sidebar({
 
             </div>
 
-
-            {/* ================= USER SEARCH ================= */}
+            {/* User Search */}
 
             {showUserSearch && (
                 <UserSearch
                     onClose={() =>
                         setShowUserSearch(false)
                     }
-                    onSelectUser={handleSelectUser}
+                    onSelectUser={
+                        handleSelectUser
+                    }
                 />
             )}
 

@@ -1,32 +1,29 @@
-import { useState } from "react";
-
+import { useState, useEffect } from "react";
+import {
+    useAppDispatch,
+    useAppSelector,
+} from "../app/hooks";
 import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 import ChatHeader from "../components/ChatHeader";
 import MessageList from "../components/MessageList";
 import MessageInput from "../components/MessageInput";
+import {
+    fetchConversations,
+} from "../features/conversation/conversationSlice";
 
 function ChatFlow() {
-    const [selectedConversation, setSelectedConversation] =
-        useState(1);
+    const [selectedConversation, setSelectedConversation] = useState(1);
 
-    const conversations = [
-        {
-            id: 1,
-            name: "Alex",
-            lastMessage: "See you tomorrow!",
-        },
-        {
-            id: 2,
-            name: "Sarah",
-            lastMessage: "That sounds great.",
-        },
-        {
-            id: 3,
-            name: "John",
-            lastMessage: "I'll send it soon.",
-        },
-    ];
+    const dispatch = useAppDispatch();
+
+    useEffect(() => {
+        dispatch(fetchConversations());
+    }, [dispatch]);
+
+    const conversations = useAppSelector(
+    (state) => state.conversations.conversations
+);
 
     const messages = [
         {

@@ -1,13 +1,21 @@
+import type { User } from "../auth/authTypes";
+
+export interface ConversationMember {
+    id: number;
+    user: User;
+}
+
 export interface Conversation {
     id: number;
-    name: string;
-    lastMessage: string;
+    type: "direct" | "group";
+    createdAt: string;
+    members: ConversationMember[];
 }
 
 export interface ConversationState {
-    conversations: Conversation[],
-    loading: boolean,
-    error: string | null,
+    conversations: Conversation[];
+    loading: boolean;
+    error: string | null;
 }
 
 export interface ConversationItemProps {
