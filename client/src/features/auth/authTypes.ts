@@ -1,3 +1,5 @@
+import type { Conversation } from "../conversation/conversationTypes";
+
 export interface User {
     id: number;
     name: string;
@@ -34,4 +36,11 @@ export interface AuthState {
 export interface userSearchProps{
     onSelectUser: (user: User) => void;
     onClose: () => void;
+}
+
+export interface SidebarProps {
+    conversations: Conversation[];
+    selectedConversation: number | null;
+    onSelectConversation: (id: number) => void;
+    onNewChat?: () => void;
 }

@@ -1,9 +1,4 @@
-interface ConversationItemProps {
-    name: string;
-    lastMessage: string;
-    active?: boolean;
-    onClick?: () => void;
-}
+import type { ConversationItemProps } from "../features/conversation/conversationTypes";
 
 function ConversationItem({
     name,

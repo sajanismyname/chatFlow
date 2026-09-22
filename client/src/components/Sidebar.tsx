@@ -3,26 +3,8 @@ import { useState } from "react";
 import api from "../api/axios";
 import ConversationItem from "./ConversationItem";
 import UserSearch from "./UserSearch";
+import type { User, SidebarProps } from "../features/auth/authTypes";
 
-interface Conversation {
-    id: number;
-    name: string;
-    lastMessage: string;
-}
-
-interface User {
-    id: number;
-    name: string;
-    email: string;
-    avatar: string | null;
-}
-
-interface SidebarProps {
-    conversations: Conversation[];
-    selectedConversation: number | null;
-    onSelectConversation: (id: number) => void;
-    onNewChat?: () => void;
-}
 
 function Sidebar({
     conversations,
