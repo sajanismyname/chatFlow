@@ -9,46 +9,47 @@ import ChatHeader from "../components/ChatHeader";
 import MessageList from "../components/MessageList";
 import MessageInput from "../components/MessageInput";
 import {
-    fetchConversations,
-} from "../features/conversation/conversationSlice";
+    fetchMessages,
+    sendMessage,
+} from "../features/messages/messageSlice";
 
 function ChatFlow() {
-    const [selectedConversation, setSelectedConversation] = useState(1);
+    const [selectedConversation, setSelectedConversation] =
+    useState<number | null>(null);
 
     const dispatch = useAppDispatch();
+    const messages = useAppSelector(
+    (state) => state.messages.messages
+    );
 
     useEffect(() => {
-        dispatch(fetchConversations());
-    }, [dispatch]);
+    if (!selectedConversation) {
+        return;
+    }
+
+    dispatch(
+        fetchMessages(selectedConversation)
+    );
+    }, [selectedConversation, dispatch]);
 
     const conversations = useAppSelector(
     (state) => state.conversations.conversations
 );
 
-    const messages = [
-        {
-            id: 1,
-            sender: "Alex",
-            text: "Hey! How are you?",
-            mine: false,
-        },
-        {
-            id: 2,
-            sender: "You",
-            text: "I'm good! How about you?",
-            mine: true,
-        },
-        {
-            id: 3,
-            sender: "Alex",
-            text: "Doing great. Working on ChatFlow?",
-            mine: false,
-        },
-    ];
+    const handleSendMessage = (
+            content: string
+        ) => {
+            if (!selectedConversation) {
+                return;
+            }
 
-    const handleSendMessage = (message: string) => {
-        console.log("Sending message:", message);
-    };
+            dispatch(
+                sendMessage({
+                    conversationId: selectedConversation,
+                    content,
+                })
+            );
+        };
 
     return (
         <div className="h-screen flex flex-col bg-gray-50">
@@ -72,10 +73,10 @@ function ChatFlow() {
 
                 <main className="flex-1 flex flex-col min-w-0">
 
-                    <ChatHeader
-                        name="Alex"
-                        online={true}
-                    />
+                                    <ChatHeader
+                                        name="Select a conversation"
+                                        online={false}
+                                    />
 
                     <MessageList
                         messages={messages}
@@ -83,6 +84,7 @@ function ChatFlow() {
 
                     <MessageInput
                         onSend={handleSendMessage}
+                        disabled={!selectedConversation}
                     />
 
                 </main>

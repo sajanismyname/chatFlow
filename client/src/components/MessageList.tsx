@@ -1,9 +1,5 @@
-interface Message {
-    id: number;
-    sender: string;
-    text: string;
-    mine: boolean;
-}
+import { useAppSelector } from "../app/hooks";
+import type { Message } from "../features/messages/messageType";
 
 interface MessageListProps {
     messages: Message[];
@@ -12,31 +8,46 @@ interface MessageListProps {
 function MessageList({
     messages,
 }: MessageListProps) {
+
+    const currentUser = useAppSelector(
+        (state) => state.auth.user
+    );
+
     return (
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
 
-            {messages.map((message) => (
-                <div
-                    key={message.id}
-                    className={`flex ${
-                        message.mine
-                            ? "justify-end"
-                            : "justify-start"
-                    }`}
-                >
+            {messages.map((message) => {
+
+                const mine =
+                    message.sender.id === currentUser?.id;
+
+                return (
                     <div
-                        className={`max-w-md rounded-2xl px-4 py-3 ${
-                            message.mine
-                                ? "bg-black text-white"
-                                : "bg-white border"
+                        key={message.id}
+                        className={`flex ${
+                            mine
+                                ? "justify-end"
+                                : "justify-start"
                         }`}
                     >
-                        <p className="text-sm">
-                            {message.text}
-                        </p>
+
+                        <div
+                            className={`max-w-md rounded-2xl px-4 py-3 ${
+                                mine
+                                    ? "bg-black text-white"
+                                    : "bg-white border"
+                            }`}
+                        >
+
+                            <p className="text-sm">
+                                {message.content}
+                            </p>
+
+                        </div>
+
                     </div>
-                </div>
-            ))}
+                );
+            })}
 
         </div>
     );

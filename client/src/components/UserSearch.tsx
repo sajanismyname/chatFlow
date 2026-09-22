@@ -1,11 +1,11 @@
 import { useState } from "react";
 import api from "../api/axios";
-import type {User, userSearchProps}  from "../features/auth/authTypes";
+import type {User, UserSearchProps}  from "../features/auth/authTypes";
 
 function UserSearch({
     onSelectUser,
     onClose,
-}: userSearchProps) {
+}: UserSearchProps) {
     const [query, setQuery] = useState("");
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(false);

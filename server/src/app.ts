@@ -6,6 +6,7 @@ import authRoutes from "./routes/authRoute.js"
 import testRoutes from "./routes/testRoues.js"
 import conversationRoutes from "./routes/conversationRoutes.js"
 import userRoutes from "./routes/userRoutes.js"
+import messageRoutes from "./routes/messageRoutes.js"
 
 const app=express()
 
@@ -22,7 +23,8 @@ app.use(
 
 app.use("/api/auth", authRoutes)
 app.use("/api/test", testRoutes)
-app.use("/api/conversation", conversationRoutes)
+app.use("/api/conversations", conversationRoutes)
 app.use("/api/users", userRoutes)
+app.use("/api/conversations", messageRoutes)
 
 export default app;

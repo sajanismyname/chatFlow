@@ -2,11 +2,14 @@ import { useState } from "react";
 
 interface MessageInputProps {
     onSend: (message: string) => void;
+    disabled?: boolean;
 }
 
 function MessageInput({
     onSend,
+    disabled = false,
 }: MessageInputProps) {
+
     const [message, setMessage] = useState("");
 
     const handleSubmit = (
@@ -14,37 +17,45 @@ function MessageInput({
     ) => {
         e.preventDefault();
 
-        const trimmedMessage = message.trim();
+        if (!message.trim()) {
+            return;
+        }
 
-        if (!trimmedMessage) return;
-
-        onSend(trimmedMessage);
+        onSend(message.trim());
 
         setMessage("");
     };
 
     return (
-        <div className="shrink-0 border-t bg-white p-4">
+        <div className="border-t bg-white p-4">
 
             <form
-                className="flex gap-3"
                 onSubmit={handleSubmit}
+                className="flex gap-3"
             >
+
                 <input
                     value={message}
                     onChange={(e) =>
                         setMessage(e.target.value)
                     }
-                    placeholder="Type a message..."
-                    className="flex-1 rounded-xl border px-4 py-3 outline-none focus:border-black"
+                    disabled={disabled}
+                    placeholder={
+                        disabled
+                            ? "Select a conversation..."
+                            : "Type a message..."
+                    }
+                    className="flex-1 rounded-xl border px-4 py-3 outline-none focus:border-black disabled:bg-gray-100"
                 />
 
                 <button
                     type="submit"
-                    className="rounded-xl bg-black px-6 py-3 text-white font-medium hover:bg-gray-800"
+                    disabled={disabled}
+                    className="rounded-xl bg-black px-6 py-3 text-white font-medium disabled:opacity-50"
                 >
                     Send
                 </button>
+
             </form>
 
         </div>

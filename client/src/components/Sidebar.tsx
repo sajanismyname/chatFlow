@@ -1,11 +1,15 @@
 import { useState } from "react";
-
-import api from "../api/axios";
+import { useAppDispatch,useAppSelector } from "../app/hooks";
+import type {
+    Conversation,
+} from "../features/conversation/conversationTypes";
+import {
+    createConversation,
+} from "../features/conversation/conversationSlice";
+import type { SidebarProps } from "../features/types/sidebarType";
 import ConversationItem from "./ConversationItem";
 import UserSearch from "./UserSearch";
-import type { Conversation } from "../features/conversation/conversationTypes";
-import type { User } from "../features/auth/authTypes";
-import type { SidebarProps } from "../features/types/sidebarType"
+
 
 function Sidebar({
     conversations,
@@ -16,60 +20,49 @@ function Sidebar({
     const [showUserSearch, setShowUserSearch] =
         useState(false);
 
-    const getConversationName = (
+    const dispatch = useAppDispatch()
+
+    const currentUser = useAppSelector(
+        (state) => state.auth.user
+    );
+
+    const getOtherUser = (
         conversation: Conversation
     ) => {
-        const otherMember =
-            conversation.members.find(
-                (member) =>
-                    member.user.id !==
-                    getCurrentUserId()
-            );
-
-        return (
-            otherMember?.user.name ||
-            "Unknown user"
-        );
-    };
-
-    const getCurrentUserId = () => {
-        // Temporary placeholder.
-        // We will replace this with Redux auth state.
-        return -1;
+        return conversation.members.find(
+            (member) =>
+                member.user.id !== currentUser?.id
+        )?.user;
     };
 
     const filteredConversations =
-        conversations.filter((conversation) =>
-            getConversationName(conversation)
+        conversations.filter((conversation) => {
+            const otherUser =
+                getOtherUser(conversation);
+
+            return otherUser?.name
                 .toLowerCase()
-                .includes(search.toLowerCase())
+                .includes(search.toLowerCase());
+        });
+
+    const handleSelectUser = async (userId: number) => {
+    try {
+        const conversation = await dispatch(
+            createConversation(userId)
+        ).unwrap();
+
+        setShowUserSearch(false);
+
+        onSelectConversation(
+            conversation.id
         );
-
-    const handleSelectUser = async (user: User) => {
-        try {
-            const response = await api.post(
-                "/conversations",
-                {
-                    userId: user.id,
-                }
-            );
-
-            const conversation =
-                response.data.conversation;
-
-            setShowUserSearch(false);
-
-            onSelectConversation(
-                conversation.id
-            );
-
-        } catch (error) {
-            console.error(
-                "Failed to create conversation:",
-                error
-            );
-        }
-    };
+    } catch (error) {
+        console.error(
+            "Failed to create conversation:",
+            error
+        );
+    }
+};
 
     return (
         <aside className="relative w-80 shrink-0 border-r bg-white flex flex-col">
@@ -107,30 +100,40 @@ function Sidebar({
 
             </div>
 
-            {/* Conversations */}
+            {/* Conversation list */}
 
             <div className="flex-1 overflow-y-auto">
 
                 {filteredConversations.length > 0 ? (
                     filteredConversations.map(
-                        (conversation) => (
-                            <ConversationItem
-                                key={conversation.id}
-                                name={getConversationName(
+                        (conversation) => {
+                            const otherUser =
+                                getOtherUser(
                                     conversation
-                                )}
-                                lastMessage=""
-                                active={
-                                    selectedConversation ===
-                                    conversation.id
-                                }
-                                onClick={() =>
-                                    onSelectConversation(
+                                );
+
+                            return (
+                                <ConversationItem
+                                    key={
                                         conversation.id
-                                    )
-                                }
-                            />
-                        )
+                                    }
+                                    name={
+                                        otherUser?.name ||
+                                        "Unknown user"
+                                    }
+                                    lastMessage=""
+                                    active={
+                                        selectedConversation ===
+                                        conversation.id
+                                    }
+                                    onClick={() =>
+                                        onSelectConversation(
+                                            conversation.id
+                                        )
+                                    }
+                                />
+                            );
+                        }
                     )
                 ) : (
                     <p className="p-5 text-sm text-gray-500">
@@ -140,15 +143,17 @@ function Sidebar({
 
             </div>
 
-            {/* User Search */}
+            {/* New Chat */}
 
             {showUserSearch && (
                 <UserSearch
                     onClose={() =>
                         setShowUserSearch(false)
                     }
-                    onSelectUser={
-                        handleSelectUser
+                    onSelectUser={(user) =>
+                        handleSelectUser(
+                            user.id
+                        )
                     }
                 />
             )}
