@@ -25,37 +25,34 @@ api.interceptors.response.use(
         const originalRequest = error.config;
 
         if (
-            error.response?.status === 401 &&
-            !originalRequest._retry &&
-            !originalRequest.url?.includes("/auth/refresh")
-        ) {
-            originalRequest._retry = true;
+    error.response?.status === 401 &&
+    !originalRequest._retry &&
+    !originalRequest.url?.includes("/auth/refresh") &&
+    !originalRequest.url?.includes("/auth/login") &&
+    !originalRequest.url?.includes("/auth/register")
+) {
+    originalRequest._retry = true;
 
-            try {
-                const response = await api.post(
-                    "/auth/refresh"
-                );
+    try {
+        const response = await api.post("/auth/refresh");
 
-                const newAccessToken =
-                    response.data.accessToken;
+        const newAccessToken =
+            response.data.accessToken;
 
-                store.dispatch(
-                    setAccessToken(newAccessToken)
-                );
+        store.dispatch(
+            setAccessToken(newAccessToken)
+        );
 
-                originalRequest.headers.Authorization =
-                    `Bearer ${newAccessToken}`;
+        originalRequest.headers.Authorization =
+            `Bearer ${newAccessToken}`;
 
-                return api(originalRequest);
+        return api(originalRequest);
 
-            } catch (refreshError) {
-                store.dispatch(logout());
-
-                return Promise.reject(
-                    refreshError
-                );
-            }
-        }
+    } catch (refreshError) {
+        store.dispatch(logout());
+        return Promise.reject(refreshError);
+    }
+}
 
         return Promise.reject(error);
     }

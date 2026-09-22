@@ -8,6 +8,7 @@ import Login from "./pages/Login";
 import AuthCallback from "./pages/AuthCallback";
 import Register from "./pages/Register";
 import ChatFlow from "./pages/ChatFlow";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
     const dispatch = useAppDispatch();
@@ -49,7 +50,11 @@ function App() {
 
                 <Route
                     path="/"
-                    element={<ChatFlow />}
+                    element={
+                        <ProtectedRoute>
+                            <ChatFlow />
+                        </ProtectedRoute>
+                    }
                 />
 
             </Routes>
