@@ -18,12 +18,37 @@ import {
 
 function ChatFlow() {
     const [selectedConversation, setSelectedConversation] =
-    useState<number | null>(null);
+        useState<number | null>(null);
 
     const dispatch = useAppDispatch();
+
     const messages = useAppSelector(
-    (state) => state.messages.messages
+        (state) => state.messages.messages
     );
+
+    const conversations = useAppSelector(
+        (state) => state.conversations.conversations
+    );
+
+    const currentUser = useAppSelector(
+        (state) => state.auth.user
+    );
+
+    // Find the currently selected conversation
+    const selectedConversationData =
+        conversations.find(
+            (conversation) =>
+                conversation.id === selectedConversation
+        );
+
+    // Find the other user in the conversation
+    const otherUser =
+    selectedConversationData?.members
+        ?.filter((member) => member?.user)
+        .find(
+            (member) =>
+                member.user.id !== currentUser?.id
+        )?.user;
 
     useEffect(() => {
         if (!selectedConversation) {
@@ -36,27 +61,23 @@ function ChatFlow() {
     }, [selectedConversation, dispatch]);
 
     useEffect(() => {
-    dispatch(fetchConversations());
+        dispatch(fetchConversations());
     }, [dispatch]);
 
-    const conversations = useAppSelector(
-    (state) => state.conversations.conversations
-);
-
     const handleSendMessage = (
-            content: string
-        ) => {
-            if (!selectedConversation) {
-                return;
-            }
+        content: string
+    ) => {
+        if (!selectedConversation) {
+            return;
+        }
 
-            dispatch(
-                sendMessage({
-                    conversationId: selectedConversation,
-                    content,
-                })
-            );
-        };
+        dispatch(
+            sendMessage({
+                conversationId: selectedConversation,
+                content,
+            })
+        );
+    };
 
     return (
         <div className="h-screen flex flex-col bg-gray-50">
@@ -80,10 +101,11 @@ function ChatFlow() {
 
                 <main className="flex-1 flex flex-col min-w-0">
 
-                                    <ChatHeader
-                                        name="Select a conversation"
-                                        online={false}
-                                    />
+                    <ChatHeader
+                        name={otherUser?.name || "Select a conversation"}
+                        avatar={otherUser?.avatar ?? null}
+                        online={false}
+                    />
 
                     <MessageList
                         messages={messages}

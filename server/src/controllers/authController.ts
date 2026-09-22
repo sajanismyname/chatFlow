@@ -37,9 +37,16 @@ export const login = async (
             return;
         }
 
+        if (!user.password) {
+            res.status(401).json({
+                message: "This account uses Google login",
+            });
+            return;
+        }
+
         const isPasswordValid = await bcrypt.compare(
             password,
-            user.password!
+            user.password
         );
 
         if (!isPasswordValid) {
@@ -318,8 +325,6 @@ export const refreshAccessToken = async (
             });
             return;
         }
-
-        console.log("Refresh user:", user?.id);
 
         res.json({
             accessToken: newAccessToken,

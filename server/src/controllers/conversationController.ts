@@ -109,20 +109,37 @@ export const createConversation = async (
          */
 
         const memberships =
-            await conversationMemberRepository.find({
-                where: {
+    await conversationMemberRepository.find({
+        where: {
+            user: {
+                id: currentUserId,
+            },
+        },
+        relations: {
+            conversation: {
+                members: {
+                    user: true,
+                },
+            },
+        },
+        select: {
+            id: true,
+            conversation: {
+                id: true,
+                type: true,
+                createdAt: true,
+                members: {
+                    id: true,
                     user: {
-                        id: currentUserId,
+                        id: true,
+                        name: true,
+                        email: true,
+                        avatar: true,
                     },
                 },
-                relations: {
-                    conversation: {
-                        members: {
-                            user: true,
-                        },
-                    },
-                },
-            });
+            },
+        },
+    });
 
         const existingConversation =
             memberships.find((membership) => {
