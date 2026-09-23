@@ -1,18 +1,55 @@
 import { useState } from "react";
+
 import api from "../api/axios";
-import type {User, UserSearchProps}  from "../features/auth/authTypes";
+
+import type {
+    User,
+    UserSearchProps,
+} from "../features/auth/authTypes";
+
+import {
+    ArrowLeft,
+    Loader2,
+    Search,
+} from "lucide-react";
+
+import {
+    Avatar,
+    AvatarFallback,
+    AvatarImage,
+} from "@/components/ui/avatar";
+
+import {
+    Button,
+} from "@/components/ui/button";
+
+import {
+    Input,
+} from "@/components/ui/input";
+
+import {
+    ScrollArea,
+} from "@/components/ui/scroll-area";
+
 
 function UserSearch({
     onSelectUser,
     onClose,
 }: UserSearchProps) {
+
     const [query, setQuery] = useState("");
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(false);
 
+
+    /* =========================
+       SEARCH USERS
+    ========================= */
+
     const handleSearch = async (
         value: string
     ) => {
+
         setQuery(value);
 
         if (!value.trim()) {
@@ -20,7 +57,9 @@ function UserSearch({
             return;
         }
 
+
         try {
+
             setLoading(true);
 
             const response = await api.get(
@@ -32,96 +71,297 @@ function UserSearch({
                 }
             );
 
-            setUsers(response.data.users);
+            setUsers(
+                response.data.users
+            );
+
         } catch (error) {
+
             console.error(
                 "Failed to search users:",
                 error
             );
 
             setUsers([]);
+
         } finally {
+
             setLoading(false);
+
         }
+
     };
 
+
+    /* =========================
+       INITIALS
+    ========================= */
+
+    const getInitials = (
+        name: string
+    ) => {
+
+        return name
+            .split(" ")
+            .map(
+                (word) =>
+                    word.charAt(0)
+            )
+            .join("")
+            .slice(0, 2)
+            .toUpperCase();
+
+    };
+
+
     return (
-        <div className="absolute inset-0 z-50 bg-white">
 
-            <div className="flex items-center gap-3 border-b p-4">
+        <div
+            className="
+                absolute
+                inset-0
+                z-50
+                flex
+                flex-col
+                bg-background
+            "
+        >
 
-                <button
+            {/* =========================
+                HEADER
+            ========================= */}
+
+            <div
+                className="
+                    flex
+                    items-center
+                    gap-2
+                    border-b
+                    p-3
+                "
+            >
+
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0 rounded-full"
                     onClick={onClose}
-                    className="text-gray-500 hover:text-black"
+                    aria-label="Close user search"
                 >
-                    ←
-                </button>
+                    <ArrowLeft className="size-4" />
+                </Button>
 
-                <input
-                    autoFocus
-                    value={query}
-                    onChange={(e) =>
-                        handleSearch(e.target.value)
-                    }
-                    placeholder="Search users..."
-                    className="flex-1 outline-none"
-                />
+
+                <div className="relative flex-1">
+
+                    <Search
+                        className="
+                            absolute
+                            left-3
+                            top-1/2
+                            size-4
+                            -translate-y-1/2
+                            text-muted-foreground
+                        "
+                    />
+
+                    <Input
+                        autoFocus
+                        value={query}
+                        onChange={(e) =>
+                            handleSearch(
+                                e.target.value
+                            )
+                        }
+                        placeholder="Search people..."
+                        className="pl-9"
+                    />
+
+                </div>
 
             </div>
 
-            <div className="p-2">
 
-                {loading && (
-                    <p className="p-3 text-sm text-gray-500">
-                        Searching...
-                    </p>
-                )}
+            {/* =========================
+                RESULTS
+            ========================= */}
 
-                {!loading &&
-                    query.trim() &&
-                    users.length === 0 && (
-                        <p className="p-3 text-sm text-gray-500">
-                            No users found.
-                        </p>
+            <ScrollArea className="flex-1">
+
+                <div className="p-2">
+
+                    {/* LOADING */}
+
+                    {loading && (
+
+                        <div
+                            className="
+                                flex
+                                items-center
+                                justify-center
+                                gap-2
+                                py-8
+                                text-sm
+                                text-muted-foreground
+                            "
+                        >
+
+                            <Loader2
+                                className="
+                                    size-4
+                                    animate-spin
+                                "
+                            />
+
+                            Searching...
+
+                        </div>
+
                     )}
 
-                {users.map((user) => (
-                    <button
-                        key={user.id}
-                        onClick={() =>
-                            onSelectUser(user)
-                        }
-                        className="w-full flex items-center gap-3 rounded-lg p-3 text-left hover:bg-gray-100"
-                    >
-                        <div className="h-10 w-10 shrink-0 rounded-full bg-gray-200 flex items-center justify-center font-semibold overflow-hidden">
-                            {user.avatar ? (
-                                <img
-                                    src={user.avatar}
-                                    alt={user.name}
-                                    className="h-full w-full object-cover"
-                                />
-                            ) : (
-                                user.name
-                                    .charAt(0)
-                                    .toUpperCase()
-                            )}
-                        </div>
 
-                        <div>
-                            <p className="font-medium">
-                                {user.name}
-                            </p>
+                    {/* EMPTY QUERY */}
 
-                            <p className="text-xs text-gray-500">
-                                {user.email}
-                            </p>
-                        </div>
-                    </button>
-                ))}
+                    {!loading &&
+                        !query.trim() && (
 
-            </div>
+                            <div
+                                className="
+                                    flex
+                                    flex-col
+                                    items-center
+                                    px-6
+                                    py-12
+                                    text-center
+                                "
+                            >
+
+                                <div
+                                    className="
+                                        mb-4
+                                        flex
+                                        size-12
+                                        items-center
+                                        justify-center
+                                        rounded-full
+                                        bg-muted
+                                    "
+                                >
+                                    <Search className="size-5 text-muted-foreground" />
+                                </div>
+
+                                <p className="text-sm font-medium">
+                                    Find someone to chat with
+                                </p>
+
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                    Search by name or email.
+                                </p>
+
+                            </div>
+
+                        )}
+
+
+                    {/* NO RESULTS */}
+
+                    {!loading &&
+                        query.trim() &&
+                        users.length === 0 && (
+
+                            <div
+                                className="
+                                    px-6
+                                    py-12
+                                    text-center
+                                "
+                            >
+
+                                <p className="text-sm font-medium">
+                                    No users found
+                                </p>
+
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                    Try another name or email.
+                                </p>
+
+                            </div>
+
+                        )}
+
+
+                    {/* USERS */}
+
+                    {!loading &&
+                        users.map((user) => (
+
+                            <button
+                                key={user.id}
+                                type="button"
+                                onClick={() =>
+                                    onSelectUser(user)
+                                }
+                                className="
+                                    flex
+                                    w-full
+                                    items-center
+                                    gap-3
+                                    rounded-xl
+                                    p-3
+                                    text-left
+                                    transition-colors
+                                    hover:bg-muted/60
+                                "
+                            >
+
+                                {/* AVATAR */}
+
+                                <Avatar className="size-10 shrink-0">
+
+                                    <AvatarImage
+                                        src={
+                                            user.avatar ??
+                                            undefined
+                                        }
+                                        alt={user.name}
+                                    />
+
+                                    <AvatarFallback>
+                                        {getInitials(
+                                            user.name
+                                        )}
+                                    </AvatarFallback>
+
+                                </Avatar>
+
+
+                                {/* USER INFO */}
+
+                                <div className="min-w-0 flex-1">
+
+                                    <p className="truncate text-sm font-medium">
+                                        {user.name}
+                                    </p>
+
+                                    <p className="truncate text-xs text-muted-foreground">
+                                        {user.email}
+                                    </p>
+
+                                </div>
+
+                            </button>
+
+                        ))}
+
+                </div>
+
+            </ScrollArea>
+
         </div>
+
     );
 }
+
 
 export default UserSearch;

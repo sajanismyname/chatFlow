@@ -1,9 +1,25 @@
 import { useState } from "react";
 
+import {
+    Paperclip,
+    Send,
+    Smile,
+} from "lucide-react";
+
+import {
+    Button,
+} from "@/components/ui/button";
+
+import {
+    Input,
+} from "@/components/ui/input";
+
+
 interface MessageInputProps {
     onSend: (message: string) => void;
     disabled?: boolean;
 }
+
 
 function MessageInput({
     onSend,
@@ -12,54 +28,143 @@ function MessageInput({
 
     const [message, setMessage] = useState("");
 
+
+    /* =========================
+       SEND MESSAGE
+    ========================= */
+
     const handleSubmit = (
-        e: React.SubmitEvent
+        e: React.FormEvent<HTMLFormElement>
     ) => {
+
         e.preventDefault();
 
-        if (!message.trim()) {
+        const trimmedMessage =
+            message.trim();
+
+        if (!trimmedMessage) {
             return;
         }
 
-        onSend(message.trim());
+        onSend(trimmedMessage);
 
         setMessage("");
     };
 
+
     return (
-        <div className="border-t bg-white p-4">
+
+        <div
+            className="
+                shrink-0
+                border-t
+                bg-background
+                p-4
+            "
+        >
 
             <form
                 onSubmit={handleSubmit}
-                className="flex gap-3"
+                className="flex items-center gap-2"
             >
 
-                <input
-                    value={message}
-                    onChange={(e) =>
-                        setMessage(e.target.value)
-                    }
-                    disabled={disabled}
-                    placeholder={
-                        disabled
-                            ? "Select a conversation..."
-                            : "Type a message..."
-                    }
-                    className="flex-1 rounded-xl border px-4 py-3 outline-none focus:border-black disabled:bg-gray-100"
-                />
+                {/* =========================
+                    ATTACHMENT
+                ========================= */}
 
-                <button
-                    type="submit"
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0 rounded-full"
                     disabled={disabled}
-                    className="rounded-xl bg-black px-6 py-3 text-white font-medium disabled:opacity-50"
+                    aria-label="Attach file"
                 >
-                    Send
-                </button>
+                    <Paperclip className="size-4" />
+                </Button>
+
+
+                {/* =========================
+                    MESSAGE INPUT
+                ========================= */}
+
+                <div className="relative flex-1">
+
+                    <Input
+                        value={message}
+                        onChange={(e) =>
+                            setMessage(
+                                e.target.value
+                            )
+                        }
+                        disabled={disabled}
+                        placeholder={
+                            disabled
+                                ? "Select a conversation..."
+                                : "Type a message..."
+                        }
+                        className="
+                            h-11
+                            rounded-full
+                            bg-muted/40
+                            pr-11
+                            focus-visible:bg-background
+                        "
+                    />
+
+
+                    {/* =========================
+                        EMOJI
+                    ========================= */}
+
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="
+                            absolute
+                            right-1
+                            top-1/2
+                            size-9
+                            -translate-y-1/2
+                            rounded-full
+                        "
+                        disabled={disabled}
+                        aria-label="Add emoji"
+                    >
+                        <Smile className="size-4" />
+                    </Button>
+
+                </div>
+
+
+                {/* =========================
+                    SEND
+                ========================= */}
+
+                <Button
+                    type="submit"
+                    size="icon"
+                    className="
+                        size-11
+                        shrink-0
+                        rounded-full
+                    "
+                    disabled={
+                        disabled ||
+                        !message.trim()
+                    }
+                    aria-label="Send message"
+                >
+                    <Send className="size-4" />
+                </Button>
 
             </form>
 
         </div>
+
     );
 }
+
 
 export default MessageInput;
