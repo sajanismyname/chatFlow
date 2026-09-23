@@ -4,6 +4,7 @@ export interface User {
     email: string;
     googleId: string | null;
     avatar: string | null;
+    online?:boolean,
 }
 
 export interface AuthResponse {

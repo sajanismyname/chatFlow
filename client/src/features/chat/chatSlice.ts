@@ -1,21 +1,11 @@
-import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import {
+    createSlice,
+    type PayloadAction,
+} from "@reduxjs/toolkit";
 
-export interface Conversation {
-    id: number;
-    name: string;
-    avatar?: string | null;
-    lastMessage?: string;
-    lastMessageAt?: string;
-    online?: boolean;
-}
+import type { Conversation } from "../conversation/conversationTypes";
+import type { Message } from "../messages/messageType";
 
-export interface Message {
-    id: number;
-    conversationId: number;
-    senderId: number;
-    content: string;
-    createdAt: string;
-}
 
 interface ChatState {
     conversations: Conversation[];
@@ -23,11 +13,13 @@ interface ChatState {
     activeConversationId: number | null;
 }
 
+
 const initialState: ChatState = {
     conversations: [],
     messages: {},
     activeConversationId: null,
 };
+
 
 const chatSlice = createSlice({
     name: "chat",
@@ -35,6 +27,11 @@ const chatSlice = createSlice({
     initialState,
 
     reducers: {
+
+        /* =========================
+           CONVERSATIONS
+        ========================= */
+
         setConversations: (
             state,
             action: PayloadAction<Conversation[]>
@@ -42,12 +39,39 @@ const chatSlice = createSlice({
             state.conversations = action.payload;
         },
 
+        addConversation: (
+            state,
+            action: PayloadAction<Conversation>
+        ) => {
+            const exists =
+                state.conversations.some(
+                    (conversation) =>
+                        conversation.id ===
+                        action.payload.id
+                );
+
+            if (!exists) {
+                state.conversations.push(
+                    action.payload
+                );
+            }
+        },
+
+        /* =========================
+           ACTIVE CONVERSATION
+        ========================= */
+
         setActiveConversation: (
             state,
-            action: PayloadAction<number>
+            action: PayloadAction<number | null>
         ) => {
-            state.activeConversationId = action.payload;
+            state.activeConversationId =
+                action.payload;
         },
+
+        /* =========================
+           MESSAGES
+        ========================= */
 
         setMessages: (
             state,
@@ -56,8 +80,9 @@ const chatSlice = createSlice({
                 messages: Message[];
             }>
         ) => {
-            state.messages[action.payload.conversationId] =
-                action.payload.messages;
+            state.messages[
+                action.payload.conversationId
+            ] = action.payload.messages;
         },
 
         addMessage: (
@@ -66,20 +91,42 @@ const chatSlice = createSlice({
         ) => {
             const message = action.payload;
 
-            if (!state.messages[message.conversationId]) {
-                state.messages[message.conversationId] = [];
+            if (
+                !state.messages[
+                    message.conversationId
+                ]
+            ) {
+                state.messages[
+                    message.conversationId
+                ] = [];
             }
 
-            state.messages[message.conversationId].push(message);
+            state.messages[
+                message.conversationId
+            ].push(message);
+        },
+
+        /* =========================
+           CLEAR
+        ========================= */
+
+        clearChat: (state) => {
+            state.conversations = [];
+            state.messages = {};
+            state.activeConversationId = null;
         },
     },
 });
 
+
 export const {
     setConversations,
+    addConversation,
     setActiveConversation,
     setMessages,
     addMessage,
+    clearChat,
 } = chatSlice.actions;
+
 
 export default chatSlice.reducer;

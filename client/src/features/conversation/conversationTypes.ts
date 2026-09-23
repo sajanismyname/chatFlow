@@ -13,7 +13,6 @@ export interface Conversation {
 }
 
 export interface ConversationState {
-    conversations: Conversation[];
     loading: boolean;
     error: string | null;
 }

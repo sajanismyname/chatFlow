@@ -1,119 +1,234 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
+
 import {
     useAppDispatch,
     useAppSelector,
 } from "../app/hooks";
+
 import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 import ChatHeader from "../components/ChatHeader";
 import MessageList from "../components/MessageList";
 import MessageInput from "../components/MessageInput";
+
 import {
     fetchMessages,
     sendMessage,
 } from "../features/messages/messageSlice";
+
 import {
     fetchConversations,
 } from "../features/conversation/conversationSlice";
 
+import {
+    setActiveConversation,
+} from "../features/chat/chatSlice";
+
+
 function ChatFlow() {
-    const [selectedConversation, setSelectedConversation] =
-        useState<number | null>(null);
 
     const dispatch = useAppDispatch();
 
-    const messages = useAppSelector(
-        (state) => state.messages.messages
-    );
+
+    /* =========================
+       CHAT STATE
+    ========================= */
 
     const conversations = useAppSelector(
-        (state) => state.conversations.conversations
+        (state) =>
+            state.chat.conversations
     );
+
+    const activeConversationId =
+        useAppSelector(
+            (state) =>
+                state.chat.activeConversationId
+        );
+
+    const messages = useAppSelector(
+        (state) =>
+            activeConversationId !== null
+                ? state.chat.messages[
+                    activeConversationId
+                ] ?? []
+                : []
+    );
+
+
+    /* =========================
+       AUTH
+    ========================= */
 
     const currentUser = useAppSelector(
         (state) => state.auth.user
     );
 
-    // Find the currently selected conversation
+
+    /* =========================
+       ACTIVE CONVERSATION
+    ========================= */
+
     const selectedConversationData =
         conversations.find(
             (conversation) =>
-                conversation.id === selectedConversation
+                conversation.id ===
+                activeConversationId
         );
 
-    // Find the other user in the conversation
+
+    /* =========================
+       OTHER USER
+    ========================= */
+
     const otherUser =
-    selectedConversationData?.members
-        ?.filter((member) => member?.user)
-        .find(
-            (member) =>
-                member.user.id !== currentUser?.id
-        )?.user;
+        selectedConversationData
+            ?.members
+            ?.filter(
+                (member) => member?.user
+            )
+            .find(
+                (member) =>
+                    member.user.id !==
+                    currentUser?.id
+            )?.user;
+
+
+    /* =========================
+       FETCH CONVERSATIONS
+    ========================= */
 
     useEffect(() => {
-        if (!selectedConversation) {
+
+        dispatch(
+            fetchConversations()
+        );
+
+    }, [dispatch]);
+
+
+    /* =========================
+       FETCH MESSAGES
+    ========================= */
+
+    useEffect(() => {
+
+        if (activeConversationId === null) {
             return;
         }
 
         dispatch(
-            fetchMessages(selectedConversation)
+            fetchMessages(
+                activeConversationId
+            )
         );
-    }, [selectedConversation, dispatch]);
 
-    useEffect(() => {
-        dispatch(fetchConversations());
-    }, [dispatch]);
+    }, [
+        activeConversationId,
+        dispatch,
+    ]);
+
+
+    /* =========================
+       SELECT CONVERSATION
+    ========================= */
+
+    const handleSelectConversation = (
+        conversationId: number
+    ) => {
+
+        dispatch(
+            setActiveConversation(
+                conversationId
+            )
+        );
+
+    };
+
+
+    /* =========================
+       SEND MESSAGE
+    ========================= */
 
     const handleSendMessage = (
         content: string
     ) => {
-        if (!selectedConversation) {
+
+        if (activeConversationId === null) {
             return;
         }
 
         dispatch(
             sendMessage({
-                conversationId: selectedConversation,
+                conversationId:
+                    activeConversationId,
                 content,
             })
         );
+
     };
 
+
     return (
-        <div className="h-screen flex flex-col bg-gray-50">
+
+        <div className="flex h-screen flex-col bg-gray-50">
 
             <Navbar />
 
-            <div className="flex flex-1 min-h-0">
+            <div className="flex min-h-0 flex-1">
 
                 <Sidebar
-                    conversations={conversations}
+                    conversations={
+                        conversations
+                    }
+
                     selectedConversation={
-                        selectedConversation
+                        activeConversationId
                     }
+
                     onSelectConversation={
-                        setSelectedConversation
+                        handleSelectConversation
                     }
+
                     onNewChat={() =>
-                        console.log("New chat")
+                        console.log(
+                            "New chat"
+                        )
                     }
                 />
 
-                <main className="flex-1 flex flex-col min-w-0">
+                <main className="flex min-w-0 flex-1 flex-col">
 
                     <ChatHeader
-                        name={otherUser?.name || "Select a conversation"}
-                        avatar={otherUser?.avatar ?? null}
-                        online={false}
+                        name={
+                            otherUser?.name ||
+                            "Select a conversation"
+                        }
+
+                        avatar={
+                            otherUser?.avatar ??
+                            null
+                        }
+
+                        online={
+                            otherUser?.online ??
+                            false
+                        }
                     />
 
                     <MessageList
-                        messages={messages}
+                        messages={
+                            messages
+                        }
                     />
 
                     <MessageInput
-                        onSend={handleSendMessage}
-                        disabled={!selectedConversation}
+                        onSend={
+                            handleSendMessage
+                        }
+
+                        disabled={
+                            activeConversationId === null
+                        }
                     />
 
                 </main>
@@ -123,5 +238,6 @@ function ChatFlow() {
         </div>
     );
 }
+
 
 export default ChatFlow;
