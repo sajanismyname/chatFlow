@@ -166,17 +166,9 @@ function Sidebar({
     const handleSelectConversation = (
         conversationId: number
     ) => {
-
-        dispatch(
-            setActiveConversation(
-                conversationId
-            )
-        );
-
         onSelectConversation(
             conversationId
         );
-
     };
 
 

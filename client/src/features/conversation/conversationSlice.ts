@@ -1,20 +1,30 @@
 import {
     createAsyncThunk,
     createSlice,
-    type PayloadAction,
 } from "@reduxjs/toolkit";
 
 import api from "../../api/axios";
+
 import type {
     Conversation,
     ConversationState,
-} from "../conversation/conversationTypes";
+} from "./conversationTypes";
+
+import {
+    setConversations,
+    addConversation,
+} from "../chat/chatSlice";
+
 
 const initialState: ConversationState = {
-    conversations: [],
     loading: false,
     error: null,
 };
+
+
+/* =========================
+   FETCH CONVERSATIONS
+========================= */
 
 export const fetchConversations =
     createAsyncThunk<
@@ -23,21 +33,46 @@ export const fetchConversations =
         { rejectValue: string }
     >(
         "conversations/fetchConversations",
-        async (_, { rejectWithValue }) => {
+
+        async (
+            _,
+            {
+                dispatch,
+                rejectWithValue,
+            }
+        ) => {
             try {
-                const response = await api.get(
-                    "/conversations"
+
+                const response =
+                    await api.get(
+                        "/conversations"
+                    );
+
+                const conversations =
+                    response.data.conversations;
+
+                dispatch(
+                    setConversations(
+                        conversations
+                    )
                 );
 
-                return response.data.conversations;
+                return conversations;
+
             } catch (error: any) {
+
                 return rejectWithValue(
                     error.response?.data?.message ||
-                        "Failed to fetch conversations"
+                    "Failed to fetch conversations"
                 );
             }
         }
     );
+
+
+/* =========================
+   CREATE CONVERSATION
+========================= */
 
 export const createConversation =
     createAsyncThunk<
@@ -46,56 +81,62 @@ export const createConversation =
         { rejectValue: string }
     >(
         "conversations/createConversation",
-        async (userId, { rejectWithValue }) => {
+
+        async (
+            userId,
+            {
+                dispatch,
+                rejectWithValue,
+            }
+        ) => {
             try {
-                const response = await api.post(
-                    "/conversations",
-                    {
-                        userId,
-                    }
+
+                const response =
+                    await api.post(
+                        "/conversations",
+                        {
+                            userId,
+                        }
+                    );
+
+                const conversation =
+                    response.data.conversation;
+
+                dispatch(
+                    addConversation(
+                        conversation
+                    )
                 );
 
-                return response.data.conversation;
+                return conversation;
+
             } catch (error: any) {
+
                 return rejectWithValue(
                     error.response?.data?.message ||
-                        "Failed to create conversation"
+                    "Failed to create conversation"
                 );
             }
         }
     );
 
+
+/* =========================
+   SLICE
+========================= */
+
 const conversationSlice = createSlice({
+
     name: "conversations",
 
     initialState,
 
-    reducers: {
-        clearConversations: (state) => {
-            state.conversations = [];
-        },
-
-        addConversation: (
-            state,
-            action: PayloadAction<Conversation>
-        ) => {
-            const exists =
-                state.conversations.some(
-                    (conversation) =>
-                        conversation.id ===
-                        action.payload.id
-                );
-
-            if (!exists) {
-                state.conversations.push(
-                    action.payload
-                );
-            }
-        },
-    },
+    reducers: {},
 
     extraReducers: (builder) => {
+
         builder
+
             .addCase(
                 fetchConversations.pending,
                 (state) => {
@@ -106,10 +147,8 @@ const conversationSlice = createSlice({
 
             .addCase(
                 fetchConversations.fulfilled,
-                (state, action) => {
+                (state) => {
                     state.loading = false;
-                    state.conversations =
-                        action.payload;
                 }
             )
 
@@ -133,21 +172,8 @@ const conversationSlice = createSlice({
 
             .addCase(
                 createConversation.fulfilled,
-                (state, action) => {
+                (state) => {
                     state.loading = false;
-
-                    const exists =
-                        state.conversations.some(
-                            (conversation) =>
-                                conversation.id ===
-                                action.payload.id
-                        );
-
-                    if (!exists) {
-                        state.conversations.push(
-                            action.payload
-                        );
-                    }
                 }
             )
 
@@ -163,9 +189,5 @@ const conversationSlice = createSlice({
     },
 });
 
-export const {
-    clearConversations,
-    addConversation,
-} = conversationSlice.actions;
 
 export default conversationSlice.reducer;

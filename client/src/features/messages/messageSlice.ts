@@ -10,79 +10,140 @@ import type {
     MessageState,
 } from "./messageType";
 
+import {
+    setMessages,
+    addMessage,
+} from "../chat/chatSlice";
+
+
 const initialState: MessageState = {
-    messages: [],
     loading: false,
     error: null,
 };
 
-export const fetchMessages = createAsyncThunk<
-    Message[],
-    number,
-    { rejectValue: string }
->(
-    "messages/fetchMessages",
-    async (conversationId, { rejectWithValue }) => {
-        try {
-            const response = await api.get(
-                `/conversations/${conversationId}/messages`
-            );
 
-            return response.data.messages;
-        } catch (error: any) {
-            return rejectWithValue(
-                error.response?.data?.message ||
-                "Failed to fetch messages"
-            );
+/* =========================
+   FETCH MESSAGES
+========================= */
+
+export const fetchMessages =
+    createAsyncThunk<
+        Message[],
+        number,
+        { rejectValue: string }
+    >(
+        "messages/fetchMessages",
+
+        async (
+            conversationId,
+            {
+                dispatch,
+                rejectWithValue,
+            }
+        ) => {
+
+            try {
+
+                const response =
+                    await api.get(
+                        `/conversations/${conversationId}/messages`
+                    );
+
+                const messages =
+                    response.data.messages;
+
+                dispatch(
+                    setMessages({
+                        conversationId,
+                        messages,
+                    })
+                );
+
+                return messages;
+
+            } catch (error: any) {
+
+                return rejectWithValue(
+                    error.response?.data?.message ||
+                    "Failed to fetch messages"
+                );
+            }
         }
-    }
-);
+    );
 
-export const sendMessage = createAsyncThunk<
-    Message,
-    {
-        conversationId: number;
-        content: string;
-    },
-    { rejectValue: string }
->(
-    "messages/sendMessage",
-    async (
-        { conversationId, content },
-        { rejectWithValue }
-    ) => {
-        try {
-            const response = await api.post(
-                `/conversations/${conversationId}/messages`,
-                {
-                    content,
-                }
-            );
 
-            return response.data.message;
-        } catch (error: any) {
-            return rejectWithValue(
-                error.response?.data?.message ||
-                "Failed to send message"
-            );
+/* =========================
+   SEND MESSAGE
+========================= */
+
+export const sendMessage =
+    createAsyncThunk<
+        Message,
+        {
+            conversationId: number;
+            content: string;
+        },
+        { rejectValue: string }
+    >(
+        "messages/sendMessage",
+
+        async (
+            {
+                conversationId,
+                content,
+            },
+            {
+                dispatch,
+                rejectWithValue,
+            }
+        ) => {
+
+            try {
+
+                const response =
+                    await api.post(
+                        `/conversations/${conversationId}/messages`,
+                        {
+                            content,
+                        }
+                    );
+
+                const message =
+                    response.data.message;
+
+                dispatch(
+                    addMessage(message)
+                );
+
+                return message;
+
+            } catch (error: any) {
+
+                return rejectWithValue(
+                    error.response?.data?.message ||
+                    "Failed to send message"
+                );
+            }
         }
-    }
-);
+    );
+
+
+/* =========================
+   SLICE
+========================= */
 
 const messageSlice = createSlice({
+
     name: "messages",
 
     initialState,
 
-    reducers: {
-        clearMessages: (state) => {
-            state.messages = [];
-            state.error = null;
-        },
-    },
+    reducers: {},
 
     extraReducers: (builder) => {
+
         builder
+
             .addCase(
                 fetchMessages.pending,
                 (state) => {
@@ -93,9 +154,8 @@ const messageSlice = createSlice({
 
             .addCase(
                 fetchMessages.fulfilled,
-                (state, action) => {
+                (state) => {
                     state.loading = false;
-                    state.messages = action.payload;
                 }
             )
 
@@ -110,17 +170,31 @@ const messageSlice = createSlice({
             )
 
             .addCase(
-                sendMessage.fulfilled,
-                (state, action) => {
-                    state.messages.push(action.payload);
+                sendMessage.pending,
+                (state) => {
+                    state.loading = true;
+                    state.error = null;
                 }
             )
+
+            .addCase(
+                sendMessage.fulfilled,
+                (state) => {
+                    state.loading = false;
+                }
+            )
+
+            .addCase(
+                sendMessage.rejected,
+                (state, action) => {
+                    state.loading = false;
+                    state.error =
+                        action.payload ||
+                        "Failed to send message";
+                }
+            );
     },
 });
 
-
-export const {
-    clearMessages,
-} = messageSlice.actions;
 
 export default messageSlice.reducer;
