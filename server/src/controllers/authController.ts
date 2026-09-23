@@ -154,6 +154,50 @@ export const register = async (
     }
 };
 
+export const getCurrentUser = async (
+    req: Request,
+    res: Response
+): Promise<void> =>{
+    try {
+        const userId=req.user?.id
+
+        if(!userId){
+            res.send(404).json({
+                message: "user not found",
+            })
+        }
+
+        const user = await userRepository.findOne({
+            where:{
+                id:userId,
+            },
+            select:{
+                id:true,
+                googleId:true,
+                email:true,
+                name:true,
+                avatar:true
+            }
+        })
+
+        if (!user) {
+            res.status(404).json({
+                message: "User not found",
+            });
+            return;
+        }
+
+        res.status(200).json({
+            user,
+        });
+    } catch (error) {
+        console.error(error)
+        res.status(500).json({
+            message: "Failed to fetch current user",
+        });
+    }
+}
+
 export const getUser = async (
     req: Request,
     res: Response
@@ -386,5 +430,52 @@ export const logout = async (
         res.status(500).json({
             message: "Logout failed",
         });
+    }
+}
+
+export const updateProfile =async (
+    req:Request,
+    res:Response
+): Promise<void> =>{
+    try {
+        const userId = req.user?.id
+        const {name, avatar}=req.body
+
+        const user = await userRepository.findOne({
+            where:{
+                id:userId
+            }
+        })
+
+            if (!user) {
+        res.status(404).json({
+            message: "User not found",
+        });
+        return;
+        }
+
+        if (name !== undefined) {
+        user.name = name;
+        }
+
+        if (avatar !== undefined) {
+        user.avatar = avatar;
+        }
+
+        await userRepository.save(user);
+
+        res.status(200).json({
+        message: "Profile updated successfully",
+        user: {
+            id: user.id,
+            googleId: user.googleId,
+            email: user.email,
+            name: user.name,
+            avatar: user.avatar,
+        },
+        });
+
+    } catch (error) {
+        
     }
 }

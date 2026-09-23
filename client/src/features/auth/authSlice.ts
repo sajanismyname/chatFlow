@@ -16,7 +16,7 @@ import type {
 
 
 /* =========================
-   INITIAL AUTH STATE
+    INITIAL AUTH STATE
 ========================= */
 
 const initialState: AuthState = {
@@ -30,7 +30,7 @@ const initialState: AuthState = {
 
 
 /* =========================
-   LOGIN
+    LOGIN
 ========================= */
 
 export const login = createAsyncThunk<
@@ -61,7 +61,7 @@ export const login = createAsyncThunk<
 
 
 /* =========================
-   REGISTER
+    REGISTER
 ========================= */
 
 export const register = createAsyncThunk<
@@ -87,9 +87,32 @@ export const register = createAsyncThunk<
     }
 );
 
+export const getMe = createAsyncThunk<
+    User,
+    void,
+    { rejectValue: string }
+>(
+    "auth/getMe",
+    async (_, { rejectWithValue }) => {
+        try {
+            const response = await api.get<{
+                user: User;
+            }>("/auth/me");
+
+            return response.data.user;
+
+        } catch (error: any) {
+
+            return rejectWithValue(
+                error.response?.data?.message ||
+                "Failed to fetch user"
+            );
+        }
+    }
+);
 
 /* =========================
-   INITIALIZE AUTH
+    INITIALIZE AUTH
 ========================= */
 
 export const initializeAuth = createAsyncThunk<
@@ -114,9 +137,37 @@ export const initializeAuth = createAsyncThunk<
     }
 );
 
+export const updateProfileThunk = createAsyncThunk<
+    User,
+    { name?: string; avatar?: string | null },
+    { rejectValue: string }
+>(
+    "auth/updateProfile",
+    async (data, { rejectWithValue }) => {
+        try {
+            const response = await api.patch<{
+                message: string;
+                user: User;
+            }>(
+                "/auth/profile",
+                data
+            );
+
+            return response.data.user;
+
+        } catch (error: any) {
+
+            return rejectWithValue(
+                error.response?.data?.message ||
+                "Failed to update profile"
+            );
+        }
+    }
+);
+
 
 /* =========================
-   AUTH SLICE
+    AUTH SLICE
 ========================= */
 
 const authSlice = createSlice({
@@ -134,6 +185,14 @@ const authSlice = createSlice({
         ) => {
             state.user = action.payload.user;
             state.accessToken = action.payload.accessToken;
+            state.isAuthenticated = true;
+        },
+
+        setUser: (
+            state,
+            action: PayloadAction<User>
+        ) => {
+            state.user = action.payload;
             state.isAuthenticated = true;
         },
 
@@ -156,7 +215,7 @@ const authSlice = createSlice({
         builder
 
             /* =========================
-               LOGIN
+            LOGIN
             ========================= */
 
             .addCase(login.pending, (state) => {
@@ -183,7 +242,7 @@ const authSlice = createSlice({
 
 
             /* =========================
-               REGISTER
+            REGISTER
             ========================= */
 
             .addCase(register.pending, (state) => {
@@ -211,7 +270,7 @@ const authSlice = createSlice({
 
 
             /* =========================
-               INITIALIZE
+            INITIALIZE
             ========================= */
 
             .addCase(initializeAuth.pending, (state) => {
@@ -237,7 +296,41 @@ const authSlice = createSlice({
                 state.user = null;
                 state.accessToken = null;
                 state.isAuthenticated = false;
-            });
+            })
+
+
+            /* =========================
+            UPDATE PROFILE
+            ========================= */
+
+            .addCase(updateProfileThunk.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+
+            .addCase(updateProfileThunk.fulfilled, (state, action) => {
+                state.loading = false;
+
+                state.user = action.payload;
+            })
+
+            .addCase(updateProfileThunk.rejected, (state, action) => {
+                state.loading = false;
+
+                state.error =
+                    action.payload ||
+                    "Failed to update profile";
+            })
+
+            .addCase(getMe.fulfilled, (state, action) => {
+                state.user = action.payload;
+                state.isAuthenticated = true;
+            })
+
+            .addCase(getMe.rejected, (state) => {
+                state.user = null;
+                state.isAuthenticated = false;
+            })
     },
 });
 
@@ -246,6 +339,7 @@ export const {
     setCredentials,
     setAccessToken,
     logout,
+    setUser,
 } = authSlice.actions;
 
 export default authSlice.reducer;

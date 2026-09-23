@@ -1,7 +1,6 @@
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
-import ProfileDialog from "./ProfileDialog";
-import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+
 import type {
     AppDispatch,
     RootState,
@@ -35,8 +34,6 @@ import {
 
 
 function Navbar() {
-    const [profileOpen, setProfileOpen] =
-    useState(false);
 
     const dispatch = useDispatch<AppDispatch>();
     const navigate = useNavigate();
@@ -68,9 +65,7 @@ function Navbar() {
             dispatch(logout());
 
             navigate("/login");
-
         }
-
     };
 
 
@@ -80,11 +75,9 @@ function Navbar() {
 
     const initials =
         user?.name
-            ?.split(" ")
-            .map(
-                (word) =>
-                    word.charAt(0)
-            )
+            ?.trim()
+            .split(/\s+/)
+            .map((word) => word.charAt(0))
             .join("")
             .slice(0, 2)
             .toUpperCase() || "U";
@@ -135,70 +128,75 @@ function Navbar() {
 
 
             {/* =========================
-                PROFILE
+                USER MENU
             ========================= */}
 
             {user && (
 
-                <>
-
                 <DropdownMenu>
 
-                    <DropdownMenuTrigger>
+                    {/* =========================
+                        TRIGGER
+                    ========================= */}
 
-                        <div
-                            className="
-                                flex
-                                h-auto
-                                gap-3
-                                rounded-xl
-                                px-2
-                                py-1.5
-                            "
-                        >
+                    <DropdownMenuTrigger
+                        className="
+                            flex
+                            items-center
+                            gap-3
+                            rounded-xl
+                            px-2
+                            py-1.5
+                            outline-none
+                            transition-colors
+                            hover:bg-muted
+                            focus-visible:ring-2
+                            focus-visible:ring-ring
+                        "
+                    >
 
-                            <div className="hidden text-right sm:block">
+                        <div className="hidden text-right sm:block">
 
-                                <p className="text-sm font-medium">
-                                    {user.name}
-                                </p>
+                            <p className="text-sm font-medium">
+                                {user.name}
+                            </p>
 
-                                <p className="max-w-45 truncate text-xs text-muted-foreground">
-                                    {user.email}
-                                </p>
-
-                            </div>
-
-
-                            <Avatar className="size-9">
-
-                                <AvatarImage
-                                    src={
-                                        user.avatar ??
-                                        undefined
-                                    }
-                                    alt={user.name}
-                                />
-
-                                <AvatarFallback>
-                                    {initials}
-                                </AvatarFallback>
-
-                            </Avatar>
+                            <p className="max-w-45 truncate text-xs text-muted-foreground">
+                                {user.email}
+                            </p>
 
                         </div>
+
+
+                        <Avatar className="size-9">
+
+                            <AvatarImage
+                                src={
+                                    user.avatar ??
+                                    undefined
+                                }
+                                alt={user.name}
+                            />
+
+                            <AvatarFallback>
+                                {initials}
+                            </AvatarFallback>
+
+                        </Avatar>
 
                     </DropdownMenuTrigger>
 
 
                     {/* =========================
-                        DROPDOWN
+                        MENU CONTENT
                     ========================= */}
 
                     <DropdownMenuContent
                         align="end"
                         className="w-64"
                     >
+
+                        {/* USER INFORMATION */}
 
                         <DropdownMenuLabel>
 
@@ -241,41 +239,51 @@ function Navbar() {
                         <DropdownMenuSeparator />
 
 
-                        <DropdownMenuItem
-                            onClick={() => setProfileOpen(true)}
-                        >
-                            <User className="size-4" />
-                            Profile
+                        {/* =========================
+                            PROFILE
+                        ========================= */}
+
+                        <DropdownMenuItem>
+                            <Link
+                                to="/profile"
+                                className="flex w-full items-center gap-2"
+                            >
+                                <User className="size-4" />
+                                <span>Profile</span>
+                            </Link>
                         </DropdownMenuItem>
 
 
                         <DropdownMenuSeparator />
 
 
+                        {/* =========================
+                            LOGOUT
+                        ========================= */}
+
                         <DropdownMenuItem
                             onClick={handleLogout}
-                            className="text-destructive focus:text-destructive"
+                            className="
+                                text-destructive
+                                focus:text-destructive
+                            "
                         >
+
                             <LogOut className="size-4" />
-                            Logout
+
+                            <span>
+                                Logout
+                            </span>
+
                         </DropdownMenuItem>
 
                     </DropdownMenuContent>
 
                 </DropdownMenu>
 
-                <ProfileDialog
-                    user={user}
-                    open={profileOpen}
-                    onOpenChange={setProfileOpen}
-                />
-
-                </>
-
             )}
 
         </nav>
-
     );
 }
 
