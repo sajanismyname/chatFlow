@@ -14,6 +14,7 @@ import type {
     User,
 } from "./authTypes";
 
+
 /* =========================
    INITIAL AUTH STATE
 ========================= */
@@ -91,24 +92,24 @@ export const register = createAsyncThunk<
    INITIALIZE AUTH
 ========================= */
 
-export const initializeAuth = createAsyncThunk(
+export const initializeAuth = createAsyncThunk<
+    AuthResponse,
+    void,
+    { rejectValue: string }
+>(
     "auth/initialize",
-    async (_, { dispatch, rejectWithValue }) => {
+    async (_, { rejectWithValue }) => {
         try {
-            const response = await api.post(
+            const response = await api.post<AuthResponse>(
                 "/auth/refresh"
             );
 
-            dispatch(
-                setCredentials({
-                    user: response.data.user,
-                    accessToken: response.data.accessToken,
-                })
-            );
-
             return response.data;
-        } catch {
-            return rejectWithValue(null);
+        } catch (error: any) {
+            return rejectWithValue(
+                error.response?.data?.message ||
+                "Authentication initialization failed"
+            );
         }
     }
 );
@@ -120,7 +121,6 @@ export const initializeAuth = createAsyncThunk(
 
 const authSlice = createSlice({
     name: "auth",
-
     initialState,
 
     reducers: {
@@ -142,7 +142,6 @@ const authSlice = createSlice({
             action: PayloadAction<string>
         ) => {
             state.accessToken = action.payload;
-            state.isAuthenticated = true;
         },
 
         logout: (state) => {
@@ -156,7 +155,9 @@ const authSlice = createSlice({
     extraReducers: (builder) => {
         builder
 
-            /* LOGIN */
+            /* =========================
+               LOGIN
+            ========================= */
 
             .addCase(login.pending, (state) => {
                 state.loading = true;
@@ -165,20 +166,25 @@ const authSlice = createSlice({
 
             .addCase(login.fulfilled, (state, action) => {
                 state.loading = false;
+
                 state.user = action.payload.user;
                 state.accessToken =
                     action.payload.accessToken;
+
                 state.isAuthenticated = true;
             })
 
             .addCase(login.rejected, (state, action) => {
                 state.loading = false;
+
                 state.error =
                     action.payload || "Login failed";
             })
 
 
-            /* REGISTER */
+            /* =========================
+               REGISTER
+            ========================= */
 
             .addCase(register.pending, (state) => {
                 state.loading = true;
@@ -187,38 +193,51 @@ const authSlice = createSlice({
 
             .addCase(register.fulfilled, (state, action) => {
                 state.loading = false;
+
                 state.user = action.payload.user;
                 state.accessToken =
                     action.payload.accessToken;
+
                 state.isAuthenticated = true;
             })
 
             .addCase(register.rejected, (state, action) => {
                 state.loading = false;
+
                 state.error =
                     action.payload ||
                     "Registration failed";
             })
 
 
-            /* INITIALIZE */
+            /* =========================
+               INITIALIZE
+            ========================= */
 
             .addCase(initializeAuth.pending, (state) => {
                 state.loading = true;
+                state.error = null;
             })
 
-            .addCase(initializeAuth.fulfilled, (state) => {
+            .addCase(initializeAuth.fulfilled, (state, action) => {
                 state.loading = false;
                 state.initialized = true;
+
+                state.user = action.payload.user;
+                state.accessToken =
+                    action.payload.accessToken;
+
+                state.isAuthenticated = true;
             })
 
             .addCase(initializeAuth.rejected, (state) => {
                 state.loading = false;
                 state.initialized = true;
+
                 state.user = null;
                 state.accessToken = null;
                 state.isAuthenticated = false;
-            })
+            });
     },
 });
 

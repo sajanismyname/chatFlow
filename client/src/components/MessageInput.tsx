@@ -13,7 +13,7 @@ function MessageInput({
     const [message, setMessage] = useState("");
 
     const handleSubmit = (
-        e: React.FormEvent
+        e: React.SubmitEvent
     ) => {
         e.preventDefault();
 
