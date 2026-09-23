@@ -165,6 +165,7 @@ export const getCurrentUser = async (
             res.send(404).json({
                 message: "user not found",
             })
+            return;
         }
 
         const user = await userRepository.findOne({
@@ -265,22 +266,43 @@ export const googleCallback = async (
             return;
         }
 
-        let user = await userRepository.findOne({
-            where: {
-                googleId: data.id,
-            },
-        });
-
-        if (!user) {
-            const newUser = userRepository.create({
-                googleId: data.id,
-                email: data.email!,
-                name: data.name!,
-                avatar: data.picture,
+            let user = await userRepository.findOne({
+                where: {
+                    googleId: data.id,
+                },
             });
 
-            user = await userRepository.save(newUser);
-        }
+            // If Google ID was not found, check whether the email
+            // already belongs to an existing account.
+            if (!user && data.email) {
+                user = await userRepository.findOne({
+                    where: {
+                        email: data.email,
+                    },
+                });
+
+                // Existing email account found.
+                // Link that account to the Google account.
+                if (user) {
+                    user.googleId = data.id;
+                    user.avatar = data.picture ?? user.avatar;
+
+                    await userRepository.save(user);
+                }
+            }
+
+            // If neither Google ID nor email exists,
+            // create a completely new account.
+            if (!user) {
+                const newUser = userRepository.create({
+                    googleId: data.id,
+                    email: data.email!,
+                    name: data.name!,
+                    avatar: data.picture,
+                });
+
+                user = await userRepository.save(newUser);
+            }
 
         const accessToken = generateAccessToken(user.id);
 

@@ -196,42 +196,61 @@ function ChatFlow() {
                     }
                 />
 
-                <main className="flex min-w-0 flex-1 flex-col">
+<main className="flex min-w-0 flex-1 flex-col">
 
-                    <ChatHeader
-                        name={
-                            otherUser?.name ||
-                            "Select a conversation"
-                        }
+    {activeConversationId === null ? (
 
-                        avatar={
-                            otherUser?.avatar ??
-                            null
-                        }
+        <div className="flex flex-1 items-center justify-center">
+            <div className="text-center">
 
-                        online={
-                            otherUser?.online ??
-                            false
-                        }
-                    />
+                <div className="mb-4 text-4xl">
+                    💬
+                </div>
 
-                    <MessageList
-                        messages={
-                            messages
-                        }
-                    />
+                <h2 className="text-lg font-semibold">
+                    Welcome to ChatFlow
+                </h2>
 
-                    <MessageInput
-                        onSend={
-                            handleSendMessage
-                        }
+                <p className="mt-2 text-sm text-muted-foreground">
+                    Select a conversation to start chatting.
+                </p>
 
-                        disabled={
-                            activeConversationId === null
-                        }
-                    />
+            </div>
+        </div>
 
-                </main>
+    ) : (
+
+        <>
+            <ChatHeader
+                name={
+                    otherUser?.name ||
+                    "Select a conversation"
+                }
+
+                avatar={
+                    otherUser?.avatar ??
+                    null
+                }
+
+                online={
+                    otherUser?.online ??
+                    false
+                }
+            />
+
+            <MessageList
+                messages={messages}
+            />
+
+            <MessageInput
+                onSend={handleSendMessage}
+                disabled={false}
+            />
+        </>
+
+    )}
+
+</main>
 
             </div>
 

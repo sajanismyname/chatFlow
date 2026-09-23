@@ -1,5 +1,5 @@
 import { useDispatch, useSelector } from "react-redux";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import type {
     AppDispatch,
@@ -243,14 +243,11 @@ function Navbar() {
                             PROFILE
                         ========================= */}
 
-                        <DropdownMenuItem>
-                            <Link
-                                to="/profile"
-                                className="flex w-full items-center gap-2"
-                            >
-                                <User className="size-4" />
-                                <span>Profile</span>
-                            </Link>
+                        <DropdownMenuItem
+                            onClick={() => navigate("/profile")}
+                        >
+                            <User className="size-4" />
+                            <span>Profile</span>
                         </DropdownMenuItem>
 
 

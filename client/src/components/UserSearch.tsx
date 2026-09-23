@@ -1,5 +1,4 @@
-import { useState } from "react";
-
+import { useEffect, useState } from "react";
 import api from "../api/axios";
 
 import type {
@@ -40,7 +39,20 @@ function UserSearch({
     const [query, setQuery] = useState("");
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(false);
+    const [search, setSearch] = useState("");
 
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (search.trim().length >= 2) {
+                handleSearch(search.trim());
+            }
+        }, 400);
+
+        return () => {
+            clearTimeout(timer);
+        };
+    }, [search]);
 
     /* =========================
        SEARCH USERS
@@ -168,12 +180,18 @@ function UserSearch({
 
                     <Input
                         autoFocus
-                        value={query}
-                        onChange={(e) =>
-                            handleSearch(
-                                e.target.value
-                            )
-                        }
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Search people..."
+                        className="pl-9"
+                    />
+
+                </div>
+
+            </div>
+
+
+            {/* =========================
                         placeholder="Search people..."
                         className="pl-9"
                     />

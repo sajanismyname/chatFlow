@@ -14,7 +14,7 @@ import { authenticate } from "../middleware/authMiddleware.js";
 
 const router =Router()
 
-router.get("/users", getUser)
+router.get("/users",authenticate, getUser)
 router.get("/google", googleLogin)
 router.get("/google/callback", googleCallback)
 router.post("/refresh", refreshAccessToken);

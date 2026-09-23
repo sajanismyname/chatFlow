@@ -1,38 +1,27 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-
-import { useAppDispatch } from "../app/hooks";
-import { initializeAuth } from "../features/auth/authSlice";
+import { useAppSelector } from "../app/hooks"; // Import your selector hook
 
 function AuthCallback() {
-    const dispatch = useAppDispatch();
     const navigate = useNavigate();
 
-    const hasInitialized = useRef(false);
+    // 1. Grab the global auth states instead of dispatching
+    const { isAuthenticated, loading } = useAppSelector((state) => state.auth);
 
     useEffect(() => {
-        if (hasInitialized.current) {
-            return;
-        }
-
-        hasInitialized.current = true;
-
-        const authenticate = async () => {
-            const result = await dispatch(initializeAuth());
-
-            if (initializeAuth.fulfilled.match(result)) {
-                navigate("/");
+        // 2. Wait until the initialization inside App.tsx finishes loading
+        if (!loading) {
+            if (isAuthenticated) {
+                navigate("/", { replace: true });
             } else {
-                navigate("/login");
+                navigate("/login", { replace: true });
             }
-        };
-
-        authenticate();
-    }, [dispatch, navigate]);
+        }
+    }, [isAuthenticated, loading, navigate]);
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-100">
-            <p className="text-gray-600">
+            <p className="text-gray-600 font-medium">
                 Signing you in...
             </p>
         </div>
