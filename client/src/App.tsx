@@ -3,6 +3,7 @@ import {
     BrowserRouter,
     Routes,
     Route,
+    Navigate,
 } from "react-router-dom";
 
 import {
@@ -18,9 +19,11 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import AuthCallback from "./pages/AuthCallback";
 import ChatFlow from "./pages/ChatFlow";
-import Profile from "./components/Profile"
+import Profile from "./components/Profile";
 
 import ProtectedRoute from "./components/ProtectedRoute";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 
 function App() {
@@ -34,79 +37,93 @@ function App() {
 
     useEffect(() => {
 
+        // Do NOT initialize here when Google redirects
+        // to /auth/callback.
+        if (
+            window.location.pathname ===
+            "/auth/callback"
+        ) {
+            return;
+        }
+
         dispatch(initializeAuth());
 
     }, [dispatch]);
 
 
-    if (!initialized) {
-
-        return (
-            <div className="flex min-h-screen items-center justify-center">
-                <p>Loading...</p>
-            </div>
-        );
-    }
-
-
     return (
-
         <BrowserRouter>
 
-            <Routes>
+            {!initialized &&
+            window.location.pathname !== "/auth/callback" ? (
 
-                {/* =========================
-                    AUTH
-                ========================= */}
+                <div className="flex min-h-screen items-center justify-center">
+                    <p>Loading...</p>
+                </div>
 
-                <Route
-                    path="/login"
-                    element={<Login />}
-                />
+            ) : (
 
-                <Route
-                    path="/register"
-                    element={<Register />}
-                />
+                <Routes>
 
-                <Route
-                    path="/auth/callback"
-                    element={<AuthCallback />}
-                />
+                    <Route
+                        path="/login"
+                        element={<Login />}
+                    />
 
+                    <Route
+                        path="/register"
+                        element={<Register />}
+                    />
 
-                {/* =========================
-                    CHAT
-                ========================= */}
+                    <Route
+                        path="/forgot-password"
+                        element={<ForgotPassword />}
+                    />
 
-                <Route
-                    path="/"
-                    element={
-                        <ProtectedRoute>
-                            <ChatFlow />
-                        </ProtectedRoute>
-                    }
-                />
+                    <Route
+                        path="/reset-password"
+                        element={<ResetPassword />}
+                    />
 
+                    <Route
+                        path="/auth/callback"
+                        element={<AuthCallback />}
+                    />
 
-                {/* =========================
-                    PROFILE
-                ========================= */}
+                    <Route
+                        path="/"
+                        element={
+                            <ProtectedRoute>
+                                <ChatFlow />
+                            </ProtectedRoute>
+                        }
+                    />
 
-                <Route
-                    path="/profile"
-                    element={
-                        <ProtectedRoute>
-                            <Profile />
-                        </ProtectedRoute>
-                    }
-                />
+                    <Route
+                        path="/profile"
+                        element={
+                            <ProtectedRoute>
+                                <Profile />
+                            </ProtectedRoute>
+                        }
+                    />
 
-            </Routes>
+                    <Route
+                        path="*"
+                        element={
+                            <Navigate
+                                to="/"
+                                replace
+                            />
+                        }
+                    />
+
+                </Routes>
+
+            )}
 
         </BrowserRouter>
     );
 }
-
 
 export default App;

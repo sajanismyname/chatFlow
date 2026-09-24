@@ -1,27 +1,84 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAppSelector } from "../app/hooks"; // Import your selector hook
+
+import {
+    useAppDispatch,
+    useAppSelector,
+} from "../app/hooks";
+
+import {
+    initializeAuth,
+} from "../features/auth/authSlice";
+
 
 function AuthCallback() {
+
+    const dispatch = useAppDispatch();
     const navigate = useNavigate();
 
-    // 1. Grab the global auth states instead of dispatching
-    const { isAuthenticated, loading } = useAppSelector((state) => state.auth);
+    const hasInitialized = useRef(false);
+
+    const {
+        initialized,
+        isAuthenticated,
+        loading,
+    } = useAppSelector(
+        (state) => state.auth
+    );
+
 
     useEffect(() => {
-        // 2. Wait until the initialization inside App.tsx finishes loading
-        if (!loading) {
-            if (isAuthenticated) {
-                navigate("/", { replace: true });
-            } else {
-                navigate("/login", { replace: true });
-            }
+
+        if (hasInitialized.current) {
+            return;
         }
-    }, [isAuthenticated, loading, navigate]);
+
+        hasInitialized.current = true;
+
+        dispatch(initializeAuth());
+
+    }, [dispatch]);
+
+
+    useEffect(() => {
+
+        if (!initialized || loading) {
+            return;
+        }
+
+        if (isAuthenticated) {
+
+            navigate("/", {
+                replace: true,
+            });
+
+        } else {
+
+            navigate("/login", {
+                replace: true,
+            });
+
+        }
+
+    }, [
+        initialized,
+        loading,
+        isAuthenticated,
+        navigate,
+    ]);
+
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100">
-            <p className="text-gray-600 font-medium">
+        <div
+            className="
+                flex
+                min-h-screen
+                items-center
+                justify-center
+                bg-background
+            "
+        >
+            <p className="font-medium text-muted-foreground">
                 Signing you in...
             </p>
         </div>

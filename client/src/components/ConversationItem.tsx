@@ -8,9 +8,6 @@ import {
     AvatarImage,
 } from "@/components/ui/avatar";
 
-import {
-    Badge,
-} from "@/components/ui/badge";
 
 function ConversationItem({
     name,
@@ -21,7 +18,9 @@ function ConversationItem({
 
     const initials = name
         .split(" ")
-        .map((word) => word.charAt(0))
+        .map((word) =>
+            word.charAt(0)
+        )
         .join("")
         .slice(0, 2)
         .toUpperCase();
@@ -101,43 +100,24 @@ function ConversationItem({
                         {name}
                     </p>
 
-                    <span className="shrink-0 text-[10px] text-muted-foreground">
-                        10:42
-                    </span>
-
                 </div>
 
 
                 <div className="mt-0.5 flex items-center justify-between gap-2">
 
                     <p className="truncate text-xs text-muted-foreground">
-                        {lastMessage || "No messages yet"}
+                        {lastMessage ||
+                            "No messages yet"}
                     </p>
-
-                    {/* Example unread badge */}
-
-                    {active === false && (
-                        <Badge
-                            variant="secondary"
-                            className="
-                                hidden
-                                h-5
-                                min-w-5
-                                rounded-full
-                                px-1.5
-                                text-[10px]
-                            "
-                        >
-                            2
-                        </Badge>
-                    )}
 
                 </div>
 
             </div>
 
         </button>
+
     );
 }
+
 
 export default ConversationItem;

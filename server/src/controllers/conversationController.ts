@@ -85,11 +85,14 @@ export const createConversation = async (
                 .andWhere((qb: any) => {
                     const subQuery = qb
                         .subQuery()
-                        .select("m.conversationId")
+                        .select("m.conversation_id")
                         .from(ConversationMember, "m")
-                        .where("m.userId IN (:...userIds)", { userIds: [currentUserId, targetUserId] })
-                        .groupBy("m.conversationId")
-                        .having("COUNT(DISTINCT m.userId) = 2");
+                        .where("m.user_id IN (:...userIds)", {
+                            userIds: [currentUserId, targetUserId],
+                        })
+                        .groupBy("m.conversation_id")
+                        .having("COUNT(DISTINCT m.user_id) = 2");
+
                     return "conversation.id IN " + subQuery.getQuery();
                 })
                 .getOne();

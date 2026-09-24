@@ -275,6 +275,7 @@ const authSlice = createSlice({
 
             .addCase(initializeAuth.pending, (state) => {
                 state.loading = true;
+                state.initialized = false;
                 state.error = null;
             })
 

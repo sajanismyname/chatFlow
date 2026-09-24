@@ -3,8 +3,10 @@ import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "../app/store";
 import { register } from "../features/auth/authSlice";
 import { useNavigate } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react";
 
 function Register() {
+
     const dispatch = useDispatch<AppDispatch>();
     const navigate = useNavigate();
 
@@ -15,10 +17,17 @@ function Register() {
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
+
+
+    /* =========================
+       REGISTER
+    ========================= */
 
     const handleSubmit = async (
         e: React.FormEvent<HTMLFormElement>
     ) => {
+
         e.preventDefault();
 
         const result = await dispatch(
@@ -34,12 +43,36 @@ function Register() {
         }
     };
 
+
     return (
-        <div className="flex min-h-screen items-center justify-center bg-background px-4">
 
-            <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-lg">
+        <div
+            className="
+                flex
+                min-h-screen
+                items-center
+                justify-center
+                bg-background
+                px-4
+            "
+        >
 
-                {/* HEADER */}
+            <div
+                className="
+                    w-full
+                    max-w-md
+                    rounded-2xl
+                    border
+                    border-border
+                    bg-card
+                    p-8
+                    shadow-lg
+                "
+            >
+
+                {/* =========================
+                    HEADER
+                ========================= */}
 
                 <div className="mb-8 text-center">
 
@@ -54,9 +87,12 @@ function Register() {
                 </div>
 
 
-                {/* ERROR */}
+                {/* =========================
+                    ERROR
+                ========================= */}
 
                 {error && (
+
                     <div
                         role="alert"
                         className="
@@ -73,10 +109,13 @@ function Register() {
                     >
                         {error}
                     </div>
+
                 )}
 
 
-                {/* REGISTER FORM */}
+                {/* =========================
+                    REGISTER FORM
+                ========================= */}
 
                 <form
                     onSubmit={handleSubmit}
@@ -89,7 +128,11 @@ function Register() {
 
                         <label
                             htmlFor="register-name"
-                            className="text-sm font-medium text-foreground"
+                            className="
+                                text-sm
+                                font-medium
+                                text-foreground
+                            "
                         >
                             Name
                         </label>
@@ -131,7 +174,11 @@ function Register() {
 
                         <label
                             htmlFor="register-email"
-                            className="text-sm font-medium text-foreground"
+                            className="
+                                text-sm
+                                font-medium
+                                text-foreground
+                            "
                         >
                             Email
                         </label>
@@ -173,43 +220,86 @@ function Register() {
 
                         <label
                             htmlFor="register-password"
-                            className="text-sm font-medium text-foreground"
+                            className="
+                                text-sm
+                                font-medium
+                                text-foreground
+                            "
                         >
                             Password
                         </label>
 
-                        <input
-                            id="register-password"
-                            name="password"
-                            type="password"
-                            autoComplete="new-password"
-                            value={password}
-                            onChange={(e) =>
-                                setPassword(e.target.value)
-                            }
-                            placeholder="••••••••"
-                            className="
-                                w-full
-                                rounded-lg
-                                border
-                                border-input
-                                bg-background
-                                px-4
-                                py-3
-                                text-foreground
-                                outline-none
-                                placeholder:text-muted-foreground
-                                focus:border-ring
-                                focus:ring-2
-                                focus:ring-ring/20
-                            "
-                            required
-                        />
+                        <div className="relative">
+
+                            <input
+                                id="register-password"
+                                name="password"
+                                type={
+                                    showPassword
+                                        ? "text"
+                                        : "password"
+                                }
+                                autoComplete="new-password"
+                                value={password}
+                                onChange={(e) =>
+                                    setPassword(e.target.value)
+                                }
+                                placeholder="••••••••"
+                                className="
+                                    w-full
+                                    rounded-lg
+                                    border
+                                    border-input
+                                    bg-background
+                                    px-4
+                                    py-3
+                                    pr-12
+                                    text-foreground
+                                    outline-none
+                                    placeholder:text-muted-foreground
+                                    focus:border-ring
+                                    focus:ring-2
+                                    focus:ring-ring/20
+                                "
+                                required
+                            />
+
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    setShowPassword(
+                                        (prev) => !prev
+                                    )
+                                }
+                                className="
+                                    absolute
+                                    right-3
+                                    top-1/2
+                                    -translate-y-1/2
+                                    text-muted-foreground
+                                    hover:text-foreground
+                                "
+                                aria-label={
+                                    showPassword
+                                        ? "Hide password"
+                                        : "Show password"
+                                }
+                            >
+                                {showPassword ? (
+                                    <EyeOff size={20} />
+                                ) : (
+                                    <Eye size={20} />
+                                )}
+                            </button>
+
+                        </div>
 
                     </div>
 
 
-                    {/* SUBMIT */}
+                    {/* =========================
+                        SUBMIT
+                    ========================= */}
 
                     <button
                         type="submit"
@@ -235,7 +325,9 @@ function Register() {
                 </form>
 
 
-                {/* DIVIDER */}
+                {/* =========================
+                    DIVIDER
+                ========================= */}
 
                 <div className="my-6 flex items-center gap-4">
 
@@ -250,7 +342,9 @@ function Register() {
                 </div>
 
 
-                {/* GOOGLE */}
+                {/* =========================
+                    GOOGLE
+                ========================= */}
 
                 <button
                     type="button"
@@ -275,10 +369,18 @@ function Register() {
                 </button>
 
 
-                {/* LOGIN LINK */}
+                {/* =========================
+                    LOGIN LINK
+                ========================= */}
 
-                <p className="mt-6 text-center text-sm text-muted-foreground">
-
+                <p
+                    className="
+                        mt-6
+                        text-center
+                        text-sm
+                        text-muted-foreground
+                    "
+                >
                     Already have an account?{" "}
 
                     <a

@@ -115,7 +115,7 @@ function Sidebar({
 
 
     /* =========================
-       CREATE CONVERSATION
+        CREATE CONVERSATION
     ========================= */
 
     const handleSelectUser = async (
@@ -160,7 +160,7 @@ function Sidebar({
 
 
     /* =========================
-       SELECT CONVERSATION
+        SELECT CONVERSATION
     ========================= */
 
     const handleSelectConversation = (
