@@ -6,6 +6,7 @@ import type {
 } from "../app/store";
 import { login } from "../features/auth/authSlice";
 import { useNavigate } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react";
 
 function Login() {
 
@@ -21,6 +22,7 @@ function Login() {
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
 
 
     /* =========================
@@ -189,33 +191,88 @@ function Login() {
                             Password
                         </label>
 
-                        <input
-                            id="login-password"
-                            name="password"
-                            type="password"
-                            autoComplete="current-password"
-                            value={password}
-                            onChange={(e) =>
-                                setPassword(e.target.value)
-                            }
-                            placeholder="••••••••"
-                            className="
-                                w-full
-                                rounded-lg
-                                border
-                                border-input
-                                bg-background
-                                px-4
-                                py-3
-                                text-foreground
-                                outline-none
-                                placeholder:text-muted-foreground
-                                focus:border-ring
-                                focus:ring-2
-                                focus:ring-ring/30
-                            "
-                            required
-                        />
+                        <div className="relative">
+
+                            <input
+                                id="login-password"
+                                name="password"
+                                type={
+                                    showPassword
+                                        ? "text"
+                                        : "password"
+                                }
+                                autoComplete="current-password"
+                                value={password}
+                                onChange={(e) =>
+                                    setPassword(e.target.value)
+                                }
+                                placeholder="••••••••"
+                                className="
+                                    w-full
+                                    rounded-lg
+                                    border
+                                    border-input
+                                    bg-background
+                                    px-4
+                                    py-3
+                                    pr-12
+                                    text-foreground
+                                    outline-none
+                                    placeholder:text-muted-foreground
+                                    focus:border-ring
+                                    focus:ring-2
+                                    focus:ring-ring/30
+                                "
+                                required
+                            />
+
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    setShowPassword(
+                                        (prev) => !prev
+                                    )
+                                }
+                                className="
+                                    absolute
+                                    right-3
+                                    top-1/2
+                                    -translate-y-1/2
+                                    text-foreground
+                                "
+                                aria-label={
+                                    showPassword
+                                        ? "Hide password"
+                                        : "Show password"
+                                }
+                            >
+                                {showPassword ? (
+                                    <EyeOff size={20} />
+                                ) : (
+                                    <Eye size={20} />
+                                )}
+                            </button>
+
+                        </div>
+
+
+                        {/* FORGOT PASSWORD */}
+
+                        <div className="mt-2 text-right">
+
+                            <a
+                                href="/forgot-password"
+                                className="
+                                    text-sm
+                                    text-muted-foreground
+                                    hover:text-foreground
+                                    hover:underline
+                                "
+                            >
+                                Forgot password?
+                            </a>
+
+                        </div>
 
                     </div>
 

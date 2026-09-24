@@ -3,6 +3,7 @@ import bcrypt from "bcrypt"
 import { Request, Response } from "express";
 import { AppDataSource } from "../config/dataSource.js";
 import { RefreshToken } from "../entities/refreshToken.js";
+import { PasswordResetToken } from "../entities/PasswordResetToken.js";
 import { User } from "../entities/User.js";
 import {google} from "googleapis"
 import { googleClient } from "../config/google.js";
@@ -11,6 +12,8 @@ import { createRefreshToken } from "../services/refreshTokenService.js";
 
 const userRepository = AppDataSource.getRepository(User)
 const refreshTokenRepository = AppDataSource.getRepository(RefreshToken);
+const passwordResetTokenRepository =
+    AppDataSource.getRepository(PasswordResetToken);
 
 export const login = async (
     req: Request,
@@ -493,3 +496,185 @@ export const updateProfile =async (
         
     }
 }
+
+export const forgotPassword = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    try {
+        const { email } = req.body;
+
+        if (!email) {
+            res.status(400).json({
+                message: "Email is required",
+            });
+            return;
+        }
+
+        const user = await userRepository.findOne({
+            where: { email },
+        });
+
+        /*
+         * Don't reveal whether the email exists.
+         */
+        if (!user || !user.password) {
+            res.status(200).json({
+                message:
+                    "If an account exists with that email, a password reset link has been sent.",
+            });
+            return;
+        }
+
+        const rawToken = crypto
+            .randomBytes(32)
+            .toString("hex");
+
+        const tokenHash = crypto
+            .createHash("sha256")
+            .update(rawToken)
+            .digest("hex");
+
+        const expiresAt = new Date(
+            Date.now() + 15 * 60 * 1000
+        );
+
+        const resetToken =
+            passwordResetTokenRepository.create({
+                tokenHash,
+                userId: user.id,
+                expiresAt,
+                usedAt: null,
+            });
+
+        await passwordResetTokenRepository.save(
+            resetToken
+        );
+
+        const resetUrl =
+            `http://localhost:5173/reset-password?token=${rawToken}`;
+
+        /*
+         * Development only.
+         *
+         * Replace this with an email service later.
+         */
+        console.log("PASSWORD RESET URL:");
+        console.log(resetUrl);
+
+        res.status(200).json({
+            message:
+                "If an account exists with that email, a password reset link has been sent.",
+        });
+
+    } catch (error) {
+        console.error(
+            "Forgot password error:",
+            error
+        );
+
+        res.status(500).json({
+            message:
+                "Unable to process password reset request",
+        });
+    }
+};
+
+
+export const resetPassword = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    try {
+        const { token, password } = req.body;
+
+        if (!token || !password) {
+            res.status(400).json({
+                message:
+                    "Reset token and new password are required",
+            });
+            return;
+        }
+
+        if (password.length < 8) {
+            res.status(400).json({
+                message:
+                    "Password must be at least 8 characters",
+            });
+            return;
+        }
+
+        const tokenHash = crypto
+            .createHash("sha256")
+            .update(token)
+            .digest("hex");
+
+        const resetToken =
+            await passwordResetTokenRepository.findOne({
+                where: {
+                    tokenHash,
+                },
+            });
+
+        if (!resetToken) {
+            res.status(400).json({
+                message: "Invalid or expired reset token",
+            });
+            return;
+        }
+
+        if (resetToken.usedAt) {
+            res.status(400).json({
+                message: "Reset token has already been used",
+            });
+            return;
+        }
+
+        if (resetToken.expiresAt < new Date()) {
+            res.status(400).json({
+                message: "Reset token has expired",
+            });
+            return;
+        }
+
+        const user = await userRepository.findOne({
+            where: {
+                id: resetToken.userId,
+            },
+        });
+
+        if (!user) {
+            res.status(404).json({
+                message: "User not found",
+            });
+            return;
+        }
+
+        const hashedPassword =
+            await bcrypt.hash(password, 10);
+
+        user.password = hashedPassword;
+
+        await userRepository.save(user);
+
+        resetToken.usedAt = new Date();
+
+        await passwordResetTokenRepository.save(
+            resetToken
+        );
+
+        res.status(200).json({
+            message: "Password reset successfully",
+        });
+
+    } catch (error) {
+        console.error(
+            "Reset password error:",
+            error
+        );
+
+        res.status(500).json({
+            message: "Failed to reset password",
+        });
+    }
+};
