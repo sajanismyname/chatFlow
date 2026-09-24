@@ -9,6 +9,7 @@ import {
 import {
     updateProfileThunk,
 } from "@/features/auth/authSlice";
+import api from "@/api/axios";
 
 import {
     ArrowLeft,
@@ -114,6 +115,8 @@ function Profile() {
                         avatar.trim() || null,
                 })
             ).unwrap();
+
+            navigate("/", { replace: true });
 
         } catch (error) {
 
@@ -285,25 +288,30 @@ function Profile() {
                                     }
 
 
-                                    const reader =
-                                        new FileReader();
+                                    const reader = new FileReader();
 
-
-                                    reader.onload = () => {
-
-                                        if (
-                                            typeof reader.result ===
-                                            "string"
-                                        ) {
-
-                                            setAvatar(
-                                                reader.result
-                                            );
-
+                                    reader.onload = async () => {
+                                        if (typeof reader.result !== "string") {
+                                            return;
                                         }
 
-                                    };
+                                        try {
+                                            const response = await api.post<{
+                                                url: string;
+                                            }>("/uploads", {
+                                                data: reader.result,
+                                                fileName: file.name,
+                                                mimeType: file.type,
+                                            });
 
+                                            setAvatar(response.data.url);
+                                        } catch (error: any) {
+                                            window.alert(
+                                                error.response?.data?.message ||
+                                                "Failed to upload profile picture."
+                                            );
+                                        }
+                                    };
 
                                     reader.readAsDataURL(file);
 

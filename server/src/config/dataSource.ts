@@ -7,7 +7,6 @@ import { Conversation } from "../entities/Conversation.js";
 import { ConversationMember } from "../entities/ConversationMember.js";
 import { Message } from "../entities/Message.js";
 import { RefreshToken } from "../entities/refreshToken.js";
-import { PasswordResetToken } from "../entities/PasswordResetToken.js";
 
 export const AppDataSource = new DataSource({
     type:"postgres",
@@ -23,8 +22,7 @@ export const AppDataSource = new DataSource({
         Conversation,
         ConversationMember,
         Message,
-        RefreshToken,
-        PasswordResetToken
+        RefreshToken
     ],
 
     migrations: ["src/migrations/*.ts"],

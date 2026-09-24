@@ -67,8 +67,8 @@
        CHATFLOW LIGHT GREEN THEME
        ===================================== */
 
-    --background: oklch(0.985 0.012 145);
-    --foreground: oklch(0.20 0.035 150);
+    --background: oklch(0.975 0.025 145);
+    --foreground: oklch(0.20 0.045 150);
 
     --card: oklch(1 0 0);
     --card-foreground: oklch(0.20 0.035 150);
@@ -77,25 +77,25 @@
     --popover-foreground: oklch(0.20 0.035 150);
 
     /* Main green */
-    --primary: oklch(0.62 0.15 145);
+    --primary: oklch(0.48 0.14 145);
     --primary-foreground: oklch(0.99 0.01 145);
 
     /* Soft green */
-    --secondary: oklch(0.93 0.045 145);
+    --secondary: oklch(0.91 0.06 145);
     --secondary-foreground: oklch(0.25 0.06 150);
 
     --muted: oklch(0.95 0.025 145);
     --muted-foreground: oklch(0.47 0.045 150);
 
-    --accent: oklch(0.90 0.065 145);
+    --accent: oklch(0.87 0.08 145);
     --accent-foreground: oklch(0.25 0.06 150);
 
     --destructive: oklch(0.577 0.245 27.325);
 
-    --border: oklch(0.88 0.035 145);
-    --input: oklch(0.88 0.035 145);
+    --border: oklch(0.84 0.055 145);
+    --input: oklch(0.84 0.055 145);
 
-    --ring: oklch(0.62 0.15 145);
+    --ring: oklch(0.48 0.14 145);
 
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
@@ -185,24 +185,21 @@
     }
 }
 
-/* cSpell:enable */
 
-/* =====================================
-   AUTOFILL
-   ===================================== */
 
-input:-webkit-autofill,
-input:-webkit-autofill:hover,
-input:-webkit-autofill:focus,
-input:-webkit-autofill:active {
-    -webkit-text-fill-color: var(--foreground);
-
-    -webkit-box-shadow:
-        0 0 0 1000px var(--background) inset;
-
-    box-shadow:
-        0 0 0 1000px var(--background) inset;
-
-    transition:
-        background-color 5000s ease-in-out 0s;
+/* Forest UI: a soft woodland backdrop keeps the light theme airy while
+   using deep greens for actions and clear contrast. */
+body {
+    min-height: 100vh;
+    background:
+        radial-gradient(circle at 0% 0%, oklch(0.94 0.07 145 / 0.55), transparent 32rem),
+        radial-gradient(circle at 100% 100%, oklch(0.93 0.055 115 / 0.45), transparent 28rem),
+        var(--background);
+    background-attachment: fixed;
 }
+
+::selection {
+    background: oklch(0.48 0.14 145 / 0.22);
+}
+
+/* cSpell:enable */
