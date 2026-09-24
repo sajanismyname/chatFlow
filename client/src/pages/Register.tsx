@@ -4,11 +4,14 @@ import type { AppDispatch, RootState } from "../app/store";
 import { register } from "../features/auth/authSlice";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
+import { registerSchema } from "../validators/authSchema";
 
 function Register() {
 
     const dispatch = useDispatch<AppDispatch>();
     const navigate = useNavigate();
+    const [validationError, setValidationError] =
+    useState<string | null>(null);
 
     const { loading, error } = useSelector(
         (state: RootState) => state.auth
@@ -24,24 +27,38 @@ function Register() {
        REGISTER
     ========================= */
 
-    const handleSubmit = async (
-        e: React.FormEvent<HTMLFormElement>
-    ) => {
+const handleSubmit = async (
+    e: React.FormEvent<HTMLFormElement>
+) => {
 
-        e.preventDefault();
+    e.preventDefault();
 
-        const result = await dispatch(
-            register({
-                name,
-                email,
-                password,
-            })
+    setValidationError(null);
+
+    const result = registerSchema.safeParse({
+        name,
+        email,
+        password,
+    });
+
+    if (!result.success) {
+
+        setValidationError(
+            result.error.issues[0]?.message ||
+            "Please check your input"
         );
 
-        if (register.fulfilled.match(result)) {
-            navigate("/");
-        }
-    };
+        return;
+    }
+
+    const response = await dispatch(
+        register(result.data)
+    );
+
+    if (register.fulfilled.match(response)) {
+        navigate("/");
+    }
+};
 
 
     return (
@@ -91,7 +108,7 @@ function Register() {
                     ERROR
                 ========================= */}
 
-                {error && (
+                {(validationError || error) && (
 
                     <div
                         role="alert"
@@ -107,7 +124,7 @@ function Register() {
                             text-destructive
                         "
                     >
-                        {error}
+                        {validationError || error}
                     </div>
 
                 )}

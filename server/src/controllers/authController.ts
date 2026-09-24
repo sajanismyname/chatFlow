@@ -9,6 +9,7 @@ import {google} from "googleapis"
 import { googleClient } from "../config/google.js";
 import { generateAccessToken } from "../utils/jwt.js";
 import { createRefreshToken } from "../services/refreshTokenService.js";
+import {sendPasswordResetEmail} from "../services/emailServices.js";
 
 const userRepository = AppDataSource.getRepository(User)
 const refreshTokenRepository = AppDataSource.getRepository(RefreshToken);
@@ -502,7 +503,12 @@ export const forgotPassword = async (
     res: Response
 ): Promise<void> => {
     try {
+
+        console.log("FORGOT PASSWORD CONTROLLER HIT");
+
         const { email } = req.body;
+
+        console.log("EMAIL RECEIVED:", email);
 
         if (!email) {
             res.status(400).json({
@@ -511,20 +517,31 @@ export const forgotPassword = async (
             return;
         }
 
-        const user = await userRepository.findOne({
-            where: { email },
-        });
+        const user = await userRepository
+            .createQueryBuilder("user")
+            .addSelect("user.password")
+            .where("user.email = :email", { email })
+            .getOne();
 
-        /*
-         * Don't reveal whether the email exists.
-         */
+        console.log("USER FOUND:", user);
+
         if (!user || !user.password) {
+
+            console.log(
+                "USER NOT FOUND OR PASSWORD IS NULL"
+            );
+
             res.status(200).json({
                 message:
                     "If an account exists with that email, a password reset link has been sent.",
             });
+
             return;
         }
+
+        console.log(
+            "USER HAS PASSWORD, CREATING RESET TOKEN"
+        );
 
         const rawToken = crypto
             .randomBytes(32)
@@ -547,20 +564,36 @@ export const forgotPassword = async (
                 usedAt: null,
             });
 
+        console.log(
+            "RESET TOKEN CREATED:",
+            resetToken
+        );
+
         await passwordResetTokenRepository.save(
+            resetToken
+        );
+
+        console.log(
+            "RESET TOKEN SAVED:",
             resetToken
         );
 
         const resetUrl =
             `http://localhost:5173/reset-password?token=${rawToken}`;
 
-        /*
-         * Development only.
-         *
-         * Replace this with an email service later.
-         */
-        console.log("PASSWORD RESET URL:");
-        console.log(resetUrl);
+        console.log(
+            "RESET URL:",
+            resetUrl
+        );
+
+        await sendPasswordResetEmail(
+            user.email,
+            resetUrl
+        );
+
+        console.log(
+            "PASSWORD RESET EMAIL SENT"
+        );
 
         res.status(200).json({
             message:
@@ -568,8 +601,9 @@ export const forgotPassword = async (
         });
 
     } catch (error) {
+
         console.error(
-            "Forgot password error:",
+            "FORGOT PASSWORD ERROR:",
             error
         );
 

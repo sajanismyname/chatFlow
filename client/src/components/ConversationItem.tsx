@@ -11,10 +11,15 @@ import {
 
 function ConversationItem({
     name,
+    avatar,
     lastMessage,
     active = false,
     onClick,
 }: ConversationItemProps) {
+
+    /* =========================
+       USER INITIALS
+    ========================= */
 
     const initials = name
         .split(" ")
@@ -59,7 +64,7 @@ function ConversationItem({
                 <Avatar className="size-11">
 
                     <AvatarImage
-                        src=""
+                        src={avatar ?? undefined}
                         alt={name}
                     />
 
@@ -117,6 +122,7 @@ function ConversationItem({
         </button>
 
     );
+
 }
 
 

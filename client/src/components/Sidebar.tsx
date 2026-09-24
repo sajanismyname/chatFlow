@@ -115,7 +115,7 @@ function Sidebar({
 
 
     /* =========================
-        CREATE CONVERSATION
+       CREATE CONVERSATION
     ========================= */
 
     const handleSelectUser = async (
@@ -160,15 +160,17 @@ function Sidebar({
 
 
     /* =========================
-        SELECT CONVERSATION
+       SELECT CONVERSATION
     ========================= */
 
     const handleSelectConversation = (
         conversationId: number
     ) => {
+
         onSelectConversation(
             conversationId
         );
+
     };
 
 
@@ -258,9 +260,11 @@ function Sidebar({
                         "
                     />
 
+
                     {/* CLEAR SEARCH */}
 
                     {search && (
+
                         <button
                             type="button"
                             onClick={() =>
@@ -280,6 +284,7 @@ function Sidebar({
                         >
                             ×
                         </button>
+
                     )}
 
                 </div>
@@ -320,6 +325,11 @@ function Sidebar({
                                         name={
                                             otherUser?.name ||
                                             "Unknown user"
+                                        }
+
+                                        avatar={
+                                            otherUser?.avatar ||
+                                            undefined
                                         }
 
                                         lastMessage=""
@@ -376,9 +386,11 @@ function Sidebar({
                             <Search className="size-5 text-muted-foreground" />
                         </div>
 
+
                         <p className="text-sm font-medium">
                             No conversations found
                         </p>
+
 
                         <p className="mt-1 max-w-55 text-xs leading-relaxed text-muted-foreground">
                             Try searching for another person.
@@ -414,6 +426,7 @@ function Sidebar({
         </aside>
 
     );
+
 }
 
 

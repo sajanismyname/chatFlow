@@ -3,7 +3,7 @@ import cors from "cors"
 import cookieParser from "cookie-parser";
 
 import authRoutes from "./routes/authRoute.js"
-import testRoutes from "./routes/testRoues.js"
+import testRoutes from "./routes/testRoutes.js"
 import conversationRoutes from "./routes/conversationRoutes.js"
 import userRoutes from "./routes/userRoutes.js"
 import messageRoutes from "./routes/messageRoutes.js"

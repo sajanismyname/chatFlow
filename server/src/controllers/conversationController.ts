@@ -72,10 +72,6 @@ export const createConversation = async (
             return;
         }
 
-        /**
-         * Helper query to scan for an existing direct conversation 
-         * containing exactly these two members.
-         */
         const findExistingDirectConversation = async (manager: any) => {
             return await manager
                 .createQueryBuilder(Conversation, "conversation")

@@ -203,3 +203,13 @@ body {
 }
 
 /* cSpell:enable */
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+    -webkit-text-fill-color: var(--foreground) !important;
+    -webkit-box-shadow: 0 0 0 1000px var(--background) inset !important;
+    box-shadow: 0 0 0 1000px var(--background) inset !important;
+    caret-color: var(--foreground);
+}
