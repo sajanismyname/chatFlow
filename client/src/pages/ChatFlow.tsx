@@ -23,7 +23,9 @@ import {
 import {
     setActiveConversation,
 } from "../features/chat/chatSlice";
+import type { Message } from "@/features/messages/messageType";
 
+const EMPTY_MESSAGES: Message[] = [];
 
 function ChatFlow() {
 
@@ -50,8 +52,8 @@ function ChatFlow() {
             activeConversationId !== null
                 ? state.chat.messages[
                     activeConversationId
-                ] ?? []
-                : []
+                ] ?? EMPTY_MESSAGES
+                : EMPTY_MESSAGES
     );
 
 
@@ -170,7 +172,7 @@ function ChatFlow() {
 
     return (
 
-        <div className="flex h-screen flex-col bg-gray-50">
+        <div className="flex h-screen flex-col bg-background">
 
             <Navbar />
 
@@ -196,42 +198,61 @@ function ChatFlow() {
                     }
                 />
 
-                <main className="flex min-w-0 flex-1 flex-col">
+<main className="flex min-w-0 flex-1 flex-col">
 
-                    <ChatHeader
-                        name={
-                            otherUser?.name ||
-                            "Select a conversation"
-                        }
+    {activeConversationId === null ? (
 
-                        avatar={
-                            otherUser?.avatar ??
-                            null
-                        }
+        <div className="flex flex-1 items-center justify-center">
+            <div className="text-center">
 
-                        online={
-                            otherUser?.online ??
-                            false
-                        }
-                    />
+                <div className="mb-4 text-4xl">
+                    💬
+                </div>
 
-                    <MessageList
-                        messages={
-                            messages
-                        }
-                    />
+                <h2 className="text-lg font-semibold">
+                    Welcome to ChatFlow
+                </h2>
 
-                    <MessageInput
-                        onSend={
-                            handleSendMessage
-                        }
+                <p className="mt-2 text-sm text-muted-foreground">
+                    Select a conversation to start chatting.
+                </p>
 
-                        disabled={
-                            activeConversationId === null
-                        }
-                    />
+            </div>
+        </div>
 
-                </main>
+    ) : (
+
+        <>
+            <ChatHeader
+                name={
+                    otherUser?.name ||
+                    "Select a conversation"
+                }
+
+                avatar={
+                    otherUser?.avatar ??
+                    null
+                }
+
+                online={
+                    otherUser?.online ??
+                    false
+                }
+            />
+
+            <MessageList
+                messages={messages}
+            />
+
+            <MessageInput
+                onSend={handleSendMessage}
+                disabled={false}
+            />
+        </>
+
+    )}
+
+</main>
 
             </div>
 

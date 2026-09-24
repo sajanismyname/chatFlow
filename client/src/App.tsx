@@ -1,37 +1,63 @@
 import { useEffect } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import {
+    BrowserRouter,
+    Routes,
+    Route,
+} from "react-router-dom";
 
-import { useAppDispatch, useAppSelector } from "./app/hooks";
-import { initializeAuth } from "./features/auth/authSlice";
+import {
+    useAppDispatch,
+    useAppSelector,
+} from "./app/hooks";
+
+import {
+    initializeAuth,
+} from "./features/auth/authSlice";
 
 import Login from "./pages/Login";
-import AuthCallback from "./pages/AuthCallback";
 import Register from "./pages/Register";
+import AuthCallback from "./pages/AuthCallback";
 import ChatFlow from "./pages/ChatFlow";
+import Profile from "./components/Profile"
+
 import ProtectedRoute from "./components/ProtectedRoute";
 
+
 function App() {
+
     const dispatch = useAppDispatch();
 
     const initialized = useAppSelector(
         (state) => state.auth.initialized
     );
 
+
     useEffect(() => {
+
         dispatch(initializeAuth());
+
     }, [dispatch]);
 
+
     if (!initialized) {
+
         return (
-            <div className="min-h-screen flex items-center justify-center">
+            <div className="flex min-h-screen items-center justify-center">
                 <p>Loading...</p>
             </div>
         );
     }
 
+
     return (
+
         <BrowserRouter>
+
             <Routes>
+
+                {/* =========================
+                    AUTH
+                ========================= */}
 
                 <Route
                     path="/login"
@@ -48,6 +74,11 @@ function App() {
                     element={<AuthCallback />}
                 />
 
+
+                {/* =========================
+                    CHAT
+                ========================= */}
+
                 <Route
                     path="/"
                     element={
@@ -57,9 +88,25 @@ function App() {
                     }
                 />
 
+
+                {/* =========================
+                    PROFILE
+                ========================= */}
+
+                <Route
+                    path="/profile"
+                    element={
+                        <ProtectedRoute>
+                            <Profile />
+                        </ProtectedRoute>
+                    }
+                />
+
             </Routes>
+
         </BrowserRouter>
     );
 }
+
 
 export default App;

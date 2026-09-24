@@ -17,7 +17,6 @@ export const login = async (
     res: Response
 ): Promise<void> => {
     try {
-        console.log("LOGIN BODY:", req.body);
         const { email, password } = req.body;
 
         if (!email || !password) {
@@ -65,7 +64,6 @@ export const login = async (
             user.id
         );
 
-        console.log("RAW REFRESH TOKEN CREATED:", !!rawToken);
 
         res.cookie("refreshToken", rawToken, {
             httpOnly: true,
@@ -74,8 +72,6 @@ export const login = async (
             path:"/",
             maxAge: 7 * 24 * 60 * 60 * 1000,
         });
-
-        console.log("REFRESH COOKIE SET");
 
         res.json({
             message: "Login successful",
@@ -154,6 +150,51 @@ export const register = async (
     }
 };
 
+export const getCurrentUser = async (
+    req: Request,
+    res: Response
+): Promise<void> =>{
+    try {
+        const userId=req.user?.id
+
+        if(!userId){
+            res.send(404).json({
+                message: "user not found",
+            })
+            return;
+        }
+
+        const user = await userRepository.findOne({
+            where:{
+                id:userId,
+            },
+            select:{
+                id:true,
+                googleId:true,
+                email:true,
+                name:true,
+                avatar:true
+            }
+        })
+
+        if (!user) {
+            res.status(404).json({
+                message: "User not found",
+            });
+            return;
+        }
+
+        res.status(200).json({
+            user,
+        });
+    } catch (error) {
+        console.error(error)
+        res.status(500).json({
+            message: "Failed to fetch current user",
+        });
+    }
+}
+
 export const getUser = async (
     req: Request,
     res: Response
@@ -221,24 +262,43 @@ export const googleCallback = async (
             return;
         }
 
-        let user = await userRepository.findOne({
-            where: {
-                googleId: data.id,
-            },
-        });
-
-        if (!user) {
-            const newUser = userRepository.create({
-                googleId: data.id,
-                email: data.email!,
-                name: data.name!,
-                avatar: data.picture,
+            let user = await userRepository.findOne({
+                where: {
+                    googleId: data.id,
+                },
             });
 
-            user = await userRepository.save(newUser);
-        }
+            // If Google ID was not found, check whether the email
+            // already belongs to an existing account.
+            if (!user && data.email) {
+                user = await userRepository.findOne({
+                    where: {
+                        email: data.email,
+                    },
+                });
 
-        const accessToken = generateAccessToken(user.id);
+                // Existing email account found.
+                // Link that account to the Google account.
+                if (user) {
+                    user.googleId = data.id;
+                    user.avatar = data.picture ?? user.avatar;
+
+                    await userRepository.save(user);
+                }
+            }
+
+            // If neither Google ID nor email exists,
+            // create a completely new account.
+            if (!user) {
+                const newUser = userRepository.create({
+                    googleId: data.id,
+                    email: data.email!,
+                    name: data.name!,
+                    avatar: data.picture,
+                });
+
+                user = await userRepository.save(newUser);
+            }
 
         const {rawToken} =await createRefreshToken(user.id);
 
@@ -266,9 +326,7 @@ export const refreshAccessToken = async (
     res: Response
 ): Promise<void> => {
     try {
-        console.log("Cookies:", req.cookies);
         const rawToken = req.cookies.refreshToken;
-        console.log("Refresh token:", rawToken);
 
         if (!rawToken) {
             res.status(401).json({
@@ -386,5 +444,52 @@ export const logout = async (
         res.status(500).json({
             message: "Logout failed",
         });
+    }
+}
+
+export const updateProfile =async (
+    req:Request,
+    res:Response
+): Promise<void> =>{
+    try {
+        const userId = req.user?.id
+        const {name, avatar}=req.body
+
+        const user = await userRepository.findOne({
+            where:{
+                id:userId
+            }
+        })
+
+            if (!user) {
+        res.status(404).json({
+            message: "User not found",
+        });
+        return;
+        }
+
+        if (name !== undefined) {
+        user.name = name;
+        }
+
+        if (avatar !== undefined) {
+        user.avatar = avatar;
+        }
+
+        await userRepository.save(user);
+
+        res.status(200).json({
+        message: "Profile updated successfully",
+        user: {
+            id: user.id,
+            googleId: user.googleId,
+            email: user.email,
+            name: user.name,
+            avatar: user.avatar,
+        },
+        });
+
+    } catch (error) {
+        
     }
 }
