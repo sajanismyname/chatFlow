@@ -504,11 +504,7 @@ export const forgotPassword = async (
 ): Promise<void> => {
     try {
 
-        console.log("FORGOT PASSWORD CONTROLLER HIT");
-
         const { email } = req.body;
-
-        console.log("EMAIL RECEIVED:", email);
 
         if (!email) {
             res.status(400).json({
@@ -523,13 +519,8 @@ export const forgotPassword = async (
             .where("user.email = :email", { email })
             .getOne();
 
-        console.log("USER FOUND:", user);
-
         if (!user || !user.password) {
 
-            console.log(
-                "USER NOT FOUND OR PASSWORD IS NULL"
-            );
 
             res.status(200).json({
                 message:
@@ -539,9 +530,6 @@ export const forgotPassword = async (
             return;
         }
 
-        console.log(
-            "USER HAS PASSWORD, CREATING RESET TOKEN"
-        );
 
         const rawToken = crypto
             .randomBytes(32)
@@ -564,36 +552,20 @@ export const forgotPassword = async (
                 usedAt: null,
             });
 
-        console.log(
-            "RESET TOKEN CREATED:",
-            resetToken
-        );
 
         await passwordResetTokenRepository.save(
-            resetToken
-        );
-
-        console.log(
-            "RESET TOKEN SAVED:",
             resetToken
         );
 
         const resetUrl =
             `http://localhost:5173/reset-password?token=${rawToken}`;
 
-        console.log(
-            "RESET URL:",
-            resetUrl
-        );
 
         await sendPasswordResetEmail(
             user.email,
             resetUrl
         );
 
-        console.log(
-            "PASSWORD RESET EMAIL SENT"
-        );
 
         res.status(200).json({
             message:
