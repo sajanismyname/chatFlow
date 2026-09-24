@@ -9,6 +9,7 @@ import {google} from "googleapis"
 import { googleClient } from "../config/google.js";
 import { generateAccessToken } from "../utils/jwt.js";
 import { createRefreshToken } from "../services/refreshTokenService.js";
+import {sendPasswordResetEmail} from "../services/emailServices.js";
 
 const userRepository = AppDataSource.getRepository(User)
 const refreshTokenRepository = AppDataSource.getRepository(RefreshToken);
@@ -550,8 +551,11 @@ export const forgotPassword = async (
 
         const resetUrl =
             `http://localhost:5173/reset-password?token=${rawToken}`;
-        console.log("PASSWORD RESET URL:");
-        console.log(resetUrl);
+
+        await sendPasswordResetEmail(
+            user.email,
+            resetUrl
+        );
 
         res.status(200).json({
             message:

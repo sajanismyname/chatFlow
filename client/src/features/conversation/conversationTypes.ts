@@ -21,5 +21,6 @@ export interface ConversationItemProps {
     name: string;
     lastMessage: string;
     active?: boolean;
+    avatar?: string | null;
     onClick?: () => void;
 }
