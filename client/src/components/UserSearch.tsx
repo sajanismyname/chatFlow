@@ -43,16 +43,24 @@ function UserSearch({
 
 
     useEffect(() => {
+
         const timer = setTimeout(() => {
+
             if (search.trim().length >= 2) {
                 handleSearch(search.trim());
+            } else {
+                setQuery("");
+                setUsers([]);
             }
+
         }, 400);
 
         return () => {
             clearTimeout(timer);
         };
+
     }, [search]);
+
 
     /* =========================
        SEARCH USERS
@@ -68,7 +76,6 @@ function UserSearch({
             setUsers([]);
             return;
         }
-
 
         try {
 
@@ -181,17 +188,9 @@ function UserSearch({
                     <Input
                         autoFocus
                         value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Search people..."
-                        className="pl-9"
-                    />
-
-                </div>
-
-            </div>
-
-
-            {/* =========================
+                        onChange={(e) =>
+                            setSearch(e.target.value)
+                        }
                         placeholder="Search people..."
                         className="pl-9"
                     />
@@ -266,7 +265,14 @@ function UserSearch({
                                         bg-muted
                                     "
                                 >
-                                    <Search className="size-5 text-muted-foreground" />
+
+                                    <Search
+                                        className="
+                                            size-5
+                                            text-muted-foreground
+                                        "
+                                    />
+
                                 </div>
 
                                 <p className="text-sm font-medium">
@@ -274,7 +280,7 @@ function UserSearch({
                                 </p>
 
                                 <p className="mt-1 text-xs text-muted-foreground">
-                                    Search by name or email.
+                                    Search by name.
                                 </p>
 
                             </div>
@@ -301,7 +307,7 @@ function UserSearch({
                                 </p>
 
                                 <p className="mt-1 text-xs text-muted-foreground">
-                                    Try another name or email.
+                                    Try another name.
                                 </p>
 
                             </div>
@@ -335,7 +341,12 @@ function UserSearch({
 
                                 {/* AVATAR */}
 
-                                <Avatar className="size-10 shrink-0">
+                                <Avatar
+                                    className="
+                                        size-10
+                                        shrink-0
+                                    "
+                                >
 
                                     <AvatarImage
                                         src={
@@ -354,16 +365,12 @@ function UserSearch({
                                 </Avatar>
 
 
-                                {/* USER INFO */}
+                                {/* USER NAME */}
 
                                 <div className="min-w-0 flex-1">
 
                                     <p className="truncate text-sm font-medium">
                                         {user.name}
-                                    </p>
-
-                                    <p className="truncate text-xs text-muted-foreground">
-                                        {user.email}
                                     </p>
 
                                 </div>

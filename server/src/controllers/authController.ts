@@ -515,9 +515,6 @@ export const forgotPassword = async (
             where: { email },
         });
 
-        /*
-         * Don't reveal whether the email exists.
-         */
         if (!user || !user.password) {
             res.status(200).json({
                 message:
@@ -553,12 +550,6 @@ export const forgotPassword = async (
 
         const resetUrl =
             `http://localhost:5173/reset-password?token=${rawToken}`;
-
-        /*
-         * Development only.
-         *
-         * Replace this with an email service later.
-         */
         console.log("PASSWORD RESET URL:");
         console.log(resetUrl);
 
