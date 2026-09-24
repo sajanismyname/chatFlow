@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -54,6 +54,9 @@ function Profile() {
     const [name, setName] = useState("");
     const [avatar, setAvatar] = useState("");
 
+    const avatarInputRef =
+        useRef<HTMLInputElement>(null);
+
 
     /* =========================
        LOAD USER DATA
@@ -80,7 +83,9 @@ function Profile() {
             .trim()
             .split(/\s+/)
             .filter(Boolean)
-            .map((word) => word.charAt(0))
+            .map((word) =>
+                word.charAt(0)
+            )
             .join("")
             .slice(0, 2)
             .toUpperCase() || "U";
@@ -105,7 +110,8 @@ function Profile() {
             await dispatch(
                 updateProfileThunk({
                     name: name.trim(),
-                    avatar: avatar.trim() || null,
+                    avatar:
+                        avatar.trim() || null,
                 })
             ).unwrap();
 
@@ -162,6 +168,7 @@ function Profile() {
                     variant="ghost"
                     size="icon"
                     onClick={() => navigate("/")}
+                    aria-label="Go back"
                 >
                     <ArrowLeft className="size-5" />
                 </Button>
@@ -206,10 +213,6 @@ function Profile() {
                     "
                 >
 
-                    {/* =========================
-                        TITLE
-                    ========================= */}
-
                     <div className="mb-8">
 
                         <h2 className="text-xl font-semibold">
@@ -217,7 +220,8 @@ function Profile() {
                         </h2>
 
                         <p className="mt-1 text-sm text-muted-foreground">
-                            Update your personal information and profile picture.
+                            Update your personal information
+                            and profile picture.
                         </p>
 
                     </div>
@@ -241,11 +245,70 @@ function Profile() {
                                     alt={name}
                                 />
 
-                                <AvatarFallback className="text-3xl">
+                                <AvatarFallback
+                                    className="text-3xl"
+                                >
                                     {initials}
                                 </AvatarFallback>
 
                             </Avatar>
+
+
+                            <input
+                                ref={avatarInputRef}
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                aria-label="Choose profile picture"
+                                onChange={(event) => {
+
+                                    const file =
+                                        event.target.files?.[0];
+
+                                    if (!file) {
+                                        return;
+                                    }
+
+
+                                    if (
+                                        file.size >
+                                        2 * 1024 * 1024
+                                    ) {
+
+                                        window.alert(
+                                            "Please choose an image smaller than 2 MB."
+                                        );
+
+                                        event.target.value = "";
+
+                                        return;
+                                    }
+
+
+                                    const reader =
+                                        new FileReader();
+
+
+                                    reader.onload = () => {
+
+                                        if (
+                                            typeof reader.result ===
+                                            "string"
+                                        ) {
+
+                                            setAvatar(
+                                                reader.result
+                                            );
+
+                                        }
+
+                                    };
+
+
+                                    reader.readAsDataURL(file);
+
+                                }}
+                            />
 
 
                             <Button
@@ -261,9 +324,12 @@ function Profile() {
                                     border-2
                                     border-background
                                 "
-                                onClick={() => {
-                                    // Image upload will be added later
-                                }}
+                                onClick={() =>
+                                    avatarInputRef
+                                        .current
+                                        ?.click()
+                                }
+                                aria-label="Change profile picture"
                             >
                                 <Camera className="size-4" />
                             </Button>
@@ -295,7 +361,9 @@ function Profile() {
                                 name="name"
                                 value={name}
                                 onChange={(event) =>
-                                    setName(event.target.value)
+                                    setName(
+                                        event.target.value
+                                    )
                                 }
                                 placeholder="Your name"
                             />
@@ -338,7 +406,9 @@ function Profile() {
                                 name="avatar"
                                 value={avatar}
                                 onChange={(event) =>
-                                    setAvatar(event.target.value)
+                                    setAvatar(
+                                        event.target.value
+                                    )
                                 }
                                 placeholder="https://example.com/avatar.jpg"
                             />
@@ -386,6 +456,7 @@ function Profile() {
             </main>
 
         </div>
+
     );
 }
 

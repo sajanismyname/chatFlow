@@ -3,6 +3,7 @@ import {
     BrowserRouter,
     Routes,
     Route,
+    Navigate,
 } from "react-router-dom";
 
 import {
@@ -18,7 +19,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import AuthCallback from "./pages/AuthCallback";
 import ChatFlow from "./pages/ChatFlow";
-import Profile from "./components/Profile"
+import Profile from "./components/Profile";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -46,6 +47,7 @@ function App() {
                 <p>Loading...</p>
             </div>
         );
+
     }
 
 
@@ -99,6 +101,21 @@ function App() {
                         <ProtectedRoute>
                             <Profile />
                         </ProtectedRoute>
+                    }
+                />
+
+
+                {/* =========================
+                    FALLBACK
+                ========================= */}
+
+                <Route
+                    path="*"
+                    element={
+                        <Navigate
+                            to="/"
+                            replace
+                        />
                     }
                 />
 

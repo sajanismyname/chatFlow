@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import {
     Paperclip,
@@ -26,7 +26,30 @@ function MessageInput({
     disabled = false,
 }: MessageInputProps) {
 
-    const [message, setMessage] = useState("");
+    const [message, setMessage] =
+        useState("");
+
+    const [showEmojiPicker, setShowEmojiPicker] =
+        useState(false);
+
+    const fileInputRef =
+        useRef<HTMLInputElement>(null);
+
+
+    const emojis = [
+        "😀",
+        "😂",
+        "😍",
+        "😊",
+        "👍",
+        "❤️",
+        "🎉",
+        "🔥",
+        "🙏",
+        "😎",
+        "🤝",
+        "✨",
+    ];
 
 
     /* =========================
@@ -42,13 +65,16 @@ function MessageInput({
         const trimmedMessage =
             message.trim();
 
+
         if (!trimmedMessage) {
             return;
         }
 
+
         onSend(trimmedMessage);
 
         setMessage("");
+
     };
 
 
@@ -69,6 +95,38 @@ function MessageInput({
             >
 
                 {/* =========================
+                    FILE INPUT
+                ========================= */}
+
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    disabled={disabled}
+                    onChange={(event) => {
+
+                        const file =
+                            event.target.files?.[0];
+
+                        if (!file) {
+                            return;
+                        }
+
+
+                        setMessage((current) =>
+                            current.trim()
+                                ? `${current} [${file.name}]`
+                                : `[${file.name}]`
+                        );
+
+
+                        event.target.value = "";
+
+                    }}
+                />
+
+
+                {/* =========================
                     ATTACHMENT
                 ========================= */}
 
@@ -78,6 +136,11 @@ function MessageInput({
                     size="icon"
                     className="shrink-0 rounded-full"
                     disabled={disabled}
+                    onClick={() =>
+                        fileInputRef
+                            .current
+                            ?.click()
+                    }
                     aria-label="Attach file"
                 >
                     <Paperclip className="size-4" />
@@ -114,7 +177,74 @@ function MessageInput({
 
 
                     {/* =========================
-                        EMOJI
+                        EMOJI PICKER
+                    ========================= */}
+
+                    {showEmojiPicker &&
+                        !disabled && (
+
+                            <div
+                                className="
+                                    absolute
+                                    bottom-12
+                                    right-0
+                                    z-20
+                                    grid
+                                    grid-cols-6
+                                    gap-1
+                                    rounded-xl
+                                    border
+                                    border-border
+                                    bg-popover
+                                    p-2
+                                    shadow-lg
+                                "
+                                role="dialog"
+                                aria-label="Emoji picker"
+                            >
+
+                                {emojis.map(
+                                    (emoji) => (
+
+                                        <button
+                                            key={emoji}
+                                            type="button"
+                                            className="
+                                                flex
+                                                size-9
+                                                items-center
+                                                justify-center
+                                                rounded-lg
+                                                text-lg
+                                                hover:bg-muted
+                                            "
+                                            onClick={() => {
+
+                                                setMessage(
+                                                    (current) =>
+                                                        `${current}${emoji}`
+                                                );
+
+                                                setShowEmojiPicker(
+                                                    false
+                                                );
+
+                                            }}
+                                            aria-label={`Add ${emoji}`}
+                                        >
+                                            {emoji}
+                                        </button>
+
+                                    )
+                                )}
+
+                            </div>
+
+                        )}
+
+
+                    {/* =========================
+                        EMOJI BUTTON
                     ========================= */}
 
                     <Button
@@ -130,7 +260,15 @@ function MessageInput({
                             rounded-full
                         "
                         disabled={disabled}
+                        onClick={() =>
+                            setShowEmojiPicker(
+                                (open) => !open
+                            )
+                        }
                         aria-label="Add emoji"
+                        aria-expanded={
+                            showEmojiPicker
+                        }
                     >
                         <Smile className="size-4" />
                     </Button>
@@ -139,7 +277,7 @@ function MessageInput({
 
 
                 {/* =========================
-                    SEND
+                    SEND BUTTON
                 ========================= */}
 
                 <Button
