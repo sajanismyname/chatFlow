@@ -4,8 +4,6 @@ import { Conversation } from "../entities/Conversation.js";
 import { ConversationMember } from "../entities/ConversationMember.js";
 import { User } from "../entities/User.js";
 
-const conversationRepository = AppDataSource.getRepository(Conversation);
-const conversationMemberRepository = AppDataSource.getRepository(ConversationMember);
 const userRepository = AppDataSource.getRepository(User);
 
 export const getConversations = async (
@@ -20,10 +18,8 @@ export const getConversations = async (
             return;
         }
 
-        const memberships = await conversationMemberRepository.find({
-            where: {
-                user: { id: userId },
-            },
+        const memberships = await AppDataSource.getRepository(ConversationMember).find({
+            where: { user: { id: userId } },
             relations: {
                 conversation: {
                     members: { user: true },
@@ -32,7 +28,6 @@ export const getConversations = async (
         });
 
         const conversations = memberships.map((membership) => membership.conversation);
-
         res.status(200).json({ conversations });
     } catch (error) {
         console.error("Error fetching conversations:", error);
@@ -71,104 +66,85 @@ export const createConversation = async (
             return;
         }
 
-        const targetUser = await userRepository.findOne({
-            where: { id: targetUserId },
-        });
-
+        const targetUser = await userRepository.findOne({ where: { id: targetUserId } });
         if (!targetUser) {
             res.status(404).json({ message: "User not found" });
             return;
         }
 
-        /*
-         * Check whether a direct conversation already exists between these two users.
+        /**
+         * Helper query to scan for an existing direct conversation 
+         * containing exactly these two members.
          */
-        const memberships = await conversationMemberRepository.find({
-            where: {
-                user: { id: currentUserId },
-            },
-            relations: {
-                conversation: {
-                    members: { user: true },
-                },
-            },
-            select: {
-                id: true,
-                conversation: {
-                    id: true,
-                    type: true,
-                    createdAt: true,
-                    members: {
-                        id: true,
-                        user: {
-                            id: true,
-                            name: true,
-                            email: true,
-                            avatar: true,
-                        },
-                    },
-                },
-            },
-        });
+        const findExistingDirectConversation = async (manager: any) => {
+            return await manager
+                .createQueryBuilder(Conversation, "conversation")
+                .innerJoinAndSelect("conversation.members", "member")
+                .innerJoinAndSelect("member.user", "user")
+                .where("conversation.type = :type", { type: "direct" })
+                .andWhere((qb: any) => {
+                    const subQuery = qb
+                        .subQuery()
+                        .select("m.conversationId")
+                        .from(ConversationMember, "m")
+                        .where("m.userId IN (:...userIds)", { userIds: [currentUserId, targetUserId] })
+                        .groupBy("m.conversationId")
+                        .having("COUNT(DISTINCT m.userId) = 2");
+                    return "conversation.id IN " + subQuery.getQuery();
+                })
+                .getOne();
+        };
 
-        const existingConversation = memberships.find((membership) => {
-            const conversation = membership.conversation;
-
-            if (conversation.type !== "direct") {
-                return false;
-            }
-
-            const memberIds = conversation.members.map((member) => member.user.id);
-
-            return (
-                memberIds.length === 2 &&
-                memberIds.includes(currentUserId) &&
-                memberIds.includes(targetUserId)
-            );
-        });
-
-        if (existingConversation) {
-            res.status(200).json({
-                conversation: existingConversation.conversation,
-            });
+        // 1. Quick initial pre-check lookup outside the lock
+        const quickCheck = await findExistingDirectConversation(AppDataSource.manager);
+        if (quickCheck) {
+            res.status(200).json({ conversation: quickCheck });
             return;
         }
 
-        /*
-         * Create conversation + memberships inside one transaction.
-         */
-        const conversation = await AppDataSource.transaction(async (manager) => {
-            const newConversation = manager.create(Conversation, {
-                type: "direct",
-            });
+        // 2. Generate a deterministic 64-bit combination for Postgres Advisory Lock
+        // pg_advisory_xact_lock accepts two 32-bit integers.
+        const logMinId = Math.min(currentUserId, targetUserId);
+        const logMaxId = Math.max(currentUserId, targetUserId);
 
+        /*
+         * 3. Run Transaction Block with Advisory Lock
+         */
+        const targetConversation = await AppDataSource.transaction(async (manager) => {
+            // Obtain a transaction-scoped advisory lock for this exact pair of users.
+            // If another request comes in for the same pair, it blocks until this transaction finishes.
+            await manager.query(
+                "SELECT pg_advisory_xact_lock($1, $2)", 
+                [logMinId, logMaxId]
+            );
+
+            // Double check inside the locked state to see if the other thread just created it
+            const deepCheck = await findExistingDirectConversation(manager);
+            if (deepCheck) {
+                return deepCheck;
+            }
+
+            // Create new conversation
+            const newConversation = manager.create(Conversation, { type: "direct" });
             const savedConversation = await manager.save(newConversation);
 
+            // Establish memberships
             const currentMember = manager.create(ConversationMember, {
                 user: { id: currentUserId },
                 conversation: savedConversation,
             });
-
             const targetMember = manager.create(ConversationMember, {
                 user: { id: targetUserId },
                 conversation: savedConversation,
             });
 
             await manager.save(ConversationMember, [currentMember, targetMember]);
-
-            return savedConversation;
+            
+            // Re-fetch with full relations loaded to return to client
+            return await findExistingDirectConversation(manager) || savedConversation;
         });
 
-        const fullConversation = await conversationRepository.findOne({
-            where: { id: conversation.id },
-            relations: {
-                members: { user: true },
-            },
-        });
-
-        res.status(201).json({
-            conversation: fullConversation,
-        });
+        res.status(201).json({ conversation: targetConversation });
     } catch (error) {
         console.error("Error creating conversation:", error);
         res.status(500).json({ message: "Failed to create conversation" });

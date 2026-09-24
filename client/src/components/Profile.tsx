@@ -292,11 +292,10 @@ function Profile() {
 
                             <Input
                                 id="profile-name"
+                                name="name"
                                 value={name}
                                 onChange={(event) =>
-                                    setName(
-                                        event.target.value
-                                    )
+                                    setName(event.target.value)
                                 }
                                 placeholder="Your name"
                             />
@@ -314,6 +313,7 @@ function Profile() {
 
                             <Input
                                 id="profile-email"
+                                name="email"
                                 value={user.email}
                                 disabled
                             />
@@ -335,11 +335,10 @@ function Profile() {
 
                             <Input
                                 id="profile-avatar"
+                                name="avatar"
                                 value={avatar}
                                 onChange={(event) =>
-                                    setAvatar(
-                                        event.target.value
-                                    )
+                                    setAvatar(event.target.value)
                                 }
                                 placeholder="https://example.com/avatar.jpg"
                             />

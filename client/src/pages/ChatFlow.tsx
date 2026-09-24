@@ -23,7 +23,9 @@ import {
 import {
     setActiveConversation,
 } from "../features/chat/chatSlice";
+import type { Message } from "@/features/messages/messageType";
 
+const EMPTY_MESSAGES: Message[] = [];
 
 function ChatFlow() {
 
@@ -50,8 +52,8 @@ function ChatFlow() {
             activeConversationId !== null
                 ? state.chat.messages[
                     activeConversationId
-                ] ?? []
-                : []
+                ] ?? EMPTY_MESSAGES
+                : EMPTY_MESSAGES
     );
 
 
@@ -170,7 +172,7 @@ function ChatFlow() {
 
     return (
 
-        <div className="flex h-screen flex-col bg-gray-50">
+        <div className="flex h-screen flex-col bg-background">
 
             <Navbar />
 

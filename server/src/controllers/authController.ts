@@ -17,7 +17,6 @@ export const login = async (
     res: Response
 ): Promise<void> => {
     try {
-        console.log("LOGIN BODY:", req.body);
         const { email, password } = req.body;
 
         if (!email || !password) {
@@ -65,7 +64,6 @@ export const login = async (
             user.id
         );
 
-        console.log("RAW REFRESH TOKEN CREATED:", !!rawToken);
 
         res.cookie("refreshToken", rawToken, {
             httpOnly: true,
@@ -74,8 +72,6 @@ export const login = async (
             path:"/",
             maxAge: 7 * 24 * 60 * 60 * 1000,
         });
-
-        console.log("REFRESH COOKIE SET");
 
         res.json({
             message: "Login successful",
@@ -304,8 +300,6 @@ export const googleCallback = async (
                 user = await userRepository.save(newUser);
             }
 
-        const accessToken = generateAccessToken(user.id);
-
         const {rawToken} =await createRefreshToken(user.id);
 
         res.cookie("refreshToken", rawToken, {
@@ -332,9 +326,7 @@ export const refreshAccessToken = async (
     res: Response
 ): Promise<void> => {
     try {
-        console.log("Cookies:", req.cookies);
         const rawToken = req.cookies.refreshToken;
-        console.log("Refresh token:", rawToken);
 
         if (!rawToken) {
             res.status(401).json({

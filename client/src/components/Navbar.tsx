@@ -23,11 +23,12 @@ import {
     AvatarImage,
 } from "@/components/ui/avatar";
 
+import ThemeToggle from "@/components/ThemeToggle";
+
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
-    DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -130,155 +131,156 @@ function Navbar() {
             {/* =========================
                 USER MENU
             ========================= */}
+{/* RIGHT SIDE */}
 
-            {user && (
+            <div className="flex items-center gap-3">
 
-                <DropdownMenu>
+                <ThemeToggle />
 
-                    {/* =========================
-                        TRIGGER
-                    ========================= */}
+                {user && (
+                    <DropdownMenu>
 
-                    <DropdownMenuTrigger
-                        className="
-                            flex
-                            items-center
-                            gap-3
-                            rounded-xl
-                            px-2
-                            py-1.5
-                            outline-none
-                            transition-colors
-                            hover:bg-muted
-                            focus-visible:ring-2
-                            focus-visible:ring-ring
-                        "
-                    >
+                        {/* =========================
+                            TRIGGER
+                        ========================= */}
 
-                        <div className="hidden text-right sm:block">
+                        <DropdownMenuTrigger
+                            className="
+                                flex
+                                items-center
+                                gap-3
+                                rounded-xl
+                                px-2
+                                py-1.5
+                                outline-none
+                                transition-colors
+                                hover:bg-muted
+                                focus-visible:ring-2
+                                focus-visible:ring-ring
+                            "
+                        >
 
-                            <p className="text-sm font-medium">
-                                {user.name}
-                            </p>
+                            <div className="hidden text-right sm:block">
 
-                            <p className="max-w-45 truncate text-xs text-muted-foreground">
-                                {user.email}
-                            </p>
+                                <p className="text-sm font-medium">
+                                    {user.name}
+                                </p>
 
-                        </div>
+                                <p className="max-w-45 truncate text-xs text-muted-foreground">
+                                    {user.email}
+                                </p>
 
+                            </div>
 
-                        <Avatar className="size-9">
+                            <Avatar className="size-9">
 
-                            <AvatarImage
-                                src={
-                                    user.avatar ??
-                                    undefined
-                                }
-                                alt={user.name}
-                            />
+                                <AvatarImage
+                                    src={user.avatar ?? undefined}
+                                    alt={user.name}
+                                />
 
-                            <AvatarFallback>
-                                {initials}
-                            </AvatarFallback>
+                                <AvatarFallback>
+                                    {initials}
+                                </AvatarFallback>
 
-                        </Avatar>
+                            </Avatar>
 
-                    </DropdownMenuTrigger>
-
-
-                    {/* =========================
-                        MENU CONTENT
-                    ========================= */}
-
-                    <DropdownMenuContent
-                        align="end"
-                        className="w-64"
-                    >
-
-                        {/* USER INFORMATION */}
-
-                        <DropdownMenuLabel>
-
-                            <div className="flex items-center gap-3">
-
-                                <Avatar className="size-10">
-
-                                    <AvatarImage
-                                        src={
-                                            user.avatar ??
-                                            undefined
-                                        }
-                                        alt={user.name}
-                                    />
-
-                                    <AvatarFallback>
-                                        {initials}
-                                    </AvatarFallback>
-
-                                </Avatar>
+                        </DropdownMenuTrigger>
 
 
-                                <div className="min-w-0">
+                        {/* =========================
+                            MENU CONTENT
+                        ========================= */}
 
-                                    <p className="truncate text-sm font-medium">
-                                        {user.name}
-                                    </p>
+                        <DropdownMenuContent
+                            align="end"
+                            className="w-64"
+                        >
 
-                                    <p className="truncate text-xs font-normal text-muted-foreground">
-                                        {user.email}
-                                    </p>
+                            <div className="px-2 py-2">
+
+                                <div className="flex items-center gap-3">
+
+                                    <Avatar className="size-10">
+
+                                        <AvatarImage
+                                            src={user.avatar ?? undefined}
+                                            alt={user.name}
+                                        />
+
+                                        <AvatarFallback>
+                                            {initials}
+                                        </AvatarFallback>
+
+                                    </Avatar>
+
+                                    <div className="min-w-0">
+
+                                        <p className="truncate text-sm font-medium">
+                                            {user.name}
+                                        </p>
+
+                                        <p className="truncate text-xs text-muted-foreground">
+                                            {user.email}
+                                        </p>
+
+                                    </div>
 
                                 </div>
 
                             </div>
 
-                        </DropdownMenuLabel>
+
+                            <DropdownMenuSeparator />
 
 
-                        <DropdownMenuSeparator />
+                            <div className="px-2 py-1.5">
+
+                                <p className="text-xs font-semibold text-muted-foreground">
+                                    My Account
+                                </p>
+
+                            </div>
 
 
-                        {/* =========================
-                            PROFILE
-                        ========================= */}
+                            <DropdownMenuItem
+                                onClick={() => navigate("/profile")}
+                            >
 
-                        <DropdownMenuItem
-                            onClick={() => navigate("/profile")}
-                        >
-                            <User className="size-4" />
-                            <span>Profile</span>
-                        </DropdownMenuItem>
+                                <User className="size-4" />
 
+                                <span>
+                                    Profile
+                                </span>
 
-                        <DropdownMenuSeparator />
+                            </DropdownMenuItem>
 
 
-                        {/* =========================
-                            LOGOUT
-                        ========================= */}
+                            <DropdownMenuSeparator />
 
-                        <DropdownMenuItem
-                            onClick={handleLogout}
-                            className="
-                                text-destructive
-                                focus:text-destructive
-                            "
-                        >
 
-                            <LogOut className="size-4" />
+                            <DropdownMenuItem
+                                onClick={handleLogout}
+                                className="
+                                    text-destructive
+                                    focus:text-destructive
+                                "
+                            >
 
-                            <span>
-                                Logout
-                            </span>
+                                <LogOut className="size-4" />
 
-                        </DropdownMenuItem>
+                                <span>
+                                    Logout
+                                </span>
 
-                    </DropdownMenuContent>
+                            </DropdownMenuItem>
 
-                </DropdownMenu>
+                        </DropdownMenuContent>
 
-            )}
+                    </DropdownMenu>
+                )}
+
+            </div>
 
         </nav>
     );
