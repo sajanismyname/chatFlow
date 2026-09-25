@@ -18,7 +18,17 @@ app.use(express.json({ limit: "15mb" }))
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-app.use("/uploads", express.static(path.resolve(__dirname, "../uploads")))
+app.use(
+    "/uploads",
+    express.static(path.resolve(__dirname, "../uploads"), {
+        dotfiles: "deny",
+        index: false,
+        setHeaders: (res, filePath) => {
+            res.setHeader("X-Content-Type-Options", "nosniff");
+            res.setHeader("Content-Disposition", "inline");
+        },
+    })
+);
 app.use(cookieParser())
 app.use(
     cors({

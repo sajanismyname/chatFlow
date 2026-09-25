@@ -67,7 +67,7 @@
        CHATFLOW LIGHT GREEN THEME
        ===================================== */
 
-    --background: oklch(0.975 0.025 145);
+    --background: oklch(1 0 0);
     --foreground: oklch(0.20 0.045 150);
 
     --card: oklch(1 0 0);
@@ -76,11 +76,9 @@
     --popover: oklch(1 0 0);
     --popover-foreground: oklch(0.20 0.035 150);
 
-    /* Main green */
     --primary: oklch(0.48 0.14 145);
     --primary-foreground: oklch(0.99 0.01 145);
 
-    /* Soft green */
     --secondary: oklch(0.91 0.06 145);
     --secondary-foreground: oklch(0.25 0.06 150);
 
@@ -105,7 +103,6 @@
 
     --radius: 0.625rem;
 
-    /* Sidebar */
     --sidebar: oklch(0.985 0 0);
     --sidebar-foreground: oklch(0.145 0 0);
 
@@ -185,18 +182,6 @@
     }
 }
 
-
-
-/* Forest UI: a soft woodland backdrop keeps the light theme airy while
-   using deep greens for actions and clear contrast. */
-body {
-    min-height: 100vh;
-    background:
-        radial-gradient(circle at 0% 0%, oklch(0.94 0.07 145 / 0.55), transparent 32rem),
-        radial-gradient(circle at 100% 100%, oklch(0.93 0.055 115 / 0.45), transparent 28rem),
-        var(--background);
-    background-attachment: fixed;
-}
 
 ::selection {
     background: oklch(0.48 0.14 145 / 0.22);

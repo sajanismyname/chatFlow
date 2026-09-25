@@ -10,6 +10,8 @@ import { googleClient } from "../config/google.js";
 import { generateAccessToken } from "../utils/jwt.js";
 import { createRefreshToken } from "../services/refreshTokenService.js";
 import {sendPasswordResetEmail} from "../services/emailServices.js";
+import { QueryFailedError } from "typeorm/browser/error/index.js";
+
 
 const userRepository = AppDataSource.getRepository(User)
 const refreshTokenRepository = AppDataSource.getRepository(RefreshToken);
@@ -23,6 +25,8 @@ export const login = async (
     try {
         const { email, password } = req.body;
 
+        const normalEmail = email?.trim().toLowerCase();
+
         if (!email || !password) {
             res.status(400).json({
                 message: "Email and password are required",
@@ -33,7 +37,7 @@ export const login = async (
         const user = await userRepository
             .createQueryBuilder("user")
             .addSelect("user.password")
-            .where("user.email = :email", { email })
+            .where("user.email = :email", { email: normalEmail })
             .getOne();
 
         if (!user) {
@@ -83,11 +87,15 @@ export const login = async (
             user,
         });
     } catch (error) {
-        console.error(error);
-
-        res.status(500).json({
-            message: "Login failed",
-        });
+        if(
+            error instanceof QueryFailedError &&
+            (error as any).code === "23505"
+        ) {
+            res.status(409).json({
+                message: "User already exists",
+            });
+            return;
+        }
     }
 };
 
@@ -97,6 +105,7 @@ export const register = async (
 ): Promise<void> => {
     try {
         const { name, email, password } = req.body;
+        const normalEmail = email?.trim().toLowerCase();
 
         if (!name || !email || !password) {
             res.status(400).json({
@@ -105,8 +114,22 @@ export const register = async (
             return;
         }
 
+        if (password.length < 8) {
+            res.status(400).json({
+                message: "Password must be at least 8 characters",
+            });
+            return;
+        }
+
+        if (name.trim().length < 2) {
+            res.status(400).json({
+                message: "Name must be at least 2 characters",
+            });
+            return;
+        }
+
         const existingUser = await userRepository.findOne({
-            where: { email },
+            where: { email: normalEmail },
         });
 
         if (existingUser) {
@@ -120,7 +143,7 @@ export const register = async (
 
         const user = userRepository.create({
             name,
-            email,
+            email: normalEmail,
             password: hashedPassword,
         });
 
@@ -146,11 +169,15 @@ export const register = async (
             user: savedUser,
         });
     } catch (error) {
-        console.error(error);
-
-        res.status(500).json({
-            message: "Registration failed",
-        });
+        if(
+            error instanceof QueryFailedError &&
+            (error as any).code === "23505"
+        ) {
+            res.status(409).json({
+                message: "User already exists",
+            });
+            return;
+        }
     }
 };
 
@@ -162,7 +189,7 @@ export const getCurrentUser = async (
         const userId=req.user?.id
 
         if(!userId){
-            res.send(404).json({
+            res.status(404).json({
                 message: "user not found",
             })
             return;
@@ -259,6 +286,8 @@ export const googleCallback = async (
 
         const { data } = await oauth2.userinfo.get();
 
+        const email = data.email!.trim().toLowerCase();
+
         if (!data.id) {
             res.status(400).json({
                 message: "Google user ID is missing",
@@ -272,12 +301,19 @@ export const googleCallback = async (
                 },
             });
 
+            if (!data.email) {
+                res.status(400).json({
+                    message: "Google account email is unavailable",
+                });
+                return;
+            }
+
             // If Google ID was not found, check whether the email
             // already belongs to an existing account.
             if (!user && data.email) {
                 user = await userRepository.findOne({
                     where: {
-                        email: data.email,
+                        email: email,
                     },
                 });
 
@@ -296,7 +332,7 @@ export const googleCallback = async (
             if (!user) {
                 const newUser = userRepository.create({
                     googleId: data.id,
-                    email: data.email!,
+                    email: email,
                     name: data.name!,
                     avatar: data.picture,
                 });
@@ -314,7 +350,7 @@ export const googleCallback = async (
             maxAge: 7 * 24 * 60 * 60 * 1000,
         });
 
-        res.redirect("http://localhost:5173/auth/callback");
+        res.redirect(`${process.env.FRONTEND_URL}/auth/callback`);
         
     } catch (error) {
         console.error(error);
@@ -344,68 +380,136 @@ export const refreshAccessToken = async (
             .update(rawToken)
             .digest("hex");
 
-        const storedToken = await refreshTokenRepository.findOne({
-            where: { tokenHash },
-        });
+        const queryRunner = AppDataSource.createQueryRunner();
 
-        if (!storedToken) {
-            res.status(401).json({
-                message: "Invalid refresh token",
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+
+        try {
+            const storedToken = await queryRunner.manager.findOne(
+                RefreshToken,
+                {
+                    where: { tokenHash },
+                    lock: {
+                        mode: "pessimistic_write",
+                    },
+                }
+            );
+
+            if (!storedToken) {
+                await queryRunner.rollbackTransaction();
+
+                res.clearCookie("refreshToken", {
+                    httpOnly: true,
+                    secure: process.env.NODE_ENV === "production",
+                    sameSite: "lax",
+                    path: "/",
+                });
+
+                res.status(401).json({
+                    message: "Invalid refresh token",
+                });
+
+                return;
+            }
+
+            if (
+                storedToken.revokedAt ||
+                storedToken.expiresAt < new Date()
+            ) {
+                await queryRunner.rollbackTransaction();
+
+                res.clearCookie("refreshToken", {
+                    httpOnly: true,
+                    secure: process.env.NODE_ENV === "production",
+                    sameSite: "lax",
+                    path: "/",
+                });
+
+                res.status(401).json({
+                    message: "Refresh token invalid or expired",
+                });
+
+                return;
+            }
+
+            storedToken.revokedAt = new Date();
+
+            await queryRunner.manager.save(
+                RefreshToken,
+                storedToken
+            );
+
+            const rawNewToken = crypto
+                .randomBytes(64)
+                .toString("hex");
+
+            const newTokenHash = crypto
+                .createHash("sha256")
+                .update(rawNewToken)
+                .digest("hex");
+
+            const expiresAt = new Date(
+                Date.now() + 7 * 24 * 60 * 60 * 1000
+            );
+
+            const newRefreshToken =
+                queryRunner.manager.create(RefreshToken, {
+                    tokenHash: newTokenHash,
+                    userId: storedToken.userId,
+                    expiresAt,
+                    revokedAt: null,
+                });
+
+            await queryRunner.manager.save(
+                RefreshToken,
+                newRefreshToken
+            );
+
+            const user = await queryRunner.manager.findOne(
+                User,
+                {
+                    where: {
+                        id: storedToken.userId,
+                    },
+                }
+            );
+
+            if (!user) {
+                await queryRunner.rollbackTransaction();
+
+                res.status(401).json({
+                    message: "User not found",
+                });
+                return;
+            }
+
+            await queryRunner.commitTransaction();
+
+            const newAccessToken =
+                generateAccessToken(user.id);
+
+            res.cookie("refreshToken", rawNewToken, {
+                httpOnly: true,
+                secure:
+                    process.env.NODE_ENV === "production",
+                sameSite: "lax",
+                path: "/",
+                maxAge: 7 * 24 * 60 * 60 * 1000,
             });
-            return;
-        }
 
-        if (
-            storedToken.revokedAt ||
-            storedToken.expiresAt < new Date()
-        ) {
-            res.status(401).json({
-                message: "Refresh token invalid or expired",
+            res.status(200).json({
+                accessToken: newAccessToken,
+                user,
             });
-            return;
+        } catch (error) {
+            await queryRunner.rollbackTransaction();
+            throw error;
+        } finally {
+            await queryRunner.release();
         }
-
-        // Revoke old refresh token
-        storedToken.revokedAt = new Date();
-        await refreshTokenRepository.save(storedToken);
-
-        // Create replacement refresh token
-        const { rawToken: newRawToken } =
-            await createRefreshToken(storedToken.userId);
-
-        // Replace cookie
-        res.cookie("refreshToken", newRawToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            path:"/",
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-        });
-
-        // Create new access token
-        const newAccessToken = generateAccessToken(
-            storedToken.userId
-        );
-
-        const user = await userRepository.findOne({
-            where: {
-                id: storedToken.userId,
-            },
-        });
-
-        if (!user) {
-            res.status(401).json({
-                message: "User not found",
-            });
-            return;
-        }
-
-        res.json({
-            accessToken: newAccessToken,
-            user
-        });
     } catch (error) {
-        console.error(error);
+        console.error("Refresh token error:", error);
 
         res.status(500).json({
             message: "Failed to refresh access token",
@@ -473,7 +577,22 @@ export const updateProfile =async (
         }
 
         if (name !== undefined) {
-        user.name = name;
+            const trimmedName = name.trim();
+
+            if(trimmedName.length === 0){
+                res.status(400).json({
+                message: "Name cannot be empty",
+                });
+                return;
+            }
+            if(trimmedName.length > 100){
+                res.status(400).json({
+                message: "Name cannot exceed 100 characters",
+                });
+                return;
+            }
+
+            user.name = trimmedName;
         }
 
         if (avatar !== undefined) {
@@ -494,7 +613,11 @@ export const updateProfile =async (
         });
 
     } catch (error) {
-        
+        console.error("Update profile error:", error);
+
+    res.status(500).json({
+        message: "Failed to update profile",
+    });
     }
 }
 
@@ -530,6 +653,18 @@ export const forgotPassword = async (
             return;
         }
 
+        await refreshTokenRepository
+            .createQueryBuilder()
+            .update(RefreshToken)
+            .set({revokedAt: new Date()})
+            .where(
+                "userId= :userId", {
+                    userId: user.id
+                }
+            )
+            .andWhere("revokedAt IS NULL")
+            .execute()
+
 
         const rawToken = crypto
             .randomBytes(32)
@@ -558,7 +693,7 @@ export const forgotPassword = async (
         );
 
         const resetUrl =
-            `http://localhost:5173/reset-password?token=${rawToken}`;
+            `${process.env.FRONTEND_URL}/reset-password?token=${rawToken}`;
 
 
         await sendPasswordResetEmail(
@@ -663,11 +798,30 @@ export const resetPassword = async (
 
         await userRepository.save(user);
 
+        await refreshTokenRepository
+            .createQueryBuilder()
+            .update(RefreshToken)
+            .set({revokedAt: new Date()})
+            .where(
+                "userId= :userId", {
+                    userId: user.id
+                }
+            )
+            .andWhere("revokedAt IS NULL")
+            .execute()
+
         resetToken.usedAt = new Date();
 
         await passwordResetTokenRepository.save(
             resetToken
         );
+
+        res.clearCookie("refreshToken", {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            path: "/"
+        })
 
         res.status(200).json({
             message: "Password reset successfully",
