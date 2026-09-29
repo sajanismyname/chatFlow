@@ -2,7 +2,12 @@ import {Server} from "socket.io";
 import type {Server as HttpServer} from "http";
 import jwt from "jsonwebtoken";
 
-interface jwtpayload {
+import { AppDataSource } from "../config/dataSource.js";
+import { ConversationMember } from "../entities/ConversationMember.js";
+import { content } from "googleapis/build/src/apis/content/index.js";
+import { createMessage } from "../services/messageServices.js";
+
+interface jwtPayLoad {
     userId: number;
 }
 
@@ -30,7 +35,7 @@ export const initializeSocketServer = (
             const decode = jwt.verify(
                 token,
                 process.env.JWT_ACCESS_SECRET!,
-            ) as jwtpayload;
+            ) as jwtPayLoad;
 
             socket.data.userId =
                         decode.userId;
@@ -58,6 +63,126 @@ export const initializeSocketServer = (
                 reason
             )
         })
+
+        socket.on("join_conversation", async (conversationId:number) => {
+            try {
+                const member = await AppDataSource
+                    .getRepository(ConversationMember)
+                    .findOne({
+                        where: {
+                            conversation: { id: conversationId },
+                            user: { id: userId},
+                        },
+                    })
+
+                if(!member){
+                    socket.emit("socket_error",{
+                        message: "You are not a member of this convo",
+                    })
+                    return
+                }
+
+                const room = `conversation: ${conversationId}`;
+
+                socket.join(room);
+
+                console.log(
+                    `user:${userId} joined ${room}`
+                )
+            } catch (error) {
+                console.error(
+                    "Error joining convo",
+                    error
+                )
+
+                socket.emit("socket_error", {
+                    message: "Failed to join convo"
+                })
+            }
+        })
+
+        socket.on(
+            "send_message",
+            async ({
+                conversationId,
+                content,
+            }: {
+                conversationId: number;
+                content: string;
+            }) => {
+                try {
+
+                    if(
+                        !Number.isInteger(conversationId) ||
+                        conversationId <= 0
+                    ){
+                        socket.emit("socket_error", {
+                            message: "invalid conversation ID"
+                        })
+                        return;
+                    }
+                    
+                    if(!content ||typeof content !== "string" || !content.trim()){
+                        socket.emit("socket_error", {
+                            message: "Message content is empty"
+                        })
+                        return;
+                    }
+
+                    const membership = await AppDataSource
+                            .getRepository(ConversationMember)
+                            .findOne({
+                                where: {
+                                    user: {id :userId},
+                                    conversation: {
+                                        id: conversationId
+                                    }
+                                }
+                            })
+
+                    if(!membership){
+                        socket.emit("socket_error", {
+                            message: "You are not a member of this conversation",
+                        })
+                        return;
+                    }
+
+                    const message = await createMessage({
+                        userId,
+                        conversationId,
+                        content
+                    })
+
+                    if(!message){
+                        socket.emit("socket_error", {
+                            message: "Failed to create message"
+                        })
+                        return;
+                    }
+
+                    io.to(`conversation:${conversationId}`).emit(
+                        "new_message",{
+                            id:message.id,
+                            conversationId,
+                            content: message.content,
+                            sender: message.sender,
+                            readAt: message.readAt,
+                            createAt: message.createdAt
+                        }
+                    )
+
+                } catch (error) {
+                    console.error(
+                        "Socket message error:",
+                        error
+                    );
+
+                    socket.emit("socket_error", {
+                        message: "Failed to send message",
+                    });
+                }
+            }
+        )
     })
 
     return io

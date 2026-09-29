@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import { AppDataSource } from "../config/dataSource.js";
 import { Message } from "../entities/Message.js";
 import { ConversationMember } from "../entities/ConversationMember.js";
+import { createMessage } from "../services/messageServices.js"
 
 const messageRepository =
     AppDataSource.getRepository(Message);
@@ -143,31 +144,11 @@ export const sendMessage = async (
             return;
         }
 
-        const message =
-            messageRepository.create({
-                content: content.trim(),
-
-                sender: {
-                    id: userId,
-                },
-
-                conversation: {
-                    id: conversationId,
-                },
-            });
-
-        const savedMessage =
-            await messageRepository.save(message);
-
-        const completeMessage =
-            await messageRepository.findOne({
-                where: {
-                    id: savedMessage.id,
-                },
-                relations: {
-                    sender: true,
-                },
-            });
+        const completeMessage = await createMessage({
+            userId,
+            conversationId,
+            content
+        })
 
         res.status(201).json({
             message: completeMessage,
