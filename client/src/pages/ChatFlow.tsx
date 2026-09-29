@@ -10,10 +10,10 @@ import Sidebar from "../components/Sidebar";
 import ChatHeader from "../components/ChatHeader";
 import MessageList from "../components/MessageList";
 import MessageInput from "../components/MessageInput";
+import { socket } from "@/socket/socket";
 
 import {
     fetchMessages,
-    sendMessage,
 } from "../features/messages/messageSlice";
 
 import {
@@ -129,6 +129,45 @@ function ChatFlow() {
         dispatch,
     ]);
 
+    /* room management */
+
+    useEffect(() => {
+        if(activeConversationId === null){
+            return;
+        }
+
+        const previousConversationId = activeConversationId
+
+        if(socket.connected){
+            socket.emit(
+                "join_conversation",
+                activeConversationId
+            )
+        }else{
+            const handleConnect = () => {
+                socket.emit(
+                    "join_conversation",
+                    activeConversationId
+                )
+            }
+
+            socket.once("connect", handleConnect)
+
+            return () =>{
+                socket.off(
+                    "connect",
+                    handleConnect
+                )
+            }
+        }
+
+        return () =>{
+            socket.emit(
+                "leave_conversation",
+                previousConversationId
+            )
+        }
+    },[activeConversationId])
 
     /* =========================
        SELECT CONVERSATION
@@ -155,18 +194,17 @@ function ChatFlow() {
         content: string
     ) => {
 
-        if (activeConversationId === null) {
+        if (activeConversationId === null || !content.trim()) {
             return;
         }
 
-        dispatch(
-            sendMessage({
-                conversationId:
-                    activeConversationId,
+        socket.emit(
+            "send_message",
+            {
+                conversationId: activeConversationId,
                 content,
-            })
-        );
-
+            }
+        )
     };
 
 

@@ -332,7 +332,10 @@ function Sidebar({
                                             undefined
                                         }
 
-                                        lastMessage=""
+                                        lastMessage={
+                                            conversation.lastMessage?.content ||
+                                            "No messages yet"
+                                        }
 
                                         active={
                                             isActive ||

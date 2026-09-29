@@ -3,8 +3,10 @@ import { AppDataSource } from "../config/dataSource.js";
 import { Conversation } from "../entities/Conversation.js";
 import { ConversationMember } from "../entities/ConversationMember.js";
 import { User } from "../entities/User.js";
+import {Message} from "../entities/Message.js"
 
 const userRepository = AppDataSource.getRepository(User);
+const messageRepository = AppDataSource.getRepository(Message)
 
 export const getConversations = async (
     req: Request,
@@ -27,7 +29,37 @@ export const getConversations = async (
             },
         });
 
-        const conversations = memberships.map((membership) => membership.conversation);
+        const conversations = await Promise.all(
+            memberships.map(async (membership)=>{
+                const conversation = membership.conversation;
+
+                const lastMessage =  await messageRepository.findOne({
+                    where:{
+                        conversation:{
+                            id: conversation.id
+                        }
+                    },
+                    relations:{
+                        sender: true
+                    },
+                    order: {
+                        createdAt: "DESC"
+                    }
+                })
+
+                return  {
+                    ...conversation,
+                    lastMessage: lastMessage
+                        ? {
+                            id: lastMessage.id,
+                            content: lastMessage.content,
+                            createdAt: lastMessage.createdAt,
+                            sender: lastMessage.sender
+                        }
+                        :null,
+                }
+            })
+        )
         res.status(200).json({ conversations });
     } catch (error) {
         console.error("Error fetching conversations:", error);

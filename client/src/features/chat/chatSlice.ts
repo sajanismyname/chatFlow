@@ -104,6 +104,22 @@ const chatSlice = createSlice({
             state.messages[
                 message.conversationId
             ].push(message);
+
+            const conversation = 
+                state.conversations.find(
+                (conversation) =>
+                        conversation.id ===
+                            message.conversationId
+            )
+
+            if(conversation){
+                conversation.lastMessage ={
+                    id:message.id,
+                    content: message.content,
+                    createdAt: message.createdAt,
+                    sender: message.sender
+                }
+            }
         },
 
         /* =========================
