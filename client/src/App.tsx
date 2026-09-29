@@ -25,6 +25,11 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 
+import {
+    connectSocket,
+    disconnectSocket
+} from "./socket/socket"
+
 
 function App() {
 
@@ -32,6 +37,14 @@ function App() {
 
     const initialized = useAppSelector(
         (state) => state.auth.initialized
+    );
+
+    const accessToken = useAppSelector(
+    (state) => state.auth.accessToken
+    );
+
+    const isAuthenticated = useAppSelector(
+        (state) => state.auth.isAuthenticated
     );
 
 
@@ -49,6 +62,23 @@ function App() {
         dispatch(initializeAuth());
 
     }, [dispatch]);
+
+    useEffect(()=>{
+        if(isAuthenticated &&
+            accessToken
+        ){
+            connectSocket(accessToken)
+        }else{
+            disconnectSocket()
+        }
+
+        return () => {
+            disconnectSocket()
+        }
+    }, [
+        isAuthenticated,
+        accessToken
+    ])
 
 
     return (

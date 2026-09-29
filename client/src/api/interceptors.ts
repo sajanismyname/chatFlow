@@ -2,8 +2,10 @@ import api from "./axios";
 import {store} from "../app/store";
 import {
     setAccessToken,
-    logout,
+    logoutUser,
 } from "../features/auth/authSlice";
+
+let refreshPromise: Promise<string> | null = null;
 
 api.interceptors.request.use((config) => {
     const accessToken =
@@ -34,26 +36,37 @@ api.interceptors.response.use(
     originalRequest._retry = true;
 
     try {
-        const response = await api.post("/auth/refresh");
+        if (!refreshPromise) {
+            refreshPromise = api
+                .post("/auth/refresh")
+                .then((response) => {
+                    const newAccessToken =
+                        response.data.accessToken;
+
+                    store.dispatch(
+                        setAccessToken(newAccessToken)
+                    );
+
+                    return newAccessToken;
+                })
+                .finally(() => {
+                    refreshPromise = null;
+                });
+        }
 
         const newAccessToken =
-            response.data.accessToken;
-
-        store.dispatch(
-            setAccessToken(newAccessToken)
-        );
+            await refreshPromise;
 
         originalRequest.headers.Authorization =
             `Bearer ${newAccessToken}`;
 
         return api(originalRequest);
-
     } catch (refreshError) {
-        store.dispatch(logout());
-        return Promise.reject(refreshError);
-    }
-}
+        store.dispatch(logoutUser());
 
-        return Promise.reject(error);
+        return Promise.reject(refreshError);
+        }
     }
-);
+
+    return Promise.reject(error);
+})

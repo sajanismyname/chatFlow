@@ -370,19 +370,49 @@ const handleSubmit = async (
                             "http://localhost:5000/api/auth/google";
                     }}
                     className="
+                        flex
                         w-full
+                        items-center
+                        justify-center
+                        gap-3
                         rounded-lg
                         border
-                        border-border
+                        border-input
                         bg-background
                         py-3
                         font-medium
                         text-foreground
                         transition-colors
-                        hover:bg-muted
+                        hover:bg-accent
+                        hover:text-accent-foreground
                     "
                 >
-                    Continue with Google
+                    {/* Google Logo */}
+                    <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                    >
+                        <path
+                            fill="#4285F4"
+                            d="M21.35 12.23c0-.79-.07-1.55-.23-2.27H12v4.3h5.23a4.47 4.47 0 0 1-1.94 2.93v2.44h3.14c1.84-1.69 2.92-4.18 2.92-7.4z"
+                        />
+                        <path
+                            fill="#34A853"
+                            d="M12 21.82c2.63 0 4.84-.87 6.45-2.36l-3.14-2.44c-.87.58-1.98.92-3.31.92-2.54 0-4.69-1.72-5.46-4.03H3.3v2.52A9.75 9.75 0 0 0 12 21.82z"
+                        />
+                        <path
+                            fill="#FBBC05"
+                            d="M6.54 13.91A5.86 5.86 0 0 1 6.23 12c0-.66.11-1.3.31-1.91V7.57H3.3A9.76 9.76 0 0 0 2.25 12c0 1.57.38 3.05 1.05 4.43l3.24-2.52z"
+                        />
+                        <path
+                            fill="#EA4335"
+                            d="M12 6.06c1.43 0 2.72.49 3.73 1.45l2.8-2.8C16.84 3.14 14.63 2.18 12 2.18a9.75 9.75 0 0 0-8.7 5.39l3.24 2.52C7.31 7.78 9.46 6.06 12 6.06z"
+                        />
+                    </svg>
+
+                    <span>Continue with Google</span>
                 </button>
 
 

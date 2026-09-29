@@ -165,6 +165,13 @@ export const updateProfileThunk = createAsyncThunk<
     }
 );
 
+export const logoutUser = createAsyncThunk(
+    "auth/logoutUser",
+    async () => {
+        await api.post("/auth/logout");
+    }
+);
+
 
 /* =========================
     AUTH SLICE
@@ -208,6 +215,8 @@ const authSlice = createSlice({
             state.accessToken = null;
             state.isAuthenticated = false;
             state.error = null;
+            state.loading = false;
+            state.initialized = true;
         },
     },
 
