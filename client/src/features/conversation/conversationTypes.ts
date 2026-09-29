@@ -5,11 +5,19 @@ export interface ConversationMember {
     user: User;
 }
 
+export interface ConversationLastMessage {
+    id: number;
+    content: string;
+    createdAt: string;
+    sender: User;
+}
+
 export interface Conversation {
     id: number;
     type: "direct" | "group";
     createdAt: string;
     members: ConversationMember[];
+    lastMessage: ConversationLastMessage | null;
 }
 
 export interface ConversationState {
