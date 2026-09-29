@@ -50,16 +50,28 @@ const SocketManager= () => {
             dispatch(addMessage(message))
         }
 
+        const handleSocketError = (error: { message: string }) => {
+            console.error(
+                "Socket error:",
+                error.message
+            );
+        };
+
         socket.on("connect", handleConnect)
         socket.on("disconnect", handleDisconnect)
         socket.on("connect_error", handleConnectError)
         socket.on("new_message", handleNewMessage)
+        socket.on("socket_error", handleSocketError)
         
         return () => {
             socket.off("connect", handleConnect)
             socket.off("disconnect", handleDisconnect)
             socket.off("connect_error", handleConnectError)
             socket.off("new_message", handleNewMessage)
+            socket.off(
+                "socket_error",
+                handleSocketError
+            );
         }
     }, [dispatch])
     

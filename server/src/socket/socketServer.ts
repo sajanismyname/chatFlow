@@ -4,7 +4,6 @@ import jwt from "jsonwebtoken";
 
 import { AppDataSource } from "../config/dataSource.js";
 import { ConversationMember } from "../entities/ConversationMember.js";
-import { content } from "googleapis/build/src/apis/content/index.js";
 import { createMessage } from "../services/messageServices.js";
 
 interface jwtPayLoad {
@@ -159,6 +158,18 @@ export const initializeSocketServer = (
                         })
                         return;
                     }
+
+                    console.log(
+    "MESSAGE CREATED:",
+    message?.id,
+    "conversation:",
+    conversationId
+);
+
+console.log(
+    "EMITTING new_message TO:",
+    `conversation:${conversationId}`
+);
 
                     io.to(`conversation:${conversationId}`).emit(
                         "new_message",{
