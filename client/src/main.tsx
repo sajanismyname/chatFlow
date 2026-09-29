@@ -6,11 +6,13 @@ import { Provider } from "react-redux";
 import { store } from "./app/store";
 import "./api/interceptors";
 import { ThemeProvider } from './components/ThemeProvider.tsx';
+import SocketManager from './socket/SocketManager.tsx';
 
 createRoot(document.getElementById('root')!).render(
     <StrictMode>
         <ThemeProvider>
             <Provider store={store}>
+                <SocketManager />
             <App />
         </Provider>
         </ThemeProvider>
