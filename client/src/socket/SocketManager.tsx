@@ -9,6 +9,11 @@ import {
     socket,
 } from "./socket";
 
+const activeConversationId =  useSelector(
+    (state: RootState) =>
+        state.chat.activeConversationId
+)
+
 const SocketManager= () => {
     const accessToken = useSelector(
         (state: RootState) => state.auth.accessToken
@@ -28,6 +33,24 @@ const SocketManager= () => {
             disconnectSocket()
         }
     }, [accessToken])
+
+    useEffect(()=>{
+        if(!socket.connected || activeConversationId === null){
+            return;
+        }
+
+        socket.emit(
+            "join_conversation",
+            activeConversationId
+        )
+
+        return () => {
+            socket.emit(
+                "leave_ conversation",
+                activeConversationId
+            )
+        }
+    }, [activeConversationId])
 
 
     useEffect(() => {

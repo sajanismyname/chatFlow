@@ -81,7 +81,7 @@ export const initializeSocketServer = (
                     return
                 }
 
-                const room = `conversation: ${conversationId}`;
+                const room = `conversation:${conversationId}`;
 
                 socket.join(room);
 
@@ -98,6 +98,16 @@ export const initializeSocketServer = (
                     message: "Failed to join convo"
                 })
             }
+        })
+
+        socket.on("leave_conversation", (conversationId:number) => {
+            const room = `conversation:${conversationId}`;
+
+            socket.leave(room)
+
+            console.log(
+            `user:${userId} left ${room}`
+            );
         })
 
         socket.on(
