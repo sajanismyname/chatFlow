@@ -21,6 +21,8 @@ export const initializeSocketServer = (
         }
     })
 
+    const onlineUsers = new Map<number, Set<string>>();
+
     io.use((socket, next) => {
         try{
             const token = socket.handshake.auth.token;
@@ -54,9 +56,44 @@ export const initializeSocketServer = (
 
         const userId = socket.data.userId;
 
+        let userSocket = onlineUsers.get(userId);
+
+        if(!userSocket){
+            userSocket = new Set()
+            onlineUsers.set(userId, userSocket)
+        }
+
+        const wasOffline = userSocket.size === 0
+
+        userSocket.add(socket.id)
+
+        if(wasOffline){
+            io.emit(
+                "user_online",{
+                    userId
+                }
+            )
+        }
+
         console.log(`user  ${userId} connected successfully`)
 
         socket.on("disconnect", (reason)=>{
+
+            const userSocket = onlineUsers.get(userId)
+
+            if(userSocket){
+                userSocket.delete(socket.id)
+
+                if(userSocket.size === 0){
+                    onlineUsers.delete(userId)
+
+                    socket.emit(
+                        "offline-user",{
+                            userId
+                        }
+                    )
+                }
+            }
             console.log(
                 `socket disconnected user: ${userId}`,
                 reason

@@ -1,6 +1,6 @@
 import {useEffect} from "react"
 import { useDispatch, useSelector } from "react-redux";
-import { addMessage } from "@/features/chat/chatSlice";
+import { addMessage, setUserOffline, setUserOnline } from "@/features/chat/chatSlice";
 
 import type { RootState } from "../app/store";
 import {
@@ -9,14 +9,14 @@ import {
     socket,
 } from "./socket";
 
-const activeConversationId =  useSelector(
-    (state: RootState) =>
-        state.chat.activeConversationId
-)
-
 const SocketManager= () => {
     const accessToken = useSelector(
         (state: RootState) => state.auth.accessToken
+    )
+
+    const activeConversationId =  useSelector(
+    (state: RootState) =>
+        state.chat.activeConversationId
     )
 
     const dispatch = useDispatch()
@@ -80,11 +80,32 @@ const SocketManager= () => {
             );
         };
 
+        const handleOnlineUser=({
+            userIds,
+        }:{
+            userIds:number[]
+        }) => {
+            userIds.forEach((userId)=>{
+                dispatch(setUserOnline(userId))
+            })
+        }
+
+        const handleUserOnline = (userId:number) => {
+            dispatch(setUserOnline(userId))
+        }
+
+        const handleUserOffline = (userId:number) => {
+            dispatch(setUserOffline(userId))
+        }
+
         socket.on("connect", handleConnect)
         socket.on("disconnect", handleDisconnect)
         socket.on("connect_error", handleConnectError)
         socket.on("new_message", handleNewMessage)
         socket.on("socket_error", handleSocketError)
+        socket.on("user_online", handleUserOnline)
+        socket.on("user_offline", handleUserOffline)
+        socket.on("online_user", handleOnlineUser)
         
         return () => {
             socket.off("connect", handleConnect)
@@ -94,6 +115,18 @@ const SocketManager= () => {
             socket.off(
                 "socket_error",
                 handleSocketError
+            );
+            socket.off(
+                "user_online",
+                handleUserOnline
+            );
+            socket.off(
+                "user_offline",
+                handleUserOffline
+            );
+            socket.off(
+                "online_user",
+                handleOnlineUser
             );
         }
     }, [dispatch])

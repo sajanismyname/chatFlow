@@ -69,6 +69,44 @@ const chatSlice = createSlice({
                 action.payload;
         },
 
+        setUserOnline:(
+            state,
+            action: PayloadAction<number>
+        ) =>{
+            const userId = action.payload;
+
+            state.conversations.forEach(
+                (conversation)=>{
+                    conversation.members.forEach(
+                        (member) =>{
+                            if(member.user.id === userId){
+                                member.user.online = true
+                            }
+                        }
+                    )
+                }
+            )
+        },
+
+        setUserOffline:(
+            state,
+            action: PayloadAction<number>
+        ) =>{
+            const userId = action.payload;
+
+            state.conversations.forEach(
+                (conversation)=>{
+                    conversation.members.forEach(
+                        (member) =>{
+                            if(member.user.id === userId){
+                                member.user.online = false
+                            }
+                        }
+                    )
+                }
+            )
+        },
+
         /* =========================
            MESSAGES
         ========================= */
@@ -139,6 +177,8 @@ export const {
     setConversations,
     addConversation,
     setActiveConversation,
+    setUserOnline,
+    setUserOffline,
     setMessages,
     addMessage,
     clearChat,
