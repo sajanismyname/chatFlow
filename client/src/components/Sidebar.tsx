@@ -65,6 +65,15 @@ function Sidebar({
 
 
     /* =========================
+       ONLINE USERS
+    ========================= */
+
+    const onlineUsers = useAppSelector(
+        (state) => state.chat.onlineUsers
+    );
+
+
+    /* =========================
        ACTIVE CONVERSATION
     ========================= */
 
@@ -314,6 +323,12 @@ function Sidebar({
                                     activeConversationId ===
                                     conversation.id;
 
+                                const isOnline =
+                                    otherUser?.id !== undefined &&
+                                    onlineUsers.includes(
+                                        otherUser.id
+                                    );
+
 
                                 return (
 
@@ -341,6 +356,10 @@ function Sidebar({
                                             isActive ||
                                             selectedConversation ===
                                                 conversation.id
+                                        }
+
+                                        online={
+                                            isOnline
                                         }
 
                                         onClick={() =>

@@ -1,5 +1,5 @@
-import { Server } from "socket.io";
-import type { Server as HttpServer } from "http";
+import {Server} from "socket.io";
+import type {Server as HttpServer} from "http";
 import jwt from "jsonwebtoken";
 
 import { AppDataSource } from "../config/dataSource.js";
@@ -16,196 +16,138 @@ export const initializeSocketServer = (
     const io = new Server(httpServer, {
         cors: {
             origin:
-                process.env.FRONTEND_URL ||
-                "http://localhost:5173",
-            credentials: true,
-        },
-    });
+                process.env.FRONTEND_URL || "http://localhost:5173",
+                credentials: true
+        }
+    })
 
-    const onlineUsers = new Map<
-        number,
-        Set<string>
-    >();
+    const onlineUsers = new Map<number, Set<string>>();
 
     io.use((socket, next) => {
-        try {
-            const token =
-                socket.handshake.auth.token;
+        try{
+            const token = socket.handshake.auth.token;
 
-            if (!token) {
+            if(!token){
                 return next(
-                    new Error(
-                        "Authentication required"
-                    )
+                    new Error("Authentication required")
                 );
             }
 
             const decode = jwt.verify(
                 token,
-                process.env.JWT_ACCESS_SECRET!
+                process.env.JWT_ACCESS_SECRET!,
             ) as jwtPayLoad;
 
             socket.data.userId =
-                decode.userId;
+                        decode.userId;
 
             next();
-        } catch {
-            next(
+        }catch{
+            next (
                 new Error(
                     "Invalid or expired token"
                 )
-            );
+            )
         }
-    });
+    })
 
-    io.on("connection", (socket) => {
+
+    io.on("connection", (socket)=>{
+
         const userId = socket.data.userId;
 
-        let userSocket =
-            onlineUsers.get(userId);
+        let userSocket = onlineUsers.get(userId);
 
-        if (!userSocket) {
-            userSocket = new Set();
-            onlineUsers.set(
-                userId,
-                userSocket
-            );
+        if(!userSocket){
+            userSocket = new Set()
+            onlineUsers.set(userId, userSocket)
         }
 
-        const wasOffline =
-            userSocket.size === 0;
+        const wasOffline = userSocket.size === 0;
 
         userSocket.add(socket.id);
 
-        // Send the current online users
-        // to the newly connected client.
+        // Send currently online users to the newly connected user
         socket.emit("online_user", {
-            userIds:
-                Array.from(
-                    onlineUsers.keys()
-                ),
+            userIds: Array.from(onlineUsers.keys()),
         });
 
-        // Notify existing clients that
-        // this user has come online.
+        // Tell everyone else that this user just came online
         if (wasOffline) {
-            socket.broadcast.emit(
-                "user_online",
-                userId
-            );
+            socket.broadcast.emit("user_online", userId);
         }
 
-        console.log(
-            `user ${userId} connected successfully`
-        );
+        console.log(`user  ${userId} connected successfully`)
 
-        socket.on(
-            "disconnect",
-            (reason) => {
-                const userSocket =
-                    onlineUsers.get(
-                        userId
-                    );
+        socket.on("disconnect", (reason)=>{
 
-                if (userSocket) {
-                    userSocket.delete(
-                        socket.id
-                    );
+            const userSocket = onlineUsers.get(userId)
 
-                    // Only mark the user offline
-                    // when all their sockets disconnect.
-                    if (
-                        userSocket.size === 0
-                    ) {
-                        onlineUsers.delete(
+            if(userSocket){
+                userSocket.delete(socket.id)
+
+                if(userSocket.size === 0){
+                    onlineUsers.delete(userId)
+
+                    io.emit(
+                        "offline-user",{
                             userId
-                        );
-
-                        io.emit(
-                            "user_offline",
-                            userId
-                        );
-                    }
-                }
-
-                console.log(
-                    `socket disconnected user: ${userId}`,
-                    reason
-                );
-            }
-        );
-
-        socket.on(
-            "join_conversation",
-            async (
-                conversationId: number
-            ) => {
-                try {
-                    const member =
-                        await AppDataSource
-                            .getRepository(
-                                ConversationMember
-                            )
-                            .findOne({
-                                where: {
-                                    conversation: {
-                                        id: conversationId,
-                                    },
-                                    user: {
-                                        id: userId,
-                                    },
-                                },
-                            });
-
-                    if (!member) {
-                        socket.emit(
-                            "socket_error",
-                            {
-                                message:
-                                    "You are not a member of this convo",
-                            }
-                        );
-                        return;
-                    }
-
-                    const room =
-                        `conversation:${conversationId}`;
-
-                    socket.join(room);
-
-                    console.log(
-                        `user:${userId} joined ${room}`
-                    );
-                } catch (error) {
-                    console.error(
-                        "Error joining convo",
-                        error
-                    );
-
-                    socket.emit(
-                        "socket_error",
-                        {
-                            message:
-                                "Failed to join convo",
                         }
-                    );
+                    )
                 }
             }
-        );
+            console.log(
+                `socket disconnected user: ${userId}`,
+                reason
+            )
+        })
 
-        socket.on(
-            "leave_conversation",
-            (conversationId: number) => {
-                const room =
-                    `conversation:${conversationId}`;
+        socket.on("join_conversation", async (conversationId:number) => {
+            try {
+                const member = await AppDataSource
+                    .getRepository(ConversationMember)
+                    .findOne({
+                        where: {
+                            conversation: { id: conversationId },
+                            user: { id: userId},
+                        },
+                    })
 
-                socket.leave(room);
+                if(!member){
+                    socket.emit("socket_error",{
+                        message: "You are not a member of this convo",
+                    })
+                    return
+                }
+
+                const room = `conversation:${conversationId}`;
+
+                socket.join(room);
 
                 console.log(
-                    `user:${userId} left ${room}`
-                );
+                    `user:${userId} joined ${room}`
+                )
+            } catch (error) {
+                console.error(
+                    "Error joining convo",
+                    error
+                )
+
+                socket.emit("socket_error", {
+                    message: "Failed to join convo"
+                })
             }
-        );
+        })
+
+        socket.on("leave_conversation", (conversationId:number) => {
+            const room = `conversation:${conversationId}`;
+
+            socket.leave(room)
+
+            console.log(
+            `user:${userId} left ${room}`
+            );
+        })
 
         socket.on(
             "send_message",
@@ -217,129 +159,91 @@ export const initializeSocketServer = (
                 content: string;
             }) => {
                 try {
-                    if (
-                        !Number.isInteger(
-                            conversationId
-                        ) ||
+
+                    if(
+                        !Number.isInteger(conversationId) ||
                         conversationId <= 0
-                    ) {
-                        socket.emit(
-                            "socket_error",
-                            {
-                                message:
-                                    "invalid conversation ID",
-                            }
-                        );
+                    ){
+                        socket.emit("socket_error", {
+                            message: "invalid conversation ID"
+                        })
+                        return;
+                    }
+                    
+                    if(!content ||typeof content !== "string" || !content.trim()){
+                        socket.emit("socket_error", {
+                            message: "Message content is empty"
+                        })
                         return;
                     }
 
-                    if (
-                        !content ||
-                        typeof content !==
-                            "string" ||
-                        !content.trim()
-                    ) {
-                        socket.emit(
-                            "socket_error",
-                            {
-                                message:
-                                    "Message content is empty",
-                            }
-                        );
-                        return;
-                    }
-
-                    const membership =
-                        await AppDataSource
-                            .getRepository(
-                                ConversationMember
-                            )
+                    const membership = await AppDataSource
+                            .getRepository(ConversationMember)
                             .findOne({
                                 where: {
-                                    user: {
-                                        id: userId,
-                                    },
+                                    user: {id :userId},
                                     conversation: {
-                                        id: conversationId,
-                                    },
-                                },
-                            });
+                                        id: conversationId
+                                    }
+                                }
+                            })
 
-                    if (!membership) {
-                        socket.emit(
-                            "socket_error",
-                            {
-                                message:
-                                    "You are not a member of this conversation",
-                            }
-                        );
+                    if(!membership){
+                        socket.emit("socket_error", {
+                            message: "You are not a member of this conversation",
+                        })
                         return;
                     }
 
-                    const message =
-                        await createMessage({
-                            userId,
-                            conversationId,
-                            content,
-                        });
+                    const message = await createMessage({
+                        userId,
+                        conversationId,
+                        content
+                    })
 
-                    if (!message) {
-                        socket.emit(
-                            "socket_error",
-                            {
-                                message:
-                                    "Failed to create message",
-                            }
-                        );
+                    if(!message){
+                        socket.emit("socket_error", {
+                            message: "Failed to create message"
+                        })
                         return;
                     }
 
                     console.log(
-                        "MESSAGE CREATED:",
-                        message?.id,
-                        "conversation:",
-                        conversationId
-                    );
+    "MESSAGE CREATED:",
+    message?.id,
+    "conversation:",
+    conversationId
+);
 
-                    console.log(
-                        "EMITTING new_message TO:",
-                        `conversation:${conversationId}`
-                    );
+console.log(
+    "EMITTING new_message TO:",
+    `conversation:${conversationId}`
+);
 
-                    io.to(
-                        `conversation:${conversationId}`
-                    ).emit(
-                        "new_message",
-                        {
-                            id: message.id,
+                    io.to(`conversation:${conversationId}`).emit(
+                        "new_message",{
+                            id:message.id,
                             conversationId,
-                            content:
-                                message.content,
-                            sender:
-                                message.sender,
-                            readAt:
-                                message.readAt,
-                            createAt:
-                                message.createdAt,
+                            content: message.content,
+                            sender: message.sender,
+                            readAt: message.readAt,
+                            createAt: message.createdAt
                         }
-                    );
+                    )
+
                 } catch (error) {
                     console.error(
                         "Socket message error:",
                         error
                     );
 
-                    socket.emit(
-                        "socket_error",
-                        {
-                            message:
-                                "Failed to send message",
-                        }
-                    );
+                    socket.emit("socket_error", {
+                        message: "Failed to send message",
+                    });
                 }
             }
-        );
-    });
+        )
+    })
 
-    return io;
-};
+    return io
+}

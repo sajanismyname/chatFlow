@@ -50,7 +50,7 @@ function ConversationItem({
                 transition-colors
                 ${
                     active
-                        ? "bg-accent"
+                        ? "bg-muted"
                         : "hover:bg-muted/60"
                 }
             `}
@@ -90,7 +90,7 @@ function ConversationItem({
                         ${
                             online
                                 ? "bg-emerald-500"
-                                : "bg-muted-foreground"
+                                : "bg-gray-500"
                         }
                     `}
                 />
