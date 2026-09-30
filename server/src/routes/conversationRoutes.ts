@@ -3,6 +3,7 @@ import { Router } from "express";
 import {
     getConversations,
     createConversation,
+    deleteConversation
 } from "../controllers/conversationController.js";
 
 import {
@@ -21,6 +22,12 @@ router.post(
     "/",
     authenticate,
     createConversation
+);
+
+router.delete(
+    "/:conversationId",
+    authenticate,
+    deleteConversation
 );
 
 export default router;

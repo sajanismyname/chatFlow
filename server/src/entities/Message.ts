@@ -26,6 +26,13 @@ export class Message {
     @JoinColumn({ name: "conversation_id" })
     conversation!: Conversation;
 
+    @ManyToOne(() => Message, {
+        nullable: true,
+        onDelete: "SET NULL",
+    })
+    @JoinColumn({ name: "reply_to_message_id" })
+    replyToMessage!: Message | null;
+
     @CreateDateColumn()
     createdAt!: Date;
 

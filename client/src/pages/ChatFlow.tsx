@@ -18,6 +18,7 @@ import {
 
 import {
     fetchConversations,
+    deleteConversation
 } from "../features/conversation/conversationSlice";
 
 import {
@@ -219,6 +220,30 @@ function ChatFlow() {
         return content;
     };
 
+    const handleDeleteConversation = async () => {
+        if (activeConversationId === null) {
+            return;
+        }
+
+        const conversationId =
+            activeConversationId;
+
+        try {
+            await dispatch(
+                deleteConversation(
+                    conversationId
+                )
+            ).unwrap();
+
+            socket.emit(
+                "leave_conversation",
+                conversationId
+            );
+        } catch {
+            // Deletion failed.
+        }
+    };
+
     return (
         <div className="flex h-screen flex-col bg-background">
             <Navbar />
@@ -231,15 +256,15 @@ function ChatFlow() {
                                 ...conversation,
                                 lastMessage:
                                     conversation.lastMessage
-                                        ? {
-                                              ...conversation.lastMessage,
-                                              content:
-                                                  getLastMessagePreview(
-                                                      conversation
-                                                          .lastMessage
-                                                          .content
-                                                  ),
-                                          }
+                                            ? {
+                                                ...conversation.lastMessage,
+                                                content:
+                                                    getLastMessagePreview(
+                                                        conversation
+                                                            .lastMessage
+                                                            .content
+                                                    ),
+                                            }
                                         : conversation.lastMessage,
                             })
                         )
@@ -284,6 +309,12 @@ function ChatFlow() {
                                 }
                                 online={
                                     otherUserOnline
+                                }
+                                userId={
+                                    otherUser?.id
+                                }
+                                onDeleteConversation={
+                                    handleDeleteConversation
                                 }
                             />
 

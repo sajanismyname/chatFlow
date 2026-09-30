@@ -8,13 +8,18 @@ import { Message } from "../entities/Message.js";
 
 import {
     createConversationSchema,
+    deleteConversationSchema,
 } from "../validators/conversationValidator.js";
+
 
 const userRepository =
     AppDataSource.getRepository(User);
 
 const messageRepository =
     AppDataSource.getRepository(Message);
+
+const conversationMemberRepository =
+    AppDataSource.getRepository(ConversationMember);
 
 
 export const getConversations = async (
@@ -337,6 +342,63 @@ export const createConversation = async (
         res.status(500).json({
             message:
                 "Failed to create conversation",
+        });
+    }
+};
+
+export const deleteConversation = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    try {
+        const userId = req.user?.id;
+
+        if (!userId) {
+            res.status(401).json({
+                message: "Unauthorized",
+            });
+            return;
+        }
+
+        const validation =
+            deleteConversationSchema.safeParse({
+                conversationId: req.params.conversationId,
+            });
+
+        if (!validation.success) {
+            res.status(400).json({
+                message: "Invalid conversation ID",
+            });
+            return;
+        }
+
+        const { conversationId } = validation.data;
+
+        const result =
+            await conversationMemberRepository.delete({
+                user: {
+                    id: userId,
+                },
+                conversation: {
+                    id: conversationId,
+                },
+            });
+
+        if (result.affected === 0) {
+            res.status(404).json({
+                message: "Conversation not found",
+            });
+            return;
+        }
+
+        res.status(200).json({
+            message: "Conversation deleted successfully",
+        });
+    } catch (error) {
+        console.error("Error deleting conversation:", error);
+
+        res.status(500).json({
+            message: "Failed to delete conversation",
         });
     }
 };
