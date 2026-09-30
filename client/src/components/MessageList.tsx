@@ -1,3 +1,8 @@
+import {
+    useLayoutEffect,
+    useRef,
+} from "react";
+
 import { useAppSelector } from "../app/hooks";
 
 import type {
@@ -11,10 +16,9 @@ import {
 } from "@/components/ui/avatar";
 
 import {
-    ScrollArea,
-} from "@/components/ui/scroll-area";
-
-import { FileText, Download } from "lucide-react";
+    FileText,
+    Download,
+} from "lucide-react";
 
 
 interface MessageListProps {
@@ -31,9 +35,122 @@ function MessageList({
     );
 
 
+    /*
+    =========================
+       SCROLL CONTAINER
+    =========================
+    */
+
+    const scrollRef =
+        useRef<HTMLDivElement | null>(null);
+
+    const previousMessageCount =
+        useRef(0);
+
+    const initialLoad =
+        useRef(true);
+
+
+    /*
+    =========================
+       SCROLL ANCHORING
+    =========================
+    */
+
+    useLayoutEffect(() => {
+
+        const container =
+            scrollRef.current;
+
+        if (!container) {
+            return;
+        }
+
+
+        const currentCount =
+            messages.length;
+
+        const previousCount =
+            previousMessageCount.current;
+
+
+        /*
+        =========================
+           INITIAL LOAD
+        =========================
+
+           Start the conversation at
+           the newest message.
+        */
+
+        if (
+            initialLoad.current &&
+            currentCount > 0
+        ) {
+
+            container.scrollTop =
+                container.scrollHeight;
+
+            initialLoad.current = false;
+
+            previousMessageCount.current =
+                currentCount;
+
+            return;
+        }
+
+
+        /*
+        =========================
+           NEW MESSAGE
+        =========================
+        */
+
+        if (
+            currentCount >
+            previousCount
+        ) {
+
+            const distanceFromBottom =
+                container.scrollHeight -
+                container.scrollTop -
+                container.clientHeight;
+
+
+            /*
+             * Only follow the new message
+             * if the user is already near
+             * the bottom.
+             */
+
+            if (
+                distanceFromBottom <= 100
+            ) {
+
+                container.scrollTop =
+                    container.scrollHeight;
+
+            }
+
+        }
+
+
+        previousMessageCount.current =
+            currentCount;
+
+    }, [messages]);
+
+
     return (
 
-        <ScrollArea className="flex-1">
+        <div
+            ref={scrollRef}
+            className="
+                min-h-0
+                flex-1
+                overflow-y-auto
+            "
+        >
 
             <div className="flex flex-col gap-4 p-6">
 
@@ -66,14 +183,18 @@ function MessageList({
                                 bg-muted
                             "
                         >
+
                             <span className="text-2xl">
                                 💬
                             </span>
+
                         </div>
+
 
                         <h3 className="text-sm font-semibold">
                             No messages yet
                         </h3>
+
 
                         <p className="mt-1 text-xs text-muted-foreground">
                             Send a message to start the conversation.
@@ -116,18 +237,29 @@ function MessageList({
                             size?: number;
                         } | null = null;
 
+
                         try {
-                            const parsed = JSON.parse(message.content);
+
+                            const parsed =
+                                JSON.parse(
+                                    message.content
+                                );
+
                             if (
-                                parsed?.type === "attachment" &&
-                                typeof parsed.url === "string" &&
-                                typeof parsed.fileName === "string"
+                                parsed?.type ===
+                                    "attachment" &&
+                                typeof parsed.url ===
+                                    "string" &&
+                                typeof parsed.fileName ===
+                                    "string"
                             ) {
                                 attachment = parsed;
                             }
+
                         } catch {
                             // Normal text message.
                         }
+
 
                         return (
 
@@ -144,10 +276,6 @@ function MessageList({
                                     }
                                 `}
                             >
-
-                                {/* =========================
-                                    OTHER USER AVATAR
-                                ========================= */}
 
                                 {!mine && (
 
@@ -171,10 +299,6 @@ function MessageList({
 
                                 )}
 
-
-                                {/* =========================
-                                    MESSAGE
-                                ========================= */}
 
                                 <div
                                     className={`
@@ -211,61 +335,118 @@ function MessageList({
                                             }
                                         `}
                                     >
+
                                         {attachment ? (
+
                                             <div className="space-y-2">
-                                                {attachment.mimeType.startsWith("image/") ? (
+
+                                                {attachment.mimeType.startsWith(
+                                                    "image/"
+                                                ) ? (
+
                                                     <a
-                                                        href={attachment.url}
+                                                        href={
+                                                            attachment.url
+                                                        }
                                                         target="_blank"
                                                         rel="noreferrer"
                                                     >
+
                                                         <img
-                                                            src={attachment.url}
-                                                            alt={attachment.fileName}
-                                                            className="max-h-72 max-w-full rounded-xl object-cover"
+                                                            src={
+                                                                attachment.url
+                                                            }
+                                                            alt={
+                                                                attachment.fileName
+                                                            }
+                                                            className="
+                                                                max-h-72
+                                                                max-w-full
+                                                                rounded-xl
+                                                                object-cover
+                                                            "
                                                         />
+
                                                     </a>
+
                                                 ) : (
+
                                                     <a
-                                                        href={attachment.url}
+                                                        href={
+                                                            attachment.url
+                                                        }
                                                         target="_blank"
                                                         rel="noreferrer"
-                                                        className="flex items-center gap-3 rounded-xl border border-current/10 px-3 py-2 hover:bg-black/5 dark:hover:bg-white/5"
+                                                        className="
+                                                            flex
+                                                            items-center
+                                                            gap-3
+                                                            rounded-xl
+                                                            border
+                                                            border-current/10
+                                                            px-3
+                                                            py-2
+                                                            hover:bg-black/5
+                                                            dark:hover:bg-white/5
+                                                        "
                                                     >
+
                                                         <FileText className="size-5 shrink-0" />
-                                                        <span className="min-w-0 flex-1 truncate">
-                                                            {attachment.fileName}
+
+                                                        <span className="
+                                                            min-w-0
+                                                            flex-1
+                                                            truncate
+                                                        ">
+                                                            {
+                                                                attachment.fileName
+                                                            }
                                                         </span>
+
                                                         <Download className="size-4 shrink-0" />
+
                                                     </a>
+
                                                 )}
 
+
                                                 {attachment.text && (
-                                                    <p className="whitespace-pre-wrap wrap-break-word">
-                                                        {attachment.text}
+
+                                                    <p className="
+                                                        whitespace-pre-wrap
+                                                        wrap-break-word
+                                                    ">
+                                                        {
+                                                            attachment.text
+                                                        }
                                                     </p>
+
                                                 )}
+
                                             </div>
+
                                         ) : (
-                                            <p className="whitespace-pre-wrap wrap-break-word">
-                                                {message.content}
+
+                                            <p className="
+                                                whitespace-pre-wrap
+                                                wrap-break-word
+                                            ">
+                                                {
+                                                    message.content
+                                                }
                                             </p>
+
                                         )}
+
                                     </div>
 
 
-                                    {/* =========================
-                                        TIMESTAMP
-                                    ========================= */}
-
-                                    <span
-                                        className="
-                                            mt-1
-                                            px-1
-                                            text-[10px]
-                                            text-muted-foreground
-                                        "
-                                    >
+                                    <span className="
+                                        mt-1
+                                        px-1
+                                        text-[10px]
+                                        text-muted-foreground
+                                    ">
                                         {new Date(
                                             message.createdAt
                                         ).toLocaleTimeString(
@@ -289,7 +470,7 @@ function MessageList({
 
             </div>
 
-        </ScrollArea>
+        </div>
 
     );
 }

@@ -52,11 +52,6 @@ const SocketManager = () => {
         };
 
         const handleNewMessage = (message: any) => {
-            console.log(
-                "New Message received:",
-                message
-            );
-
             dispatch(addMessage(message));
         };
 
@@ -74,11 +69,6 @@ const SocketManager = () => {
         }: {
             userIds: number[];
         }) => {
-            console.log(
-                "Online users:",
-                userIds
-            );
-
             userIds.forEach((userId) => {
                 dispatch(
                     setUserOnline(userId)
@@ -89,11 +79,6 @@ const SocketManager = () => {
         const handleUserOnline = (
             userId: number
         ) => {
-            console.log(
-                "User online:",
-                userId
-            );
-
             dispatch(
                 setUserOnline(userId)
             );
@@ -102,11 +87,6 @@ const SocketManager = () => {
         const handleUserOffline = (
             userId: number
         ) => {
-            console.log(
-                "User offline:",
-                userId
-            );
-
             dispatch(
                 setUserOffline(userId)
             );

@@ -103,14 +103,6 @@ function ChatFlow() {
             otherUser.id
         );
 
-    console.log(
-        "HEADER PRESENCE:",
-        {
-            otherUserId: otherUser?.id,
-            onlineUsers,
-            online: otherUserOnline,
-        }
-    );
 
     /* =========================
        FETCH CONVERSATIONS
@@ -244,11 +236,7 @@ function ChatFlow() {
                     onSelectConversation={
                         handleSelectConversation
                     }
-                    onNewChat={() =>
-                        console.log(
-                            "New chat"
-                        )
-                    }
+
                 />
 
                 <main className="flex min-w-0 flex-1 flex-col">

@@ -90,7 +90,7 @@ export const initializeSocketServer = (
                     onlineUsers.delete(userId)
 
                     io.emit(
-                        "offline-user",{
+                        "user_offline",{
                             userId
                         }
                     )
@@ -123,10 +123,6 @@ export const initializeSocketServer = (
                 const room = `conversation:${conversationId}`;
 
                 socket.join(room);
-
-                console.log(
-                    `user:${userId} joined ${room}`
-                )
             } catch (error) {
                 console.error(
                     "Error joining convo",
@@ -215,10 +211,6 @@ export const initializeSocketServer = (
     conversationId
 );
 
-console.log(
-    "EMITTING new_message TO:",
-    `conversation:${conversationId}`
-);
 
                     io.to(`conversation:${conversationId}`).emit(
                         "new_message",{
@@ -227,7 +219,7 @@ console.log(
                             content: message.content,
                             sender: message.sender,
                             readAt: message.readAt,
-                            createAt: message.createdAt
+                            createdAt: message.createdAt
                         }
                     )
 
