@@ -3,7 +3,12 @@ import type { Request, Response } from "express";
 import { AppDataSource } from "../config/dataSource.js";
 import { Message } from "../entities/Message.js";
 import { ConversationMember } from "../entities/ConversationMember.js";
-import { createMessage } from "../services/messageServices.js"
+import { createMessage } from "../services/messageServices.js";
+
+import {
+    conversationIdSchema,
+    sendMessageSchema,
+} from "../validators/messageValidator.js";
 
 const messageRepository =
     AppDataSource.getRepository(Message);
@@ -19,10 +24,6 @@ export const getMessages = async (
     try {
         const userId = req.user?.id;
 
-        const conversationId = Number(
-            req.params.conversationId
-        );
-
         if (!userId) {
             res.status(401).json({
                 message: "Unauthorized",
@@ -30,12 +31,20 @@ export const getMessages = async (
             return;
         }
 
-        if (!conversationId) {
+        const validation =
+            conversationIdSchema.safeParse(
+                req.params
+            );
+
+        if (!validation.success) {
             res.status(400).json({
                 message: "Invalid conversation ID",
             });
             return;
         }
+
+        const { conversationId } =
+            validation.data;
 
         const membership =
             await conversationMemberRepository.findOne({
@@ -92,12 +101,6 @@ export const sendMessage = async (
     try {
         const userId = req.user?.id;
 
-        const conversationId = Number(
-            req.params.conversationId
-        );
-
-        const { content } = req.body;
-
         if (!userId) {
             res.status(401).json({
                 message: "Unauthorized",
@@ -105,24 +108,40 @@ export const sendMessage = async (
             return;
         }
 
-        if (!conversationId) {
+        const paramsValidation =
+            conversationIdSchema.safeParse(
+                req.params
+            );
+
+        if (!paramsValidation.success) {
             res.status(400).json({
                 message: "Invalid conversation ID",
             });
             return;
         }
 
-        if (
-            !content ||
-            typeof content !== "string" ||
-            !content.trim()
-        ) {
+        const bodyValidation =
+            sendMessageSchema.safeParse(
+                req.body
+            );
+
+        if (!bodyValidation.success) {
             res.status(400).json({
                 message:
-                    "Message content is required",
+                    bodyValidation.error.issues[0]
+                        ?.message ||
+                    "Invalid message",
             });
             return;
         }
+
+        const {
+            conversationId,
+        } = paramsValidation.data;
+
+        const {
+            content,
+        } = bodyValidation.data;
 
         const membership =
             await conversationMemberRepository.findOne({
@@ -144,11 +163,12 @@ export const sendMessage = async (
             return;
         }
 
-        const completeMessage = await createMessage({
-            userId,
-            conversationId,
-            content
-        })
+        const completeMessage =
+            await createMessage({
+                userId,
+                conversationId,
+                content,
+            });
 
         res.status(201).json({
             message: completeMessage,
