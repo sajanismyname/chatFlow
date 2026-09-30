@@ -49,7 +49,21 @@ export const fetchConversations =
                     );
 
                 const conversations =
-                    response.data.conversations;
+                    response.data.conversations.map(
+                        (conversation:Conversation)=>({
+                            ...conversation,
+
+                            members: conversation.members.map(
+                                (member)=>({
+                                    ...member,
+                                    user:{
+                                        ...member.user,
+                                        online:false
+                                    }
+                                })
+                            )
+                        })
+                    )
 
                 dispatch(
                     setConversations(

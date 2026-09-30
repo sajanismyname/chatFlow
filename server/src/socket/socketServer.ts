@@ -4,7 +4,6 @@ import jwt from "jsonwebtoken";
 
 import { AppDataSource } from "../config/dataSource.js";
 import { ConversationMember } from "../entities/ConversationMember.js";
-import { content } from "googleapis/build/src/apis/content/index.js";
 import { createMessage } from "../services/messageServices.js";
 
 interface jwtPayLoad {
@@ -21,6 +20,8 @@ export const initializeSocketServer = (
                 credentials: true
         }
     })
+
+    const onlineUsers = new Map<number, Set<string>>();
 
     io.use((socket, next) => {
         try{
@@ -55,13 +56,44 @@ export const initializeSocketServer = (
 
         const userId = socket.data.userId;
 
-        console.log(`user  ${userId} connected successfully`)
+        let userSocket = onlineUsers.get(userId);
 
-        socket.on("disconnect", (reason)=>{
-            console.log(
-                `socket disconnected user: ${userId}`,
-                reason
-            )
+        if(!userSocket){
+            userSocket = new Set()
+            onlineUsers.set(userId, userSocket)
+        }
+
+        const wasOffline = userSocket.size === 0;
+
+        userSocket.add(socket.id);
+
+        // Send currently online users to the newly connected user
+        socket.emit("online_user", {
+            userIds: Array.from(onlineUsers.keys()),
+        });
+
+        // Tell everyone else that this user just came online
+        if (wasOffline) {
+            socket.broadcast.emit("user_online", userId);
+        }
+
+        socket.on("disconnect", ()=>{
+
+            const userSocket = onlineUsers.get(userId)
+
+            if(userSocket){
+                userSocket.delete(socket.id)
+
+                if(userSocket.size === 0){
+                    onlineUsers.delete(userId)
+
+                    io.emit(
+                        "user_offline",{
+                            userId
+                        }
+                    )
+                }
+            }
         })
 
         socket.on("join_conversation", async (conversationId:number) => {
@@ -82,13 +114,9 @@ export const initializeSocketServer = (
                     return
                 }
 
-                const room = `conversation: ${conversationId}`;
+                const room = `conversation:${conversationId}`;
 
                 socket.join(room);
-
-                console.log(
-                    `user:${userId} joined ${room}`
-                )
             } catch (error) {
                 console.error(
                     "Error joining convo",
@@ -99,6 +127,13 @@ export const initializeSocketServer = (
                     message: "Failed to join convo"
                 })
             }
+        })
+
+        socket.on("leave_conversation", (conversationId:number) => {
+            const room = `conversation:${conversationId}`;
+
+            socket.leave(room)
+
         })
 
         socket.on(
@@ -160,6 +195,7 @@ export const initializeSocketServer = (
                         return;
                     }
 
+
                     io.to(`conversation:${conversationId}`).emit(
                         "new_message",{
                             id:message.id,
@@ -167,7 +203,7 @@ export const initializeSocketServer = (
                             content: message.content,
                             sender: message.sender,
                             readAt: message.readAt,
-                            createAt: message.createdAt
+                            createdAt: message.createdAt
                         }
                     )
 

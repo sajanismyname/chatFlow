@@ -14,6 +14,7 @@ function ConversationItem({
     avatar,
     lastMessage,
     active = false,
+    online = false,
     onClick,
 }: ConversationItemProps) {
 
@@ -49,7 +50,7 @@ function ConversationItem({
                 transition-colors
                 ${
                     active
-                        ? "bg-accent"
+                        ? "bg-muted"
                         : "hover:bg-muted/60"
                 }
             `}
@@ -78,7 +79,7 @@ function ConversationItem({
                 {/* ONLINE INDICATOR */}
 
                 <span
-                    className="
+                    className={`
                         absolute
                         bottom-0
                         right-0
@@ -86,8 +87,12 @@ function ConversationItem({
                         rounded-full
                         border-2
                         border-background
-                        bg-emerald-500
-                    "
+                        ${
+                            online
+                                ? "bg-emerald-500"
+                                : "bg-gray-500"
+                        }
+                    `}
                 />
 
             </div>

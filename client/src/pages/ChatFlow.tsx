@@ -23,22 +23,16 @@ import {
 import {
     setActiveConversation,
 } from "../features/chat/chatSlice";
+
 import type { Message } from "@/features/messages/messageType";
 
 const EMPTY_MESSAGES: Message[] = [];
 
 function ChatFlow() {
-
     const dispatch = useAppDispatch();
 
-
-    /* =========================
-       CHAT STATE
-    ========================= */
-
     const conversations = useAppSelector(
-        (state) =>
-            state.chat.conversations
+        (state) => state.chat.conversations
     );
 
     const activeConversationId =
@@ -51,24 +45,21 @@ function ChatFlow() {
         (state) =>
             activeConversationId !== null
                 ? state.chat.messages[
-                    activeConversationId
-                ] ?? EMPTY_MESSAGES
+                      activeConversationId
+                  ] ?? EMPTY_MESSAGES
                 : EMPTY_MESSAGES
     );
 
-
-    /* =========================
-       AUTH
-    ========================= */
+    const onlineUsers = useAppSelector(
+        (state) =>
+            (state.chat as {
+                onlineUsers?: number[];
+            }).onlineUsers ?? []
+    );
 
     const currentUser = useAppSelector(
         (state) => state.auth.user
     );
-
-
-    /* =========================
-       ACTIVE CONVERSATION
-    ========================= */
 
     const selectedConversationData =
         conversations.find(
@@ -76,11 +67,6 @@ function ChatFlow() {
                 conversation.id ===
                 activeConversationId
         );
-
-
-    /* =========================
-       OTHER USER
-    ========================= */
 
     const otherUser =
         selectedConversationData
@@ -94,27 +80,22 @@ function ChatFlow() {
                     currentUser?.id
             )?.user;
 
-
-    /* =========================
-       FETCH CONVERSATIONS
-    ========================= */
+    const otherUserOnline =
+        otherUser?.id !== undefined &&
+        onlineUsers.includes(
+            otherUser.id
+        );
 
     useEffect(() => {
-
         dispatch(
             fetchConversations()
         );
-
     }, [dispatch]);
 
-
-    /* =========================
-       FETCH MESSAGES
-    ========================= */
-
     useEffect(() => {
-
-        if (activeConversationId === null) {
+        if (
+            activeConversationId === null
+        ) {
             return;
         }
 
@@ -123,180 +104,209 @@ function ChatFlow() {
                 activeConversationId
             )
         );
-
     }, [
         activeConversationId,
         dispatch,
     ]);
 
-    /* room management */
-
     useEffect(() => {
-        if(activeConversationId === null){
+        if (
+            activeConversationId === null
+        ) {
             return;
         }
 
-        const previousConversationId = activeConversationId
+        const previousConversationId =
+            activeConversationId;
 
-        if(socket.connected){
+        if (socket.connected) {
             socket.emit(
                 "join_conversation",
                 activeConversationId
-            )
-        }else{
+            );
+        } else {
             const handleConnect = () => {
                 socket.emit(
                     "join_conversation",
                     activeConversationId
-                )
-            }
+                );
+            };
 
-            socket.once("connect", handleConnect)
+            socket.once(
+                "connect",
+                handleConnect
+            );
 
-            return () =>{
+            return () => {
                 socket.off(
                     "connect",
                     handleConnect
-                )
-            }
+                );
+            };
         }
 
-        return () =>{
+        return () => {
             socket.emit(
                 "leave_conversation",
                 previousConversationId
-            )
-        }
-    },[activeConversationId])
-
-    /* =========================
-       SELECT CONVERSATION
-    ========================= */
+            );
+        };
+    }, [activeConversationId]);
 
     const handleSelectConversation = (
         conversationId: number
     ) => {
-
         dispatch(
             setActiveConversation(
                 conversationId
             )
         );
-
     };
-
-
-    /* =========================
-       SEND MESSAGE
-    ========================= */
 
     const handleSendMessage = (
         content: string
     ) => {
-
-        if (activeConversationId === null || !content.trim()) {
+        if (
+            activeConversationId === null ||
+            !content.trim()
+        ) {
             return;
         }
 
         socket.emit(
             "send_message",
             {
-                conversationId: activeConversationId,
+                conversationId:
+                    activeConversationId,
                 content,
             }
-        )
+        );
     };
 
+    /* =========================
+       SIDEBAR MESSAGE PREVIEW
+    ========================= */
+
+    const getLastMessagePreview = (
+        content?: string
+    ) => {
+        if (!content) {
+            return "No messages yet";
+        }
+
+        try {
+            const parsed = JSON.parse(content);
+
+            if (
+                parsed?.type === "attachment"
+            ) {
+                if (
+                    typeof parsed.mimeType ===
+                        "string" &&
+                    parsed.mimeType.startsWith(
+                        "image/"
+                    )
+                ) {
+                    return "📎 Image";
+                }
+
+                return "📎 File";
+            }
+        } catch {
+            // Normal text message.
+        }
+
+        return content;
+    };
 
     return (
-
         <div className="flex h-screen flex-col bg-background">
-
             <Navbar />
 
             <div className="flex min-h-0 flex-1">
-
                 <Sidebar
                     conversations={
-                        conversations
+                        conversations.map(
+                            (conversation) => ({
+                                ...conversation,
+                                lastMessage:
+                                    conversation.lastMessage
+                                        ? {
+                                              ...conversation.lastMessage,
+                                              content:
+                                                  getLastMessagePreview(
+                                                      conversation
+                                                          .lastMessage
+                                                          .content
+                                                  ),
+                                          }
+                                        : conversation.lastMessage,
+                            })
+                        )
                     }
-
                     selectedConversation={
                         activeConversationId
                     }
-
                     onSelectConversation={
                         handleSelectConversation
                     }
-
-                    onNewChat={() =>
-                        console.log(
-                            "New chat"
-                        )
-                    }
                 />
 
-<main className="flex min-w-0 flex-1 flex-col">
+                <main className="flex min-w-0 flex-1 flex-col">
+                    {activeConversationId ===
+                    null ? (
+                        <div className="flex flex-1 items-center justify-center">
+                            <div className="text-center">
+                                <div className="mb-4 text-4xl">
+                                    💬
+                                </div>
 
-    {activeConversationId === null ? (
+                                <h2 className="text-lg font-semibold">
+                                    Welcome to ChatFlow
+                                </h2>
 
-        <div className="flex flex-1 items-center justify-center">
-            <div className="text-center">
+                                <p className="mt-2 text-sm text-muted-foreground">
+                                    Select a conversation
+                                    to start chatting.
+                                </p>
+                            </div>
+                        </div>
+                    ) : (
+                        <>
+                            <ChatHeader
+                                name={
+                                    otherUser?.name ||
+                                    "Select a conversation"
+                                }
+                                avatar={
+                                    otherUser?.avatar ??
+                                    null
+                                }
+                                online={
+                                    otherUserOnline
+                                }
+                            />
 
-                <div className="mb-4 text-4xl">
-                    💬
-                </div>
+                            <MessageList
+                                messages={
+                                    messages
+                                }
+                            />
 
-                <h2 className="text-lg font-semibold">
-                    Welcome to ChatFlow
-                </h2>
-
-                <p className="mt-2 text-sm text-muted-foreground">
-                    Select a conversation to start chatting.
-                </p>
-
+                            <MessageInput
+                                onSend={
+                                    handleSendMessage
+                                }
+                                disabled={
+                                    false
+                                }
+                            />
+                        </>
+                    )}
+                </main>
             </div>
-        </div>
-
-    ) : (
-
-        <>
-            <ChatHeader
-                name={
-                    otherUser?.name ||
-                    "Select a conversation"
-                }
-
-                avatar={
-                    otherUser?.avatar ??
-                    null
-                }
-
-                online={
-                    otherUser?.online ??
-                    false
-                }
-            />
-
-            <MessageList
-                messages={messages}
-            />
-
-            <MessageInput
-                onSend={handleSendMessage}
-                disabled={false}
-            />
-        </>
-
-    )}
-
-</main>
-
-            </div>
-
         </div>
     );
 }
-
 
 export default ChatFlow;

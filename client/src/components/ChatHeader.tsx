@@ -105,7 +105,7 @@ function ChatHeader({
                             ${
                                 online
                                     ? "bg-emerald-500"
-                                    : "bg-muted-foreground"
+                                    : "bg-gray-500"
                             }
                         `}
                     />
