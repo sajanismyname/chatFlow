@@ -77,9 +77,7 @@ export const initializeSocketServer = (
             socket.broadcast.emit("user_online", userId);
         }
 
-        console.log(`user  ${userId} connected successfully`)
-
-        socket.on("disconnect", (reason)=>{
+        socket.on("disconnect", ()=>{
 
             const userSocket = onlineUsers.get(userId)
 
@@ -96,10 +94,6 @@ export const initializeSocketServer = (
                     )
                 }
             }
-            console.log(
-                `socket disconnected user: ${userId}`,
-                reason
-            )
         })
 
         socket.on("join_conversation", async (conversationId:number) => {
@@ -140,9 +134,6 @@ export const initializeSocketServer = (
 
             socket.leave(room)
 
-            console.log(
-            `user:${userId} left ${room}`
-            );
         })
 
         socket.on(
@@ -203,13 +194,6 @@ export const initializeSocketServer = (
                         })
                         return;
                     }
-
-                    console.log(
-    "MESSAGE CREATED:",
-    message?.id,
-    "conversation:",
-    conversationId
-);
 
 
                     io.to(`conversation:${conversationId}`).emit(

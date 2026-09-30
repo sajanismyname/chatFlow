@@ -31,13 +31,8 @@ const EMPTY_MESSAGES: Message[] = [];
 function ChatFlow() {
     const dispatch = useAppDispatch();
 
-    /* =========================
-       CHAT STATE
-    ========================= */
-
     const conversations = useAppSelector(
-        (state) =>
-            state.chat.conversations
+        (state) => state.chat.conversations
     );
 
     const activeConversationId =
@@ -62,17 +57,9 @@ function ChatFlow() {
             }).onlineUsers ?? []
     );
 
-    /* =========================
-       AUTH
-    ========================= */
-
     const currentUser = useAppSelector(
         (state) => state.auth.user
     );
-
-    /* =========================
-       ACTIVE CONVERSATION
-    ========================= */
 
     const selectedConversationData =
         conversations.find(
@@ -80,10 +67,6 @@ function ChatFlow() {
                 conversation.id ===
                 activeConversationId
         );
-
-    /* =========================
-       OTHER USER
-    ========================= */
 
     const otherUser =
         selectedConversationData
@@ -103,20 +86,11 @@ function ChatFlow() {
             otherUser.id
         );
 
-
-    /* =========================
-       FETCH CONVERSATIONS
-    ========================= */
-
     useEffect(() => {
         dispatch(
             fetchConversations()
         );
     }, [dispatch]);
-
-    /* =========================
-       FETCH MESSAGES
-    ========================= */
 
     useEffect(() => {
         if (
@@ -134,10 +108,6 @@ function ChatFlow() {
         activeConversationId,
         dispatch,
     ]);
-
-    /* =========================
-       ROOM MANAGEMENT
-    ========================= */
 
     useEffect(() => {
         if (
@@ -183,10 +153,6 @@ function ChatFlow() {
         };
     }, [activeConversationId]);
 
-    /* =========================
-       SELECT CONVERSATION
-    ========================= */
-
     const handleSelectConversation = (
         conversationId: number
     ) => {
@@ -196,10 +162,6 @@ function ChatFlow() {
             )
         );
     };
-
-    /* =========================
-       SEND MESSAGE
-    ========================= */
 
     const handleSendMessage = (
         content: string
@@ -221,6 +183,42 @@ function ChatFlow() {
         );
     };
 
+    /* =========================
+       SIDEBAR MESSAGE PREVIEW
+    ========================= */
+
+    const getLastMessagePreview = (
+        content?: string
+    ) => {
+        if (!content) {
+            return "No messages yet";
+        }
+
+        try {
+            const parsed = JSON.parse(content);
+
+            if (
+                parsed?.type === "attachment"
+            ) {
+                if (
+                    typeof parsed.mimeType ===
+                        "string" &&
+                    parsed.mimeType.startsWith(
+                        "image/"
+                    )
+                ) {
+                    return "📎 Image";
+                }
+
+                return "📎 File";
+            }
+        } catch {
+            // Normal text message.
+        }
+
+        return content;
+    };
+
     return (
         <div className="flex h-screen flex-col bg-background">
             <Navbar />
@@ -228,7 +226,23 @@ function ChatFlow() {
             <div className="flex min-h-0 flex-1">
                 <Sidebar
                     conversations={
-                        conversations
+                        conversations.map(
+                            (conversation) => ({
+                                ...conversation,
+                                lastMessage:
+                                    conversation.lastMessage
+                                        ? {
+                                              ...conversation.lastMessage,
+                                              content:
+                                                  getLastMessagePreview(
+                                                      conversation
+                                                          .lastMessage
+                                                          .content
+                                                  ),
+                                          }
+                                        : conversation.lastMessage,
+                            })
+                        )
                     }
                     selectedConversation={
                         activeConversationId
@@ -236,7 +250,6 @@ function ChatFlow() {
                     onSelectConversation={
                         handleSelectConversation
                     }
-
                 />
 
                 <main className="flex min-w-0 flex-1 flex-col">
