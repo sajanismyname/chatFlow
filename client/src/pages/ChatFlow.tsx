@@ -94,6 +94,13 @@ function ChatFlow() {
                     currentUser?.id
             )?.user;
 
+        console.log(
+    "HEADER OTHER USER:",
+    otherUser?.id,
+    otherUser?.name,
+    otherUser?.online
+);
+
 
     /* =========================
        FETCH CONVERSATIONS
