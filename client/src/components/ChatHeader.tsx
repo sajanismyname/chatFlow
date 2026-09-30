@@ -29,6 +29,8 @@ interface ChatHeaderProps {
     name: string;
     avatar?: string | null;
     online?: boolean;
+    userId?: number;
+    onDeleteConversation: () => void;
 }
 
 
@@ -36,6 +38,8 @@ function ChatHeader({
     name,
     avatar,
     online = false,
+    userId,
+    onDeleteConversation,
 }: ChatHeaderProps) {
 
     const navigate = useNavigate();
@@ -51,8 +55,29 @@ function ChatHeader({
         .toUpperCase();
 
 
-    return (
+    const handleViewProfile = () => {
+        if (!userId) {
+            return;
+        }
 
+        navigate(`/profile/${userId}`);
+    };
+
+
+    const handleDeleteConversation = () => {
+        const confirmed = window.confirm(
+            `Delete your conversation with ${name}?`
+        );
+
+        if (!confirmed) {
+            return;
+        }
+
+        onDeleteConversation();
+    };
+
+
+    return (
         <header
             className="
                 flex
@@ -66,9 +91,7 @@ function ChatHeader({
             "
         >
 
-            {/* =========================
-                USER INFORMATION
-            ========================= */}
+            {/* USER INFORMATION */}
 
             <div className="flex min-w-0 items-center gap-3">
 
@@ -89,9 +112,6 @@ function ChatHeader({
                         </AvatarFallback>
 
                     </Avatar>
-
-
-                    {/* ONLINE INDICATOR */}
 
                     <span
                         className={`
@@ -139,9 +159,7 @@ function ChatHeader({
             </div>
 
 
-            {/* =========================
-                ACTIONS
-            ========================= */}
+            {/* ACTIONS */}
 
             <div className="flex items-center gap-1">
 
@@ -155,7 +173,7 @@ function ChatHeader({
                     aria-label="Start voice call"
                     onClick={() =>
                         window.alert(
-                            "Voice calling is not configured on the server yet."
+                            "Voice calling is not configured yet."
                         )
                     }
                 >
@@ -173,7 +191,7 @@ function ChatHeader({
                     aria-label="Start video call"
                     onClick={() =>
                         window.alert(
-                            "Video calling is not configured on the server yet."
+                            "Video calling is not configured yet."
                         )
                     }
                 >
@@ -202,11 +220,10 @@ function ChatHeader({
                     <DropdownMenuContent align="end">
 
                         <DropdownMenuItem
-                            onClick={() =>
-                                navigate("/profile")
-                            }
+                            disabled={!userId}
+                            onClick={handleViewProfile}
                         >
-                            View my profile
+                            View profile
                         </DropdownMenuItem>
 
 
@@ -214,13 +231,12 @@ function ChatHeader({
 
 
                         <DropdownMenuItem
-                            onClick={() =>
-                                window.alert(
-                                    `Conversation with ${name}`
-                                )
+                            onClick={
+                                handleDeleteConversation
                             }
+                            className="text-destructive focus:text-destructive"
                         >
-                            Conversation details
+                            Delete conversation
                         </DropdownMenuItem>
 
                     </DropdownMenuContent>
@@ -230,7 +246,6 @@ function ChatHeader({
             </div>
 
         </header>
-
     );
 }
 

@@ -4,13 +4,17 @@ import {
     ManyToOne,
     JoinColumn,
     Unique,
+    Column,
 } from "typeorm";
 
 import { User } from "./User.js";
 import { Conversation } from "./Conversation.js";
 
 @Entity("conversation_members")
-@Unique("UQ_conversation_members_user_conversation", ["user", "conversation"])
+@Unique(
+    "UQ_conversation_members_user_conversation",
+    ["user", "conversation"]
+)
 export class ConversationMember {
     @PrimaryGeneratedColumn()
     id!: number;
@@ -22,4 +26,10 @@ export class ConversationMember {
     @ManyToOne(() => Conversation, { nullable: false })
     @JoinColumn({ name: "conversation_id" })
     conversation!: Conversation;
+
+    @Column({
+        type: "timestamp",
+        nullable: true,
+    })
+    deletedAt!: Date | null;
 }

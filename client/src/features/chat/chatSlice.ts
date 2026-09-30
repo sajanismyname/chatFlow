@@ -6,12 +6,14 @@ import {
 import type { Conversation } from "../conversation/conversationTypes";
 import type { Message } from "../messages/messageType";
 
+
 interface ChatState {
     conversations: Conversation[];
     messages: Record<number, Message[]>;
     activeConversationId: number | null;
     onlineUsers: number[];
 }
+
 
 const initialState: ChatState = {
     conversations: [],
@@ -20,12 +22,14 @@ const initialState: ChatState = {
     onlineUsers: [],
 };
 
+
 const chatSlice = createSlice({
     name: "chat",
 
     initialState,
 
     reducers: {
+
         /* =========================
            CONVERSATIONS
         ========================= */
@@ -34,8 +38,10 @@ const chatSlice = createSlice({
             state,
             action: PayloadAction<Conversation[]>
         ) => {
-            state.conversations = action.payload;
+            state.conversations =
+                action.payload;
         },
+
 
         addConversation: (
             state,
@@ -55,6 +61,35 @@ const chatSlice = createSlice({
             }
         },
 
+
+        removeConversation: (
+            state,
+            action: PayloadAction<number>
+        ) => {
+            const conversationId =
+                action.payload;
+
+            state.conversations =
+                state.conversations.filter(
+                    (conversation) =>
+                        conversation.id !==
+                        conversationId
+                );
+
+            delete state.messages[
+                conversationId
+            ];
+
+            if (
+                state.activeConversationId ===
+                conversationId
+            ) {
+                state.activeConversationId =
+                    null;
+            }
+        },
+
+
         /* =========================
            ACTIVE CONVERSATION
         ========================= */
@@ -67,6 +102,7 @@ const chatSlice = createSlice({
                 action.payload;
         },
 
+
         /* =========================
            ONLINE USERS
         ========================= */
@@ -75,28 +111,35 @@ const chatSlice = createSlice({
             state,
             action: PayloadAction<number>
         ) => {
-            const userId = action.payload;
+            const userId =
+                action.payload;
 
             if (
                 !state.onlineUsers.includes(
                     userId
                 )
             ) {
-                state.onlineUsers.push(userId);
+                state.onlineUsers.push(
+                    userId
+                );
             }
         },
+
 
         setUserOffline: (
             state,
             action: PayloadAction<number>
         ) => {
-            const userId = action.payload;
+            const userId =
+                action.payload;
 
             state.onlineUsers =
                 state.onlineUsers.filter(
-                    (id) => id !== userId
+                    (id) =>
+                        id !== userId
                 );
         },
+
 
         /* =========================
            MESSAGES
@@ -114,11 +157,13 @@ const chatSlice = createSlice({
             ] = action.payload.messages;
         },
 
+
         addMessage: (
             state,
             action: PayloadAction<Message>
         ) => {
-            const message = action.payload;
+            const message =
+                action.payload;
 
             if (
                 !state.messages[
@@ -152,6 +197,7 @@ const chatSlice = createSlice({
             }
         },
 
+
         /* =========================
            CLEAR
         ========================= */
@@ -165,9 +211,11 @@ const chatSlice = createSlice({
     },
 });
 
+
 export const {
     setConversations,
     addConversation,
+    removeConversation,
     setActiveConversation,
     setUserOnline,
     setUserOffline,
@@ -175,5 +223,6 @@ export const {
     addMessage,
     clearChat,
 } = chatSlice.actions;
+
 
 export default chatSlice.reducer;

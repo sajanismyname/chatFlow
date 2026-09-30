@@ -13,6 +13,8 @@ import type {
 import {
     setConversations,
     addConversation,
+    removeConversation,
+    setActiveConversation,
 } from "../chat/chatSlice";
 
 
@@ -50,20 +52,22 @@ export const fetchConversations =
 
                 const conversations =
                     response.data.conversations.map(
-                        (conversation:Conversation)=>({
+                        (conversation: Conversation) => ({
                             ...conversation,
 
-                            members: conversation.members.map(
-                                (member)=>({
-                                    ...member,
-                                    user:{
-                                        ...member.user,
-                                        online:false
-                                    }
-                                })
-                            )
+                            members:
+                                conversation.members.map(
+                                    (member) => ({
+                                        ...member,
+
+                                        user: {
+                                            ...member.user,
+                                            online: false,
+                                        },
+                                    })
+                                ),
                         })
-                    )
+                    );
 
                 dispatch(
                     setConversations(
@@ -136,6 +140,54 @@ export const createConversation =
 
 
 /* =========================
+   DELETE CONVERSATION
+========================= */
+
+export const deleteConversation =
+    createAsyncThunk<
+        number,
+        number,
+        { rejectValue: string }
+    >(
+        "conversations/deleteConversation",
+
+        async (
+            conversationId,
+            {
+                dispatch,
+                rejectWithValue,
+            }
+        ) => {
+            try {
+
+                await api.delete(
+                    `/conversations/${conversationId}`
+                );
+
+                dispatch(
+                    removeConversation(
+                        conversationId
+                    )
+                );
+
+                dispatch(
+                    setActiveConversation(null)
+                );
+
+                return conversationId;
+
+            } catch (error: any) {
+
+                return rejectWithValue(
+                    error.response?.data?.message ||
+                    "Failed to delete conversation"
+                );
+            }
+        }
+    );
+
+
+/* =========================
    SLICE
 ========================= */
 
@@ -198,6 +250,31 @@ const conversationSlice = createSlice({
                     state.error =
                         action.payload ||
                         "Failed to create conversation";
+                }
+            )
+
+            .addCase(
+                deleteConversation.pending,
+                (state) => {
+                    state.loading = true;
+                    state.error = null;
+                }
+            )
+
+            .addCase(
+                deleteConversation.fulfilled,
+                (state) => {
+                    state.loading = false;
+                }
+            )
+
+            .addCase(
+                deleteConversation.rejected,
+                (state, action) => {
+                    state.loading = false;
+                    state.error =
+                        action.payload ||
+                        "Failed to delete conversation";
                 }
             );
     },
