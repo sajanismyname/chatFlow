@@ -6,20 +6,19 @@ import {
 import type { Conversation } from "../conversation/conversationTypes";
 import type { Message } from "../messages/messageType";
 
-
 interface ChatState {
     conversations: Conversation[];
     messages: Record<number, Message[]>;
     activeConversationId: number | null;
+    onlineUsers: number[];
 }
-
 
 const initialState: ChatState = {
     conversations: [],
     messages: {},
     activeConversationId: null,
+    onlineUsers: [],
 };
-
 
 const chatSlice = createSlice({
     name: "chat",
@@ -27,7 +26,6 @@ const chatSlice = createSlice({
     initialState,
 
     reducers: {
-
         /* =========================
            CONVERSATIONS
         ========================= */
@@ -69,42 +67,35 @@ const chatSlice = createSlice({
                 action.payload;
         },
 
-        setUserOnline:(
+        /* =========================
+           ONLINE USERS
+        ========================= */
+
+        setUserOnline: (
             state,
             action: PayloadAction<number>
-        ) =>{
+        ) => {
             const userId = action.payload;
 
-            state.conversations.forEach(
-                (conversation)=>{
-                    conversation.members.forEach(
-                        (member) =>{
-                            if(member.user.id === userId){
-                                member.user.online = true
-                            }
-                        }
-                    )
-                }
-            )
+            if (
+                !state.onlineUsers.includes(
+                    userId
+                )
+            ) {
+                state.onlineUsers.push(userId);
+            }
         },
 
-        setUserOffline:(
+        setUserOffline: (
             state,
             action: PayloadAction<number>
-        ) =>{
+        ) => {
             const userId = action.payload;
 
-            state.conversations.forEach(
-                (conversation)=>{
-                    conversation.members.forEach(
-                        (member) =>{
-                            if(member.user.id === userId){
-                                member.user.online = false
-                            }
-                        }
-                    )
-                }
-            )
+            state.onlineUsers =
+                state.onlineUsers.filter(
+                    (id) => id !== userId
+                );
         },
 
         /* =========================
@@ -143,20 +134,21 @@ const chatSlice = createSlice({
                 message.conversationId
             ].push(message);
 
-            const conversation = 
+            const conversation =
                 state.conversations.find(
-                (conversation) =>
+                    (conversation) =>
                         conversation.id ===
-                            message.conversationId
-            )
+                        message.conversationId
+                );
 
-            if(conversation){
-                conversation.lastMessage ={
-                    id:message.id,
+            if (conversation) {
+                conversation.lastMessage = {
+                    id: message.id,
                     content: message.content,
-                    createdAt: message.createdAt,
-                    sender: message.sender
-                }
+                    createdAt:
+                        message.createdAt,
+                    sender: message.sender,
+                };
             }
         },
 
@@ -168,10 +160,10 @@ const chatSlice = createSlice({
             state.conversations = [];
             state.messages = {};
             state.activeConversationId = null;
+            state.onlineUsers = [];
         },
     },
 });
-
 
 export const {
     setConversations,
@@ -183,6 +175,5 @@ export const {
     addMessage,
     clearChat,
 } = chatSlice.actions;
-
 
 export default chatSlice.reducer;
