@@ -29,6 +29,7 @@ import {
     connectSocket,
     disconnectSocket
 } from "./socket/socket"
+import UserProfile from "./components/UserProfile";
 
 
 function App() {
@@ -137,6 +138,8 @@ function App() {
                             </ProtectedRoute>
                         }
                     />
+
+                    <Route path="/profile/:id" element={<UserProfile />} />
 
                     <Route
                         path="*"

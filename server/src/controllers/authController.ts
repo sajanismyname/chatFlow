@@ -226,6 +226,49 @@ export const getCurrentUser = async (
     }
 }
 
+export const getUserProfile = async(
+    req: Request,
+    res: Response
+): Promise<void> => {
+    try {
+        const userId = Number(req.params.id)
+
+        if(!userId){
+            res.status(400).json({
+                message: "Invalid user ID",
+            })
+            return;
+        }
+
+        const user = await userRepository.findOne({
+            where:{
+                id:userId
+            },
+            select:{
+                id:true,
+                name:true,
+                avatar: true
+            }
+        })
+
+        if(!user){
+            res.status(404).json({
+                message: "User not found",
+            })
+            return;
+        }
+
+        res.status(200).json({
+            user,
+        })
+    } catch (error) {
+        console.error(error)
+        res.status(500).json({
+            message: "Failed to fetch user profile",
+        })
+    }
+}
+
 export const getUser = async (
     req: Request,
     res: Response

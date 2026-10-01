@@ -281,22 +281,18 @@ function MessageList({
                                         <div
                                             className={`
                                                 rounded-2xl
+                                                border
+                                                bg-background
+                                                text-foreground
                                                 px-4
                                                 py-2.5
                                                 text-sm
                                                 shadow-sm
                                                 ${
                                                     mine
-                                                        ? `
-                                                            rounded-br-md
-                                                            bg-primary
-                                                            text-primary-foreground
-                                                        `
-                                                        : `
-                                                            rounded-bl-md
-                                                            border
-                                                            bg-background
-                                                        `
+                                                        
+                                                            ? "rounded-br-md"
+                                                            : "rounded-bl-md"
                                                 }
                                             `}
                                         >

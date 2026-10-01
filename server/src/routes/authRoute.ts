@@ -9,6 +9,7 @@ import {
     login,
     register,
     updateProfile,
+    getUserProfile,
     forgotPassword,
     resetPassword
     } from "../controllers/authController.js";
@@ -23,8 +24,9 @@ router.post("/refresh", refreshAccessToken);
 router.post("/logout", logout);
 router.post("/login", login);
 router.post("/register", register);
-router.get("/me",authenticate, getCurrentUser)
-router.patch("/profile",authenticate, updateProfile)
+router.get("/profile",authenticate, getCurrentUser)
+router.patch("/myProfile",authenticate, updateProfile)
+router.get("/:id/profile",authenticate, getUserProfile)
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);
 
