@@ -1,20 +1,25 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
 
 import api from "../api/axios";
+
 import {
     Avatar,
     AvatarFallback,
     AvatarImage,
 } from "@/components/ui/avatar";
+
 import { Button } from "@/components/ui/button";
+
 import {
     Card,
     CardContent,
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
+
+import { Input } from "@/components/ui/input";
 
 interface User {
     id: number;
@@ -23,29 +28,109 @@ interface User {
 }
 
 function UserProfile() {
-    const { id } = useParams();
+    const {
+        conversationId,
+        id,
+    } = useParams();
+
     const navigate = useNavigate();
 
     const [user, setUser] = useState<User | null>(null);
+    const [nickname, setNickname] = useState("");
+    const [editingNickname, setEditingNickname] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [savingNickname, setSavingNickname] = useState(false);
 
     useEffect(() => {
-        const fetchUserProfile = async () => {
-            try {
-                const response = await api.get(`/users/${id}/profile`);
+        const fetchProfile = async () => {
+            if (!id || !conversationId) {
+                return;
+            }
 
-                setUser(response.data.user);
+            try {
+                const [
+                    profileResponse,
+                    nicknameResponse,
+                ] = await Promise.all([
+                    api.get(`/users/${id}/profile`),
+
+                    api.get(
+                        `/users/${conversationId}/nickname/${id}`
+                    ),
+                ]);
+
+                setUser(profileResponse.data.user);
+
+                setNickname(
+                    nicknameResponse.data.nickname ?? ""
+                );
             } catch (error) {
-                console.error("Failed to fetch user profile", error);
+                console.error(
+                    "Failed to fetch user profile",
+                    error
+                );
             } finally {
                 setLoading(false);
             }
         };
 
-        if (id) {
-            fetchUserProfile();
+        fetchProfile();
+    }, [id, conversationId]);
+
+    const handleSaveNickname = async () => {
+        if (!conversationId || !id) {
+            return;
         }
-    }, [id]);
+
+        if (!nickname.trim()) {
+            return;
+        }
+
+        try {
+            setSavingNickname(true);
+
+            const response = await api.put(
+                `/users/${conversationId}/nickname/${id}`,
+                {
+                    nickname: nickname.trim(),
+                }
+            );
+
+            setNickname(response.data.nickname);
+            setEditingNickname(false);
+        } catch (error) {
+            console.error(
+                "Failed to update nickname",
+                error
+            );
+        } finally {
+            setSavingNickname(false);
+        }
+    };
+
+    const handleDeleteNickname = async () => {
+        if (!conversationId || !id) {
+            return;
+        }
+
+        try {
+            setSavingNickname(true);
+
+            await api.delete(
+                `/users/${conversationId}/nickname/${id}`
+            );
+
+            setNickname("");
+            setEditingNickname(false);
+        } catch (error) {
+            console.error(
+                "Failed to delete nickname",
+                error
+            );
+        } finally {
+            setSavingNickname(false);
+        }
+    };
 
     if (loading) {
         return (
@@ -89,10 +174,12 @@ function UserProfile() {
                         <ArrowLeft />
                     </Button>
 
-                    <CardTitle>{user.name}'s Profile</CardTitle>
+                    <CardTitle>
+                        {user.name}'s Profile
+                    </CardTitle>
                 </CardHeader>
 
-                <CardContent className="flex flex-col items-center gap-4">
+                <CardContent className="flex flex-col items-center gap-6">
                     <Avatar className="size-24">
                         <AvatarImage
                             src={user.avatar ?? undefined}
@@ -108,6 +195,96 @@ function UserProfile() {
                         <h2 className="text-xl font-semibold">
                             {user.name}
                         </h2>
+                    </div>
+
+                    <div className="w-full space-y-2">
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium">
+                                Nickname
+                            </span>
+
+                            {!editingNickname && (
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() =>
+                                        setEditingNickname(true)
+                                    }
+                                >
+                                    <Pencil />
+                                </Button>
+                            )}
+                        </div>
+
+                        {editingNickname ? (
+                            <div className="space-y-2">
+                                <Input
+                                    value={nickname}
+                                    onChange={(event) =>
+                                        setNickname(
+                                            event.target.value
+                                        )
+                                    }
+                                    placeholder="Enter nickname"
+                                    maxLength={50}
+                                />
+
+                                <div className="flex gap-2">
+                                    <Button
+                                        onClick={
+                                            handleSaveNickname
+                                        }
+                                        disabled={
+                                            savingNickname ||
+                                            !nickname.trim()
+                                        }
+                                    >
+                                        {savingNickname
+                                            ? "Saving..."
+                                            : "Save"}
+                                    </Button>
+
+                                    <Button
+                                        variant="outline"
+                                        onClick={() =>
+                                            setEditingNickname(
+                                                false
+                                            )
+                                        }
+                                        disabled={savingNickname}
+                                    >
+                                        Cancel
+                                    </Button>
+                                </div>
+                            </div>
+                        ) : nickname ? (
+                            <div className="flex items-center justify-between rounded-lg border bg-muted/50 px-3 py-2">
+                                <span className="text-sm">
+                                    {nickname}
+                                </span>
+
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={
+                                        handleDeleteNickname
+                                    }
+                                    disabled={savingNickname}
+                                >
+                                    <Trash2 />
+                                </Button>
+                            </div>
+                        ) : (
+                            <Button
+                                variant="outline"
+                                className="w-full"
+                                onClick={() =>
+                                    setEditingNickname(true)
+                                }
+                            >
+                                Add Nickname
+                            </Button>
+                        )}
                     </div>
                 </CardContent>
             </Card>

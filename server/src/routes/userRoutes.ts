@@ -2,6 +2,9 @@ import { Router } from "express";
 
 import {
     searchUser,
+    getNickname,
+    setNickname,
+    deleteNickname
 } from "../controllers/userControllers.js";
 
 import {
@@ -36,6 +39,24 @@ router.get(
     "/:id/profile",
     authenticate,
     getUserProfile
+);
+
+router.get(
+    "/:conversationId/nickname/:userId",
+    authenticate,
+    getNickname
+);
+
+router.put(
+    "/:conversationId/nickname/:userId",
+    authenticate,
+    setNickname
+);
+
+router.delete(
+    "/:conversationId/nickname/:userId",
+    authenticate,
+    deleteNickname
 );
 
 export default router;

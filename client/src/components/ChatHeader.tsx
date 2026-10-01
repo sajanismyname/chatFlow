@@ -30,6 +30,7 @@ interface ChatHeaderProps {
     avatar?: string | null;
     online?: boolean;
     userId?: number;
+    conversationId?: number;
     onDeleteConversation: () => void;
 }
 
@@ -39,6 +40,7 @@ function ChatHeader({
     avatar,
     online = false,
     userId,
+    conversationId,
     onDeleteConversation,
 }: ChatHeaderProps) {
 
@@ -56,11 +58,11 @@ function ChatHeader({
 
 
     const handleViewProfile = () => {
-        if (!userId) {
+        if (!userId || !conversationId) {
             return;
         }
 
-        navigate(`/profile/${userId}`);
+        navigate(`/profile/${conversationId}/${userId}`);
     };
 
 

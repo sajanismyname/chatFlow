@@ -139,7 +139,10 @@ function App() {
                         }
                     />
 
-                    <Route path="/profile/:id" element={<UserProfile />} />
+                    <Route
+                        path="/profile/:conversationId/:id"
+                        element={<UserProfile />}
+                    />
 
                     <Route
                         path="*"
