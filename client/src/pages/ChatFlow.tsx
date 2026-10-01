@@ -329,6 +329,9 @@ function ChatFlow() {
                                 messages={
                                     messages
                                 }
+                                conversationId={
+                                    activeConversationId
+                                }
                             />
 
                             <MessageInput

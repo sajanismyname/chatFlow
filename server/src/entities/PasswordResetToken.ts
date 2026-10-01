@@ -23,6 +23,12 @@ export class PasswordResetToken {
     userId!: number;
 
     @Column({
+        type: "varchar",
+        nullable: true,
+    })
+    requestIp!: string | null;
+
+    @Column({
         type: "timestamp",
     })
     expiresAt!: Date;
