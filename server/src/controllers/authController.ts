@@ -664,98 +664,144 @@ export const updateProfile =async (
     }
 }
 
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export const forgotPassword = async (
-    req: Request,
-    res: Response
-): Promise<void> => {
-    try {
+            req: Request,
+            res: Response
+        ): Promise<void> => {
+            const startTime = Date.now();
 
-        const { email } = req.body;
+        try {
+            const email = req.body.email?.trim().toLowerCase();
 
-        if (!email) {
-            res.status(400).json({
-                message: "Email is required",
-            });
-            return;
-        }
+            if (!email) {
+                await delay(3000);
 
-        const user = await userRepository
-            .createQueryBuilder("user")
-            .addSelect("user.password")
-            .where("user.email = :email", { email })
-            .getOne();
+                res.status(400).json({
+                    message: "Email is required",
+                });
+                return;
+            }
 
-        if (!user || !user.password) {
+            const user = await userRepository
+                .createQueryBuilder("user")
+                .addSelect("user.password")
+                .where("user.email = :email", { email })
+                .getOne();
 
+            if (!user || !user.password) {
+                const elapsed = Date.now() - startTime;
+
+                if (elapsed < 3000) {
+                    await delay(3000 - elapsed);
+                }
+
+                res.status(200).json({
+                    message:
+                        "If an account exists with that email, a password reset link has been sent.",
+                });
+
+                return;
+            }
+
+            const recentResetToken =
+                await passwordResetTokenRepository
+                    .createQueryBuilder("token")
+                    .where(
+                        "token.userId = :userId",
+                        {
+                            userId: user.id,
+                        }
+                    )
+                    .orderBy(
+                        "token.createdAt",
+                        "DESC"
+                    )
+                    .getOne();
+
+            if (recentResetToken) {
+                const oneHour =
+                    60 * 60 * 1000;
+
+                const timeSinceLastRequest =
+                    Date.now() -
+                    recentResetToken.createdAt.getTime();
+
+                if (timeSinceLastRequest < oneHour) {
+                    const elapsed =
+                        Date.now() - startTime;
+
+                    if (elapsed < 3000) {
+                        await delay(3000 - elapsed);
+                    }
+
+                    res.status(200).json({
+                        message:
+                            "If an account exists with that email, a password reset link has been sent.",
+                    });
+
+                    return;
+                }
+            }
+
+            const rawToken = crypto
+                .randomBytes(32)
+                .toString("hex");
+
+            const tokenHash = crypto
+                .createHash("sha256")
+                .update(rawToken)
+                .digest("hex");
+
+            const expiresAt = new Date(
+                Date.now() + 15 * 60 * 1000
+            );
+
+            const resetToken =
+                passwordResetTokenRepository.create({
+                    tokenHash,
+                    userId: user.id,
+                    expiresAt,
+                    usedAt: null,
+                });
+
+            await passwordResetTokenRepository.save(
+                resetToken
+            );
+
+            const resetUrl =
+                `${process.env.FRONTEND_URL}/reset-password?token=${rawToken}`;
+
+            await sendPasswordResetEmail(
+                user.email,
+                resetUrl
+            );
+
+            const elapsed =
+                Date.now() - startTime;
+
+            if (elapsed < 3000) {
+                await delay(3000 - elapsed);
+            }
 
             res.status(200).json({
                 message:
                     "If an account exists with that email, a password reset link has been sent.",
             });
 
-            return;
-        }
-
-        await refreshTokenRepository
-            .createQueryBuilder()
-            .update(RefreshToken)
-            .set({revokedAt: new Date()})
-            .where(
-                "userId= :userId", {
-                    userId: user.id
-                }
-            )
-            .andWhere("revokedAt IS NULL")
-            .execute()
-
-
-        const rawToken = crypto
-            .randomBytes(32)
-            .toString("hex");
-
-        const tokenHash = crypto
-            .createHash("sha256")
-            .update(rawToken)
-            .digest("hex");
-
-        const expiresAt = new Date(
-            Date.now() + 15 * 60 * 1000
-        );
-
-        const resetToken =
-            passwordResetTokenRepository.create({
-                tokenHash,
-                userId: user.id,
-                expiresAt,
-                usedAt: null,
-            });
-
-
-        await passwordResetTokenRepository.save(
-            resetToken
-        );
-
-        const resetUrl =
-            `${process.env.FRONTEND_URL}/reset-password?token=${rawToken}`;
-
-
-        await sendPasswordResetEmail(
-            user.email,
-            resetUrl
-        );
-
-
-        res.status(200).json({
-            message:
-                "If an account exists with that email, a password reset link has been sent.",
-        });
-
-    } catch (error) {
-
+        } catch (error) {
         console.error(
             "FORGOT PASSWORD ERROR:",
             error
         );
+
+        const elapsed =
+            Date.now() - startTime;
+
+        if (elapsed < 3000) {
+            await delay(3000 - elapsed);
+        }
 
         res.status(500).json({
             message:
@@ -809,7 +855,8 @@ export const resetPassword = async (
 
         if (resetToken.usedAt) {
             res.status(400).json({
-                message: "Reset token has already been used",
+                message:
+                    "Reset token has already been used",
             });
             return;
         }
@@ -834,24 +881,31 @@ export const resetPassword = async (
             return;
         }
 
-        const hashedPassword =
-            await bcrypt.hash(password, 10);
+        const hashedPassword = await bcrypt.hash(
+            password,
+            10
+        );
 
         user.password = hashedPassword;
 
         await userRepository.save(user);
 
+        // Log out all active sessions after
+        // the password has been successfully changed.
         await refreshTokenRepository
             .createQueryBuilder()
             .update(RefreshToken)
-            .set({revokedAt: new Date()})
+            .set({
+                revokedAt: new Date(),
+            })
             .where(
-                "userId= :userId", {
-                    userId: user.id
+                "userId = :userId",
+                {
+                    userId: user.id,
                 }
             )
             .andWhere("revokedAt IS NULL")
-            .execute()
+            .execute();
 
         resetToken.usedAt = new Date();
 
@@ -861,10 +915,11 @@ export const resetPassword = async (
 
         res.clearCookie("refreshToken", {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
+            secure:
+                process.env.NODE_ENV === "production",
             sameSite: "lax",
-            path: "/"
-        })
+            path: "/",
+        });
 
         res.status(200).json({
             message: "Password reset successfully",
