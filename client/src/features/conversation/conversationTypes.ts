@@ -3,6 +3,7 @@ import type { User } from "../auth/authTypes";
 export interface ConversationMember {
     id: number;
     user: User;
+    nickname: string | null;
 }
 
 export interface ConversationLastMessage {
@@ -29,7 +30,7 @@ export interface ConversationItemProps {
     name: string;
     lastMessage: string;
     active?: boolean;
-    online?:boolean;
+    online?: boolean;
     avatar?: string | null;
     onClick?: () => void;
 }
