@@ -1,9 +1,10 @@
 import {
+    useCallback,
     useLayoutEffect,
     useRef,
 } from "react";
 
-import { useAppSelector } from "../app/hooks";
+import { useAppDispatch, useAppSelector } from "../app/hooks";
 
 import type {
     Message,
@@ -16,17 +17,102 @@ import {
 } from "@/components/ui/avatar";
 
 import {
+    fetchOlderMessages,
+} from "../features/messages/messageSlice";
+
+import {
     FileText,
     Download,
 } from "lucide-react";
 
 interface MessageListProps {
     messages: Message[];
+    conversationId: number;
 }
 
 function MessageList({
     messages,
+    conversationId,
 }: MessageListProps) {
+
+    const dispatch = useAppDispatch();
+    
+    const pagination = useAppSelector(
+        (state) =>
+                state.messages.pagination[
+                    conversationId
+                ]
+    )
+
+    const hasMore = pagination?.hasMore ?? false;
+
+    const loadingOlder = pagination?.loadingOlder ?? false;
+
+    const previousScrollHeight =
+    useRef(0);
+
+    const previousScrollTop =
+        useRef(0);
+    
+    const handleScroll= useCallback(
+        async () => {
+            const container =
+                scrollRef.current;
+            
+            if(!container){
+                return
+            }
+
+            if (
+                container.scrollTop > 100 ||
+                !hasMore ||
+                loadingOlder ||
+                messages.length === 0
+            ) {
+                return;
+            }
+
+            const oldestMessage = messages[0];
+
+            if(!oldestMessage){
+                return
+            }
+
+            previousScrollHeight.current =
+                container.scrollHeight;
+
+            previousScrollTop.current =
+                container.scrollTop;
+
+            await dispatch(
+                fetchOlderMessages({
+                    conversationId,
+                    before: oldestMessage.id,
+                })
+            );
+
+            requestAnimationFrame(() => {
+                const newHeight =
+                    container.scrollHeight;
+
+                const scrollDifference =
+                    newHeight -
+                    previousScrollHeight.current;
+
+                container.scrollTop =
+                    previousScrollTop.current +
+                    scrollDifference;
+            })
+        },
+        [
+            dispatch,
+            conversationId,
+            hasMore,
+            loadingOlder,
+            messages,
+        ]
+    );
+
     const currentUser = useAppSelector(
         (state) => state.auth.user
     );
@@ -71,7 +157,19 @@ function MessageList({
 
         if (
             currentCount >
-            previousCount
+                previousCount &&
+            container.scrollTop >
+                100
+        ) {
+            previousMessageCount.current =
+                currentCount;
+
+            return;
+        }
+
+        if (
+            currentCount >
+                previousCount
         ) {
             const distanceFromBottom =
                 container.scrollHeight -
@@ -94,6 +192,7 @@ function MessageList({
     return (
         <div
             ref={scrollRef}
+            onScroll={handleScroll}
             className="
                 min-h-0
                 flex-1

@@ -197,6 +197,27 @@ const chatSlice = createSlice({
             }
         },
 
+        prependMessages: (
+    state,
+    action: PayloadAction<{
+        conversationId: number;
+        messages: Message[];
+    }>
+) => {
+    const {
+        conversationId,
+        messages,
+    } = action.payload;
+
+    const existing =
+        state.messages[conversationId] ?? [];
+
+    state.messages[conversationId] = [
+        ...messages,
+        ...existing,
+    ];
+        },
+
 
         /* =========================
            CLEAR
@@ -221,6 +242,7 @@ export const {
     setUserOffline,
     setMessages,
     addMessage,
+    prependMessages,
     clearChat,
 } = chatSlice.actions;
 

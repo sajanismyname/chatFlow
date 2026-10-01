@@ -12,4 +12,12 @@ export interface Message {
 export interface MessageState {
     loading: boolean;
     error: string | null;
+
+    pagination: Record<
+        number,
+        {
+            hasMore: boolean;
+            loadingOlder: boolean;
+        }
+    >;
 }

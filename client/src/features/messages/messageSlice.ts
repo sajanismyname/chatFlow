@@ -13,22 +13,28 @@ import type {
 import {
     setMessages,
     addMessage,
+    prependMessages,
 } from "../chat/chatSlice";
 
 
 const initialState: MessageState = {
     loading: false,
     error: null,
+    pagination: {},
 };
 
 
 /* =========================
-   FETCH MESSAGES
+   FETCH LATEST MESSAGES
 ========================= */
 
 export const fetchMessages =
     createAsyncThunk<
-        Message[],
+        {
+            conversationId: number;
+            messages: Message[];
+            hasMore: boolean;
+        },
         number,
         { rejectValue: string }
     >(
@@ -41,16 +47,22 @@ export const fetchMessages =
                 rejectWithValue,
             }
         ) => {
-
             try {
-
                 const response =
                     await api.get(
-                        `/conversations/${conversationId}/messages`
+                        `/conversations/${conversationId}/messages`,
+                        {
+                            params: {
+                                limit: 30,
+                            },
+                        }
                     );
 
                 const messages =
                     response.data.messages;
+
+                const hasMore =
+                    response.data.hasMore;
 
                 dispatch(
                     setMessages({
@@ -59,13 +71,86 @@ export const fetchMessages =
                     })
                 );
 
-                return messages;
+                return {
+                    conversationId,
+                    messages,
+                    hasMore,
+                };
 
             } catch (error: any) {
-
                 return rejectWithValue(
                     error.response?.data?.message ||
                     "Failed to fetch messages"
+                );
+            }
+        }
+    );
+
+
+/* =========================
+   FETCH OLDER MESSAGES
+========================= */
+
+export const fetchOlderMessages =
+    createAsyncThunk<
+        {
+            conversationId: number;
+            messages: Message[];
+            hasMore: boolean;
+        },
+        {
+            conversationId: number;
+            before: number;
+        },
+        { rejectValue: string }
+    >(
+        "messages/fetchOlderMessages",
+
+        async (
+            {
+                conversationId,
+                before,
+            },
+            {
+                dispatch,
+                rejectWithValue,
+            }
+        ) => {
+            try {
+                const response =
+                    await api.get(
+                        `/conversations/${conversationId}/messages`,
+                        {
+                            params: {
+                                limit: 30,
+                                before,
+                            },
+                        }
+                    );
+
+                const messages =
+                    response.data.messages;
+
+                const hasMore =
+                    response.data.hasMore;
+
+                dispatch(
+                    prependMessages({
+                        conversationId,
+                        messages,
+                    })
+                );
+
+                return {
+                    conversationId,
+                    messages,
+                    hasMore,
+                };
+
+            } catch (error: any) {
+                return rejectWithValue(
+                    error.response?.data?.message ||
+                    "Failed to fetch older messages"
                 );
             }
         }
@@ -97,9 +182,7 @@ export const sendMessage =
                 rejectWithValue,
             }
         ) => {
-
             try {
-
                 const response =
                     await api.post(
                         `/conversations/${conversationId}/messages`,
@@ -118,7 +201,6 @@ export const sendMessage =
                 return message;
 
             } catch (error: any) {
-
                 return rejectWithValue(
                     error.response?.data?.message ||
                     "Failed to send message"
@@ -133,7 +215,6 @@ export const sendMessage =
 ========================= */
 
 const messageSlice = createSlice({
-
     name: "messages",
 
     initialState,
@@ -143,6 +224,10 @@ const messageSlice = createSlice({
     extraReducers: (builder) => {
 
         builder
+
+            /* =====================
+               INITIAL FETCH
+            ===================== */
 
             .addCase(
                 fetchMessages.pending,
@@ -154,20 +239,115 @@ const messageSlice = createSlice({
 
             .addCase(
                 fetchMessages.fulfilled,
-                (state) => {
+                (
+                    state,
+                    action
+                ) => {
                     state.loading = false;
+
+                    state.pagination[
+                        action.payload
+                            .conversationId
+                    ] = {
+                        hasMore:
+                            action.payload
+                                .hasMore,
+                        loadingOlder: false,
+                    };
                 }
             )
 
             .addCase(
                 fetchMessages.rejected,
-                (state, action) => {
+                (
+                    state,
+                    action
+                ) => {
                     state.loading = false;
+
                     state.error =
                         action.payload ||
                         "Failed to fetch messages";
                 }
             )
+
+
+            /* =====================
+               OLDER MESSAGES
+            ===================== */
+
+            .addCase(
+                fetchOlderMessages.pending,
+                (
+                    state,
+                    action
+                ) => {
+                    const conversationId =
+                        action.meta.arg
+                            .conversationId;
+
+                    state.pagination[
+                        conversationId
+                    ] = {
+                        ...(state.pagination[
+                            conversationId
+                        ] ?? {
+                            hasMore: true,
+                        }),
+                        loadingOlder: true,
+                    };
+                }
+            )
+
+            .addCase(
+                fetchOlderMessages.fulfilled,
+                (
+                    state,
+                    action
+                ) => {
+                    state.pagination[
+                        action.payload
+                            .conversationId
+                    ] = {
+                        hasMore:
+                            action.payload
+                                .hasMore,
+                        loadingOlder: false,
+                    };
+                }
+            )
+
+            .addCase(
+                fetchOlderMessages.rejected,
+                (
+                    state,
+                    action
+                ) => {
+                    const conversationId =
+                        action.meta.arg
+                            .conversationId;
+
+                    state.pagination[
+                        conversationId
+                    ] = {
+                        ...(state.pagination[
+                            conversationId
+                        ] ?? {
+                            hasMore: true,
+                        }),
+                        loadingOlder: false,
+                    };
+
+                    state.error =
+                        action.payload ||
+                        "Failed to fetch older messages";
+                }
+            )
+
+
+            /* =====================
+               SEND MESSAGE
+            ===================== */
 
             .addCase(
                 sendMessage.pending,
@@ -186,8 +366,12 @@ const messageSlice = createSlice({
 
             .addCase(
                 sendMessage.rejected,
-                (state, action) => {
+                (
+                    state,
+                    action
+                ) => {
                     state.loading = false;
+
                     state.error =
                         action.payload ||
                         "Failed to send message";
