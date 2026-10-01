@@ -97,7 +97,10 @@ function ChatHeader({
 
                 <div className="relative shrink-0">
 
-                    <Avatar className="size-10">
+                    <Avatar
+                        className="size-10"
+                        onClick={handleViewProfile}
+                    >
 
                         <AvatarImage
                             src={
@@ -219,12 +222,12 @@ function ChatHeader({
 
                     <DropdownMenuContent align="end">
 
-                        <DropdownMenuItem
+                        {/* <DropdownMenuItem
                             disabled={!userId}
                             onClick={handleViewProfile}
                         >
                             View profile
-                        </DropdownMenuItem>
+                        </DropdownMenuItem> */}
 
 
                         <DropdownMenuSeparator />
