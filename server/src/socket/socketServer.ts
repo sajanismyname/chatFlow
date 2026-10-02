@@ -224,7 +224,7 @@ export const initializeSocketServer = (
             }
         )
 
-            socket.on(
+        socket.on(
         "unsend_message",
         async (messageId: number) => {
             try {
@@ -246,6 +246,8 @@ export const initializeSocketServer = (
                 if (!message || !message.conversation) {
                     socket.emit("socket_error", {
                         message: "Message not found",
+                        operation: "unsend",
+                        messageId,
                     });
                     return;
                 }
@@ -271,66 +273,67 @@ export const initializeSocketServer = (
                 });
             }
         }
-    );
+        );
 
-    socket.on(
-        "delete_message_for_me",
-        async (messageId: number) => {
-            try {
-                if (
-                    !Number.isInteger(messageId) ||
-                    messageId <= 0
-                ) {
-                    socket.emit("socket_error", {
-                        message: "Invalid message ID",
-                    });
-                    return;
-                }
-
-                await deleteMessageForMe({
-                    messageId,
-                    userId,
-                });
-
-                /*
-                * Only this user's client should
-                * remove the message.
-                */
-                const message = await deleteMessageForMe({
-                    messageId,
-                    userId,
-                });
-
-                if (!message || !message.conversation) {
-                    socket.emit("socket_error", {
-                        message: "Message not found",
-                    });
-                    return;
-                }
-
-                socket.emit(
-                    "message_deleted_for_me",
-                    {
-                        messageId,
-                        conversationId:
-                            message.conversation.id,
+        socket.on(
+            "delete_message_for_me",
+            async (messageId: number) => {
+                try {
+                    if (
+                        !Number.isInteger(messageId) ||
+                        messageId <= 0
+                    ) {
+                        socket.emit("socket_error", {
+                            message: "Invalid message ID",
+                            operation: "delete_for_me",
+                            messageId,
+                        });
+                        return;
                     }
-                );
 
-            } catch (error: any) {
-                console.error(
-                    "Socket delete-for-me error:",
-                    error
-                );
+                    const message = await deleteMessageForMe({
+                        messageId,
+                        userId,
+                    });
 
-                socket.emit("socket_error", {
-                    message:
-                        error.message ||
-                        "Failed to delete message",
-                });
+                    if (!message || !message.conversation) {
+                        socket.emit("socket_error", {
+                            message: "Message not found",
+                            operation: "delete_for_me",
+                            messageId,
+                        });
+                        return;
+                    }
+
+                    /*
+                    * Only this user's client should
+                    * remove the message.
+                    */
+                    socket.emit(
+                        "message_deleted_for_me",
+                        {
+                            messageId,
+                            conversationId:
+                                message.conversation.id,
+                        }
+                    );
+
+                } catch (error: any) {
+                    console.error(
+                        "Socket delete-for-me error:",
+                        error
+                    );
+
+                    socket.emit("socket_error", {
+                        message:
+                            error.message ||
+                            "Failed to delete message",
+                        operation: "delete_for_me",
+                        messageId,
+                    });
+                }
             }
-        }
-    );
+        );
     })
 
     return io

@@ -191,30 +191,31 @@ const chatSlice = createSlice({
             }
         },
 
-        deleteMessageForMe: (
-            state,
-            action: PayloadAction<{
-                conversationId: number;
-                messageId: number;
-            }>
-        ) => {
-            const messages =
-                state.messages[
-                    action.payload.conversationId
-                ];
+    deleteMessageForMe: (
+        state,
+        action: PayloadAction<{
+            conversationId: number;
+            messageId: number;
+        }>
+    ) => {
+        const {
+            conversationId,
+            messageId,
+        } = action.payload;
 
-            if (!messages) {
-                return;
-            }
+        const messages =
+            state.messages[conversationId];
 
-            state.messages[
-                action.payload.conversationId
-            ] = messages.filter(
+        if (!messages) {
+            return;
+        }
+
+        state.messages[conversationId] =
+            messages.filter(
                 (message) =>
-                    message.id !==
-                    action.payload.messageId
+                    message.id !== messageId
             );
-        },
+    },
 
 
         addMessage: (
@@ -279,7 +280,7 @@ const chatSlice = createSlice({
 
 
         /* =========================
-           CLEAR
+            CLEAR
         ========================= */
 
         clearChat: (state) => {

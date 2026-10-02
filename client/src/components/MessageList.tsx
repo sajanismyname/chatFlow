@@ -57,6 +57,8 @@ function MessageList({
     conversationId,
 }: MessageListProps) {
 
+    const containerRef = useRef<HTMLDivElement>(null);
+
     const dispatch = useAppDispatch();
 
     const currentUser = useAppSelector(
@@ -452,14 +454,11 @@ function MessageList({
 
     return (
         <div
-            ref={scrollRef}
+            ref={containerRef}
             onScroll={handleScroll}
-            className="
-                min-h-0
-                flex-1
-                overflow-y-auto
-            "
+            className="h-full min-h-0 overflow-y-auto overscroll-contain"
         >
+
 
             <div className="flex flex-col gap-4 p-6">
 
@@ -808,29 +807,26 @@ function MessageList({
 
                                             <DropdownMenu>
 
-                                                <DropdownMenuTrigger>
-
-                                                    <Button
-                                                        type="button"
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="
-                                                            size-7
-                                                            shrink-0
-                                                            text-muted-foreground
-                                                            hover:text-foreground
-                                                        "
-                                                    >
-
-                                                        <MoreHorizontal className="size-4" />
-
-                                                        <span className="sr-only">
-                                                            Message options
-                                                        </span>
-
-                                                    </Button>
-
-                                                </DropdownMenuTrigger>
+                                                <DropdownMenuTrigger
+                                                    render={
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="
+                                                                size-7
+                                                                shrink-0
+                                                                text-muted-foreground
+                                                                hover:text-foreground
+                                                            "
+                                                        >
+                                                            <MoreHorizontal className="size-4" />
+                                                            <span className="sr-only">
+                                                                Message options
+                                                            </span>
+                                                        </Button>
+                                                    }
+                                                />
 
 
                                                 <DropdownMenuContent

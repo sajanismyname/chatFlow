@@ -44,92 +44,97 @@ export const createMessage = async ({
 
 export const deleteMessageForMe = async ({
     messageId,
-    userId
+    userId,
 }: {
     messageId: number;
     userId: number;
 }) => {
-    const message = 
+    const message =
         await messageRepository.findOne({
             where: {
-                    id: messageId,
+                id: messageId,
             },
             relations: {
                 conversation: true,
-            }
-    });
+            },
+        });
 
-    if(!message){
+    if (!message) {
         throw new Error("Message not found");
     }
 
-    const existingDeletion = 
-            await messageDeletionRepository.findOne({
-                where:{
-                    message: {
-                        id: messageId
-                    },
-                    user:{
-                        id: userId
-                    }
-                }
-            })
-
-    if(existingDeletion){
-        throw new Error("Message already deleted for this user");
-    }
-    
-    const messageDeletion = 
-            messageDeletionRepository.create({
+    const existingDeletion =
+        await messageDeletionRepository.findOne({
+            where: {
                 message: {
-                    id: messageId
+                    id: messageId,
                 },
-                user:{
-                    id: userId
-                }
-            })
+                user: {
+                    id: userId,
+                },
+            },
+        });
 
-    await messageDeletionRepository.save(messageDeletion)
+    if (existingDeletion) {
+        return message;
+    }
+
+    const messageDeletion =
+        messageDeletionRepository.create({
+            message: {
+                id: messageId,
+            },
+            user: {
+                id: userId,
+            },
+        });
+
+    await messageDeletionRepository.save(
+        messageDeletion
+    );
 
     return message;
-
-}
+};
 
 export const unsendMessage = async ({
     messageId,
-    userId
+    userId,
 }: {
     messageId: number;
     userId: number;
 }) => {
-    const message = 
+    const message =
         await messageRepository.findOne({
             where: {
-                    id: messageId,
+                id: messageId,
             },
             relations: {
                 sender: true,
                 conversation: true,
-            }
-    });
+            },
+        });
 
-    if(!message){
-        throw new Error("Message not found or you are not the sender");
+    if (!message) {
+        throw new Error(
+            "Message not found or you are not the sender"
+        );
     }
 
-    if(message.sender.id !== userId){
-        throw new Error("You are not the sender of this message");
+    if (message.sender.id !== userId) {
+        throw new Error(
+            "You are not the sender of this message"
+        );
     }
 
-    if(message.deletedForEveryone){
+    if (message.deletedForEveryone) {
         return message;
     }
 
     message.deletedForEveryone = true;
     message.deletedAt = new Date();
-
     message.content = "";
 
     await messageRepository.save(message);
 
-}
+    return message;
+};
