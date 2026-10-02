@@ -332,6 +332,7 @@ function ChatFlow() {
                 flex
                 h-dvh
                 min-h-0
+                w-full
                 flex-col
                 overflow-hidden
                 bg-background
@@ -345,6 +346,7 @@ function ChatFlow() {
                 className="
                     flex
                     min-h-0
+                    min-w-0
                     flex-1
                     overflow-hidden
                 "
@@ -516,6 +518,7 @@ function ChatFlow() {
 
                             <div
                                 className="
+                                    min-w-0
                                     shrink-0
                                     border-b
                                     bg-background
@@ -556,10 +559,14 @@ function ChatFlow() {
 
                             {/* =========================
                                 MESSAGE VIEWPORT
+
+                                THIS IS THE ONLY AREA
+                                THAT MAY SCROLL.
                             ========================= */}
 
                             <div
                                 className="
+                                    relative
                                     min-h-0
                                     min-w-0
                                     flex-1
@@ -585,7 +592,7 @@ function ChatFlow() {
 
                             <div
                                 className="
-                                    min-h-0
+                                    min-w-0
                                     shrink-0
                                     border-t
                                     bg-background

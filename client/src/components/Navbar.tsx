@@ -33,6 +33,10 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+import {
+    disconnectSocket,
+} from "@/socket/socket";
+
 
 function Navbar() {
 
@@ -50,6 +54,14 @@ function Navbar() {
 
     const handleLogout = async () => {
 
+        /*
+         * Disconnect Socket.IO immediately.
+         *
+         * This prevents the socket from remaining
+         * connected while the auth state is being cleared.
+         */
+        disconnectSocket();
+
         try {
 
             await api.post("/auth/logout");
@@ -65,7 +77,12 @@ function Navbar() {
 
             dispatch(logout());
 
-            navigate("/login");
+            navigate(
+                "/login",
+                {
+                    replace: true,
+                }
+            );
         }
     };
 
@@ -78,7 +95,10 @@ function Navbar() {
         user?.name
             ?.trim()
             .split(/\s+/)
-            .map((word) => word.charAt(0))
+            .map(
+                (word) =>
+                    word.charAt(0)
+            )
             .join("")
             .slice(0, 2)
             .toUpperCase() || "U";
@@ -131,13 +151,13 @@ function Navbar() {
             {/* =========================
                 USER MENU
             ========================= */}
-{/* RIGHT SIDE */}
 
             <div className="flex items-center gap-3">
 
                 <ThemeToggle />
 
                 {user && (
+
                     <DropdownMenu>
 
                         {/* =========================
@@ -175,7 +195,10 @@ function Navbar() {
                             <Avatar className="size-9">
 
                                 <AvatarImage
-                                    src={user.avatar ?? undefined}
+                                    src={
+                                        user.avatar ??
+                                        undefined
+                                    }
                                     alt={user.name}
                                 />
 
@@ -204,7 +227,10 @@ function Navbar() {
                                     <Avatar className="size-10">
 
                                         <AvatarImage
-                                            src={user.avatar ?? undefined}
+                                            src={
+                                                user.avatar ??
+                                                undefined
+                                            }
                                             alt={user.name}
                                         />
 
@@ -244,7 +270,9 @@ function Navbar() {
 
 
                             <DropdownMenuItem
-                                onClick={() => navigate("/profile")}
+                                onClick={() =>
+                                    navigate("/profile")
+                                }
                             >
 
                                 <User className="size-4" />
@@ -278,6 +306,7 @@ function Navbar() {
                         </DropdownMenuContent>
 
                     </DropdownMenu>
+
                 )}
 
             </div>

@@ -1,12 +1,32 @@
 import { AppDataSource } from "../config/dataSource.js";
 import { Message } from "../entities/Message.js";
 import { MessageDeletion } from "../entities/MessageDeletion.js";
+import { ConversationMember } from "../entities/ConversationMember.js";
 
 const messageRepository =
     AppDataSource.getRepository(Message);
 
 const messageDeletionRepository =
     AppDataSource.getRepository(MessageDeletion);
+
+const conversationMemberRepository =
+    AppDataSource.getRepository(ConversationMember);
+
+
+/* =========================
+   MESSAGE RESPONSE TYPE
+========================= */
+
+export interface FormattedMessage {
+    id: number;
+    conversationId: number;
+    content: string;
+    sender: Message["sender"];
+    readAt: Date | null;
+    createdAt: Date;
+    deletedAt: Date | null;
+    deletedForEveryone: boolean;
+}
 
 
 /* =========================
@@ -15,7 +35,20 @@ const messageDeletionRepository =
 
 const formatMessage = (
     message: Message
-) => {
+): FormattedMessage => {
+
+    if (!message.conversation) {
+        throw new Error(
+            "Message conversation was not loaded"
+        );
+    }
+
+    if (!message.sender) {
+        throw new Error(
+            "Message sender was not loaded"
+        );
+    }
+
     return {
         id: message.id,
 
@@ -50,7 +83,7 @@ export const createMessage = async ({
     userId: number;
     conversationId: number;
     content: string;
-}) => {
+}): Promise<FormattedMessage> => {
 
     const message =
         messageRepository.create({
@@ -70,7 +103,6 @@ export const createMessage = async ({
             message
         );
 
-
     const completeMessage =
         await messageRepository.findOne({
             where: {
@@ -83,13 +115,11 @@ export const createMessage = async ({
             },
         });
 
-
     if (!completeMessage) {
         throw new Error(
             "Failed to load created message"
         );
     }
-
 
     return formatMessage(
         completeMessage
@@ -108,8 +138,12 @@ export const deleteMessageForMe =
     }: {
         messageId: number;
         userId: number;
-    }) => {
+    }): Promise<FormattedMessage> => {
 
+        /*
+         * Load the message together with its
+         * conversation and sender.
+         */
         const message =
             await messageRepository.findOne({
                 where: {
@@ -117,10 +151,10 @@ export const deleteMessageForMe =
                 },
 
                 relations: {
+                    sender: true,
                     conversation: true,
                 },
             });
-
 
         if (!message) {
             throw new Error(
@@ -128,7 +162,35 @@ export const deleteMessageForMe =
             );
         }
 
+        /*
+         * Security check:
+         *
+         * The authenticated user must actually
+         * belong to the conversation containing
+         * this message.
+         */
+        const membership =
+            await conversationMemberRepository.findOne({
+                where: {
+                    user: {
+                        id: userId,
+                    },
 
+                    conversation: {
+                        id: message.conversation.id,
+                    },
+                },
+            });
+
+        if (!membership) {
+            throw new Error(
+                "You are not a member of this conversation"
+            );
+        }
+
+        /*
+         * Do not create duplicate deletion rows.
+         */
         const existingDeletion =
             await messageDeletionRepository.findOne({
                 where: {
@@ -142,30 +204,31 @@ export const deleteMessageForMe =
                 },
             });
 
+        if (!existingDeletion) {
 
-        if (existingDeletion) {
-            return message;
+            const messageDeletion =
+                messageDeletionRepository.create({
+                    message: {
+                        id: messageId,
+                    },
+
+                    user: {
+                        id: userId,
+                    },
+                });
+
+            await messageDeletionRepository.save(
+                messageDeletion
+            );
         }
 
-
-        const messageDeletion =
-            messageDeletionRepository.create({
-                message: {
-                    id: messageId,
-                },
-
-                user: {
-                    id: userId,
-                },
-            });
-
-
-        await messageDeletionRepository.save(
-            messageDeletion
+        /*
+         * Return the same explicit message
+         * contract used everywhere else.
+         */
+        return formatMessage(
+            message
         );
-
-
-        return message;
     };
 
 
@@ -180,7 +243,7 @@ export const unsendMessage =
     }: {
         messageId: number;
         userId: number;
-    }) => {
+    }): Promise<FormattedMessage> => {
 
         const message =
             await messageRepository.findOne({
@@ -194,14 +257,16 @@ export const unsendMessage =
                 },
             });
 
-
         if (!message) {
             throw new Error(
                 "Message not found"
             );
         }
 
-
+        /*
+         * Only the original sender can
+         * unsend a message.
+         */
         if (
             message.sender.id !==
             userId
@@ -211,7 +276,10 @@ export const unsendMessage =
             );
         }
 
-
+        /*
+         * If already unsent, simply return
+         * the current formatted message.
+         */
         if (
             message.deletedForEveryone
         ) {
@@ -219,7 +287,6 @@ export const unsendMessage =
                 message
             );
         }
-
 
         message.deletedForEveryone =
             true;
@@ -229,13 +296,34 @@ export const unsendMessage =
 
         message.content = "";
 
-
         await messageRepository.save(
             message
         );
 
+        /*
+         * Reload the saved entity so the
+         * returned contract always represents
+         * the database state.
+         */
+        const updatedMessage =
+            await messageRepository.findOne({
+                where: {
+                    id: message.id,
+                },
+
+                relations: {
+                    sender: true,
+                    conversation: true,
+                },
+            });
+
+        if (!updatedMessage) {
+            throw new Error(
+                "Failed to load unsent message"
+            );
+        }
 
         return formatMessage(
-            message
+            updatedMessage
         );
     };

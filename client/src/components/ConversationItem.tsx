@@ -1,3 +1,9 @@
+import {
+    useEffect,
+    useRef,
+    useState,
+} from "react";
+
 import type {
     ConversationItemProps,
 } from "../features/conversation/conversationTypes";
@@ -18,14 +24,74 @@ function ConversationItem({
     onClick,
 }: ConversationItemProps) {
 
+    /*
+     * Track whether a newer message has arrived
+     * since this conversation was last opened.
+     */
+    const [hasUnreadMessage, setHasUnreadMessage] =
+        useState(false);
+
+
+    /*
+     * Store the previous preview so the initial
+     * conversation load does not count as unread.
+     */
+    const previousLastMessage =
+        useRef(lastMessage);
+
+
+    /* =========================
+       NEW MESSAGE DETECTION
+    ========================= */
+
+    useEffect(() => {
+
+        /*
+         * Opening the conversation clears its
+         * unread state.
+         */
+        if (active) {
+
+            setHasUnreadMessage(false);
+
+            previousLastMessage.current =
+                lastMessage;
+
+            return;
+        }
+
+
+        /*
+         * Only mark unread when the preview
+         * actually changes after mounting.
+         */
+        if (
+            lastMessage !==
+            previousLastMessage.current
+        ) {
+
+            setHasUnreadMessage(true);
+        }
+
+
+        previousLastMessage.current =
+            lastMessage;
+
+    }, [
+        active,
+        lastMessage,
+    ]);
+
+
     /* =========================
        USER INITIALS
     ========================= */
 
     const initials = name
         .split(" ")
-        .map((word) =>
-            word.charAt(0)
+        .map(
+            (word) =>
+                word.charAt(0)
         )
         .join("")
         .slice(0, 2)
@@ -65,7 +131,10 @@ function ConversationItem({
                 <Avatar className="size-11">
 
                     <AvatarImage
-                        src={avatar ?? undefined}
+                        src={
+                            avatar ??
+                            undefined
+                        }
                         alt={name}
                     />
 
@@ -106,7 +175,16 @@ function ConversationItem({
 
                 <div className="flex items-center justify-between gap-2">
 
-                    <p className="truncate text-sm font-semibold">
+                    <p className={`
+                        truncate
+                        text-sm
+                        ${
+                            hasUnreadMessage &&
+                            !active
+                                ? "font-bold text-foreground"
+                                : "font-semibold"
+                        }
+                    `}>
                         {name}
                     </p>
 
@@ -115,7 +193,16 @@ function ConversationItem({
 
                 <div className="mt-0.5 flex items-center justify-between gap-2">
 
-                    <p className="truncate text-xs text-muted-foreground">
+                    <p className={`
+                        truncate
+                        text-xs
+                        ${
+                            hasUnreadMessage &&
+                            !active
+                                ? "font-bold text-foreground"
+                                : "text-muted-foreground"
+                        }
+                    `}>
                         {lastMessage ||
                             "No messages yet"}
                     </p>
@@ -125,9 +212,7 @@ function ConversationItem({
             </div>
 
         </button>
-
     );
-
 }
 
 

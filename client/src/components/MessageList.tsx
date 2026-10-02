@@ -81,46 +81,26 @@ function MessageList({
         useRef<HTMLDivElement | null>(null);
 
 
-    /*
-     * Whether the user is currently near
-     * the bottom of the message list.
-     */
     const wasNearBottom =
         useRef(true);
 
 
-    /*
-     * Previous message count.
-     */
     const previousMessageCount =
         useRef(0);
 
 
-    /*
-     * Previous newest message ID.
-     */
     const previousNewestMessageId =
         useRef<number | null>(null);
 
 
-    /*
-     * Used when switching conversations.
-     */
     const previousConversationId =
         useRef<number | null>(null);
 
 
-    /*
-     * Used for the first load.
-     */
     const initialLoad =
         useRef(true);
 
 
-    /*
-     * Used when older messages are
-     * prepended.
-     */
     const preserveScrollPosition =
         useRef(false);
 
@@ -189,10 +169,6 @@ function MessageList({
                 distanceFromBottom <= 100;
 
 
-            /*
-             * Only load older messages once
-             * the user reaches the top.
-             */
             if (
                 container.scrollTop > 100 ||
                 !hasMore ||
@@ -211,10 +187,6 @@ function MessageList({
             }
 
 
-            /*
-             * Save the exact viewport before
-             * older messages are prepended.
-             */
             previousScrollHeight.current =
                 container.scrollHeight;
 
@@ -278,11 +250,6 @@ function MessageList({
             currentCount > 0
         ) {
 
-            /*
-             * Set directly in layout effect.
-             * There is no need for another
-             * requestAnimationFrame here.
-             */
             container.scrollTop =
                 container.scrollHeight;
 
@@ -319,9 +286,6 @@ function MessageList({
                 previousScrollHeight.current;
 
 
-            /*
-             * Restore the exact viewport.
-             */
             container.scrollTop =
                 previousScrollTop.current +
                 heightDifference;
@@ -355,11 +319,6 @@ function MessageList({
             currentCount >= previousCount
         ) {
 
-            /*
-             * Only scroll for a new message
-             * when the user was already near
-             * the bottom.
-             */
             if (wasNearBottom.current) {
 
                 container.scrollTop =
@@ -377,9 +336,6 @@ function MessageList({
         }
 
 
-        /*
-         * Keep refs synchronized.
-         */
         previousMessageCount.current =
             currentCount;
 
@@ -443,26 +399,40 @@ function MessageList({
             ref={scrollRef}
             onScroll={handleScroll}
             className="
-                h-full
+                absolute
+                inset-0
                 min-h-0
+                min-w-0
+                overflow-x-hidden
                 overflow-y-auto
                 overscroll-contain
                 scrollbar-gutter-stable
             "
         >
 
-            <div className="flex flex-col gap-4 p-6">
+            <div
+                className="
+                    flex
+                    min-h-full
+                    min-w-0
+                    flex-col
+                    gap-4
+                    px-4
+                    py-6
+                    sm:px-6
+                "
+            >
 
                 {messages.length === 0 ? (
 
                     <div
                         className="
                             flex
+                            min-h-full
                             flex-1
                             flex-col
                             items-center
                             justify-center
-                            py-20
                             text-center
                         "
                     >
@@ -478,9 +448,11 @@ function MessageList({
                                 bg-muted
                             "
                         >
+
                             <span className="text-2xl">
                                 💬
                             </span>
+
                         </div>
 
                         <h3 className="text-sm font-semibold">
@@ -502,14 +474,6 @@ function MessageList({
                             currentUser?.id;
 
 
-                        /*
-                         * IMPORTANT:
-                         *
-                         * There is no `unsentAt` field.
-                         *
-                         * An unsent message is identified
-                         * by deletedForEveryone/deletedAt.
-                         */
                         const isUnsent =
                             Boolean(
                                 message.deletedForEveryone
@@ -544,10 +508,6 @@ function MessageList({
                         } | null = null;
 
 
-                        /*
-                         * Never parse content after
-                         * a message has been unsent.
-                         */
                         if (!isUnsent) {
 
                             try {
@@ -571,9 +531,7 @@ function MessageList({
                                 }
 
                             } catch {
-                                /*
-                                 * Normal text message.
-                                 */
+                                // Normal text message.
                             }
                         }
 
@@ -587,17 +545,28 @@ function MessageList({
                         return (
                             <div
                                 key={message.id}
-                                className="
+                                className={`
                                     flex
+                                    min-w-0
+                                    w-full
                                     items-end
                                     gap-2
-                                    px-1
-                                "
+                                    ${
+                                        mine
+                                            ? "justify-end pl-10"
+                                            : "justify-start pr-10"
+                                    }
+                                `}
                             >
 
                                 {!mine && (
 
-                                    <Avatar className="size-8 shrink-0">
+                                    <Avatar
+                                        className="
+                                            size-8
+                                            shrink-0
+                                        "
+                                    >
 
                                         <AvatarImage
                                             src={
@@ -622,8 +591,9 @@ function MessageList({
 
                                 <div
                                     className={`
-                                        flex
+                                        min-w-0
                                         max-w-[75%]
+                                        flex
                                         flex-col
                                         ${
                                             mine
@@ -636,6 +606,7 @@ function MessageList({
                                     <div
                                         className={`
                                             flex
+                                            min-w-0
                                             items-center
                                             gap-1
                                             ${
@@ -646,7 +617,7 @@ function MessageList({
                                         `}
                                     >
 
-                                        <div>
+                                        <div className="min-w-0">
 
                                             {isUnsent ? (
 
@@ -688,6 +659,7 @@ function MessageList({
                                                             handleImageLoad
                                                         }
                                                         className="
+                                                            block
                                                             max-h-96
                                                             max-w-full
                                                             rounded-xl
@@ -701,6 +673,8 @@ function MessageList({
 
                                                 <div
                                                     className={`
+                                                        max-w-full
+                                                        overflow-hidden
                                                         rounded-2xl
                                                         border
                                                         bg-background
@@ -729,6 +703,7 @@ function MessageList({
                                                                 rel="noreferrer"
                                                                 className="
                                                                     flex
+                                                                    min-w-0
                                                                     items-center
                                                                     gap-3
                                                                     rounded-xl
@@ -816,11 +791,13 @@ function MessageList({
                                                                 hover:text-foreground
                                                             "
                                                         >
+
                                                             <MoreHorizontal className="size-4" />
 
                                                             <span className="sr-only">
                                                                 Message options
                                                             </span>
+
                                                         </Button>
                                                     }
                                                 />
