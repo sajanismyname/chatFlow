@@ -7,6 +7,7 @@ import { Conversation } from "../entities/Conversation.js";
 import { ConversationMember } from "../entities/ConversationMember.js";
 import { User } from "../entities/User.js";
 import { Message } from "../entities/Message.js";
+import { MessageDeletion } from "../entities/MessageDeletion.js";
 
 
 import {
@@ -27,29 +28,43 @@ const conversationMemberRepository =
 const conversationNicknameRepository =
     AppDataSource.getRepository(ConversationNickname);
 
+const messageDeletionRepository =
+    AppDataSource.getRepository(MessageDeletion);
+
 export const getConversations = async (
     req: Request,
     res: Response
 ): Promise<void> => {
+
     try {
-        const userId = req.user?.id;
+
+        const userId =
+            req.user?.id;
+
 
         if (!userId) {
+
             res.status(401).json({
                 message: "Unauthorized",
             });
+
             return;
         }
 
+
         const memberships =
             await AppDataSource
-                .getRepository(ConversationMember)
+                .getRepository(
+                    ConversationMember
+                )
                 .find({
+
                     where: {
                         user: {
                             id: userId,
                         },
                     },
+
                     relations: {
                         conversation: {
                             members: {
@@ -59,67 +74,139 @@ export const getConversations = async (
                     },
                 });
 
-        const conversationIds = memberships.map(
-            (membership) =>
-                membership.conversation.id
-        );
+
+        const conversationIds =
+            memberships.map(
+                (membership) =>
+                    membership.conversation.id
+            );
+
 
         const nicknames =
             conversationIds.length > 0
                 ? await conversationNicknameRepository.find({
-                      where: {
-                          conversation: {
-                              id: In(conversationIds),
-                          },
-                      },
-                      relations: {
-                          conversation: true,
-                          user: true,
-                      },
-                  })
+
+                    where: {
+                        conversation: {
+                            id: In(
+                                conversationIds
+                            ),
+                        },
+                    },
+
+                    relations: {
+                        conversation: true,
+                        user: true,
+                    },
+                })
+
                 : [];
+
 
         const conversations =
             await Promise.all(
+
                 memberships.map(
                     async (membership) => {
+
                         const conversation =
                             membership.conversation;
 
-                        const lastMessage =
-                            await messageRepository.findOne({
+
+                        /*
+                         * Find messages that this
+                         * user has deleted.
+                         */
+                        const deletedMessages =
+                            await messageDeletionRepository.find({
+                                where: {
+                                    user: {
+                                        id: userId,
+                                    },
+
+                                    message: {
+                                        conversation: {
+                                            id: conversation.id,
+                                        },
+                                    },
+                                },
+
+                                relations: {
+                                    message: true,
+                                },
+                            });
+
+
+                        const deletedMessageIds =
+                            new Set(
+                                deletedMessages.map(
+                                    (deletion) =>
+                                        deletion.message.id
+                                )
+                            );
+
+
+                        /*
+                         * Get messages newest first.
+                         *
+                         * We fetch the conversation's
+                         * messages and then select the
+                         * newest one visible to this user.
+                         */
+                        const conversationMessages =
+                            await messageRepository.find({
+
                                 where: {
                                     conversation: {
                                         id: conversation.id,
                                     },
                                 },
+
                                 relations: {
                                     sender: true,
+                                    conversation: true,
                                 },
+
                                 order: {
                                     createdAt: "DESC",
                                 },
                             });
 
+
+                        const visibleLastMessage =
+                            conversationMessages.find(
+                                (message) =>
+                                    !deletedMessageIds.has(
+                                        message.id
+                                    )
+                            );
+
+
                         return {
+
                             ...conversation,
+
 
                             members:
                                 conversation.members.map(
                                     (member) => {
+
                                         const nicknameRecord =
                                             nicknames.find(
                                                 (nickname) =>
                                                     nickname
                                                         .conversation
                                                         .id ===
-                                                        conversation.id &&
+                                                    conversation.id &&
                                                     nickname.user.id ===
-                                                        member.user.id
+                                                    member.user.id
                                             );
 
+
                                         return {
+
                                             ...member,
+
                                             nickname:
                                                 nicknameRecord
                                                     ?.nickname ??
@@ -128,31 +215,49 @@ export const getConversations = async (
                                     }
                                 ),
 
+
                             lastMessage:
-                                lastMessage
+                                visibleLastMessage
                                     ? {
-                                            id: lastMessage.id,
-                                            content:
-                                                lastMessage.content,
-                                            createdAt:
-                                                lastMessage.createdAt,
-                                            sender:
-                                                lastMessage.sender,
-                                        }
+                                        id:
+                                            visibleLastMessage.id,
+
+                                        content:
+                                            visibleLastMessage.content,
+
+                                        createdAt:
+                                            visibleLastMessage.createdAt,
+
+                                        sender:
+                                            visibleLastMessage.sender,
+
+                                        deletedAt:
+                                            visibleLastMessage.deletedAt,
+
+                                        deletedForEveryone:
+                                            visibleLastMessage
+                                                .deletedForEveryone,
+                                    }
+
                                     : null,
                         };
                     }
                 )
             );
 
+
         res.status(200).json({
             conversations,
         });
+
+
     } catch (error) {
+
         console.error(
             "Error fetching conversations:",
             error
         );
+
 
         res.status(500).json({
             message:

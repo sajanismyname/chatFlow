@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { ArrowLeft } from "lucide-react";
 
 import {
     useAppDispatch,
@@ -18,7 +19,7 @@ import {
 
 import {
     fetchConversations,
-    deleteConversation
+    deleteConversation,
 } from "../features/conversation/conversationSlice";
 
 import {
@@ -167,6 +168,12 @@ function ChatFlow() {
         );
     };
 
+    const handleBackToConversations = () => {
+        dispatch(
+            setActiveConversation(null)
+        );
+    };
+
     const handleSendMessage = (
         content: string
     ) => {
@@ -187,10 +194,6 @@ function ChatFlow() {
         );
     };
 
-    /* =========================
-       SIDEBAR MESSAGE PREVIEW
-    ========================= */
-
     const getLastMessagePreview = (
         content?: string
     ) => {
@@ -199,10 +202,12 @@ function ChatFlow() {
         }
 
         try {
-            const parsed = JSON.parse(content);
+            const parsed =
+                JSON.parse(content);
 
             if (
-                parsed?.type === "attachment"
+                parsed?.type ===
+                "attachment"
             ) {
                 if (
                     typeof parsed.mimeType ===
@@ -223,68 +228,129 @@ function ChatFlow() {
         return content;
     };
 
-    const handleDeleteConversation = async () => {
-        if (activeConversationId === null) {
-            return;
-        }
+    const handleDeleteConversation =
+        async () => {
+            if (
+                activeConversationId === null
+            ) {
+                return;
+            }
 
-        const conversationId =
-            activeConversationId;
+            const conversationId =
+                activeConversationId;
 
-        try {
-            await dispatch(
-                deleteConversation(
+            try {
+                await dispatch(
+                    deleteConversation(
+                        conversationId
+                    )
+                ).unwrap();
+
+                socket.emit(
+                    "leave_conversation",
                     conversationId
-                )
-            ).unwrap();
+                );
 
-            socket.emit(
-                "leave_conversation",
-                conversationId
-            );
-        } catch {
-            // Deletion failed.
-        }
-    };
+                dispatch(
+                    setActiveConversation(
+                        null
+                    )
+                );
+            } catch {
+                // Deletion failed.
+            }
+        };
 
     return (
-        <div className="flex h-screen flex-col bg-background">
+        <div
+            className="
+                flex
+                h-dvh
+                min-h-0
+                flex-col
+                overflow-hidden
+                bg-background
+            "
+        >
             <Navbar />
 
-            <div className="flex min-h-0 flex-1">
-                <Sidebar
-                    conversations={
-                        conversations.map(
-                            (conversation) => ({
-                                ...conversation,
-                                lastMessage:
-                                    conversation.lastMessage
-                                            ? {
-                                                ...conversation.lastMessage,
-                                                content:
-                                                    getLastMessagePreview(
-                                                        conversation
-                                                            .lastMessage
-                                                            .content
-                                                    ),
-                                            }
-                                        : conversation.lastMessage,
-                            })
-                        )
-                    }
-                    selectedConversation={
-                        activeConversationId
-                    }
-                    onSelectConversation={
-                        handleSelectConversation
-                    }
-                />
+            <div
+                className="
+                    flex
+                    min-h-0
+                    flex-1
+                    overflow-hidden
+                "
+            >
+                {/* SIDEBAR */}
 
-                <main className="flex min-w-0 flex-1 flex-col">
+                <div
+                    className={`
+                        h-full
+                        min-h-0
+                        shrink-0
+                        ${
+                            activeConversationId !==
+                            null
+                                ? "hidden md:flex"
+                                : "flex"
+                        }
+                        w-full
+                        md:w-80
+                    `}
+                >
+                    <Sidebar
+                        conversations={
+                            conversations.map(
+                                (
+                                    conversation
+                                ) => ({
+                                    ...conversation,
+                                    lastMessage:
+                                        conversation.lastMessage
+                                            ? {
+                                                  ...conversation.lastMessage,
+                                                  content:
+                                                      getLastMessagePreview(
+                                                          conversation
+                                                              .lastMessage
+                                                              .content
+                                                      ),
+                                              }
+                                            : conversation.lastMessage,
+                                })
+                            )
+                        }
+                        selectedConversation={
+                            activeConversationId
+                        }
+                        onSelectConversation={
+                            handleSelectConversation
+                        }
+                    />
+                </div>
+
+                {/* CHAT */}
+
+                <main
+                    className={`
+                        min-h-0
+                        min-w-0
+                        flex-1
+                        flex-col
+                        overflow-hidden
+                        ${
+                            activeConversationId ===
+                            null
+                                ? "hidden md:flex"
+                                : "flex"
+                        }
+                    `}
+                >
                     {activeConversationId ===
                     null ? (
-                        <div className="flex flex-1 items-center justify-center">
-                            <div className="text-center">
+                        <div className="flex min-h-0 flex-1 items-center justify-center">
+                            <div className="px-4 text-center">
                                 <div className="mb-4 text-4xl">
                                     💬
                                 </div>
@@ -301,47 +367,112 @@ function ChatFlow() {
                         </div>
                     ) : (
                         <>
+                            {/* MOBILE BACK BUTTON */}
 
-                        <ChatHeader
-                            name={
-                                otherUserNickname ||
-                                otherUser?.name ||
-                                "Select a conversation"
-                            }
-                            avatar={
-                                otherUser?.avatar ?? null
-                            }
-                            online={
-                                otherUserOnline
-                            }
-                            userId={
-                                otherUser?.id
-                            }
-                            conversationId={
-                                activeConversationId
-                            }
-                            onDeleteConversation={
-                                handleDeleteConversation
-                            }
-                        />
+                            <div
+                                className="
+                                    flex
+                                    shrink-0
+                                    items-center
+                                    gap-1
+                                    border-b
+                                    bg-background
+                                    px-2
+                                    py-1.5
+                                    md:hidden
+                                "
+                            >
+                                <button
+                                    type="button"
+                                    onClick={
+                                        handleBackToConversations
+                                    }
+                                    className="
+                                        inline-flex
+                                        size-9
+                                        items-center
+                                        justify-center
+                                        rounded-full
+                                        text-muted-foreground
+                                        transition-colors
+                                        hover:bg-muted
+                                        hover:text-foreground
+                                    "
+                                    aria-label="Back to conversations"
+                                >
+                                    <ArrowLeft className="size-5" />
+                                </button>
 
-                            <MessageList
-                                messages={
-                                    messages
-                                }
-                                conversationId={
-                                    activeConversationId
-                                }
-                            />
+                                <span className="text-sm font-medium">
+                                    Conversations
+                                </span>
+                            </div>
 
-                            <MessageInput
-                                onSend={
-                                    handleSendMessage
-                                }
-                                disabled={
-                                    false
-                                }
-                            />
+                            {/* CHAT HEADER */}
+
+                            <div className="shrink-0 border-b">
+                                <ChatHeader
+                                    name={
+                                        otherUserNickname ||
+                                        otherUser?.name ||
+                                        "Select a conversation"
+                                    }
+                                    avatar={
+                                        otherUser?.avatar ??
+                                        null
+                                    }
+                                    online={
+                                        otherUserOnline
+                                    }
+                                    userId={
+                                        otherUser?.id
+                                    }
+                                    conversationId={
+                                        activeConversationId
+                                    }
+                                    onDeleteConversation={
+                                        handleDeleteConversation
+                                    }
+                                />
+                            </div>
+
+                            {/* MESSAGES */}
+
+                            <div
+                                className="
+                                    min-h-0
+                                    flex-1
+                                    overflow-hidden
+                                "
+                            >
+                                <MessageList
+                                    messages={
+                                        messages
+                                    }
+                                    conversationId={
+                                        activeConversationId
+                                    }
+                                />
+                            </div>
+
+                            {/* INPUT */}
+
+                            <div
+                                className="
+                                    shrink-0
+                                    border-t
+                                    bg-background
+                                "
+                            >
+                                <MessageInput
+                                    onSend={
+                                        handleSendMessage
+                                    }
+                                    disabled={
+                                        false
+                                    }
+                                />
+                            </div>
                         </>
                     )}
                 </main>

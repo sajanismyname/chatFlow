@@ -77,48 +77,51 @@ function MessageList({
         pagination?.loadingOlder ?? false;
 
 
+    /*
+     * Single scroll container ref.
+     *
+     * IMPORTANT:
+     * Do not use a second ref for the same
+     * scrolling element.
+     */
     const scrollRef =
         useRef<HTMLDivElement | null>(null);
 
 
     /*
-     * Used to determine whether the user
-     * is currently near the bottom.
+     * Whether the user was close to the
+     * bottom before a message/layout change.
      */
     const wasNearBottom =
         useRef(true);
 
 
     /*
-     * Tracks the previous number of messages.
+     * Previous message state.
      */
     const previousMessageCount =
         useRef(0);
 
-
-    /*
-     * Tracks the previous newest message.
-     */
     const previousNewestMessageId =
         useRef<number | null>(null);
 
 
     /*
-     * Used when switching conversations.
+     * Conversation tracking.
      */
     const previousConversationId =
         useRef<number | null>(null);
 
 
     /*
-     * Used for the first load of a conversation.
+     * Initial message load.
      */
     const initialLoad =
         useRef(true);
 
 
     /*
-     * Used when older messages are prepended.
+     * Older-message scroll preservation.
      */
     const preserveScrollPosition =
         useRef(false);
@@ -130,35 +133,37 @@ function MessageList({
         useRef(0);
 
 
+
     /* =========================
-       RESET ON CONVERSATION CHANGE
+        RESET ON CONVERSATION CHANGE
     ========================= */
 
     useLayoutEffect(() => {
 
         if (
-            previousConversationId.current !==
+            previousConversationId.current ===
             conversationId
         ) {
-
-            previousConversationId.current =
-                conversationId;
-
-            previousMessageCount.current =
-                0;
-
-            previousNewestMessageId.current =
-                null;
-
-            initialLoad.current =
-                true;
-
-            preserveScrollPosition.current =
-                false;
-
-            wasNearBottom.current =
-                true;
+            return;
         }
+
+        previousConversationId.current =
+            conversationId;
+
+        previousMessageCount.current =
+            0;
+
+        previousNewestMessageId.current =
+            null;
+
+        initialLoad.current =
+            true;
+
+        preserveScrollPosition.current =
+            false;
+
+        wasNearBottom.current =
+            true;
 
     }, [conversationId]);
 
@@ -168,7 +173,7 @@ function MessageList({
     ========================= */
 
     const handleScroll =
-        useCallback(async () => {
+        useCallback(() => {
 
             const container =
                 scrollRef.current;
@@ -177,23 +182,17 @@ function MessageList({
                 return;
             }
 
-
             const distanceFromBottom =
                 container.scrollHeight -
                 container.scrollTop -
                 container.clientHeight;
 
-
-            /*
-             * Always remember whether the user
-             * is near the bottom.
-             */
             wasNearBottom.current =
-                distanceFromBottom <= 100;
+                distanceFromBottom <= 120;
 
 
             /*
-             * Only load older messages when
+             * Only request older messages when
              * the user reaches the top.
              */
             if (
@@ -205,7 +204,6 @@ function MessageList({
                 return;
             }
 
-
             const oldestMessage =
                 messages[0];
 
@@ -216,7 +214,7 @@ function MessageList({
 
             /*
              * Save the current viewport before
-             * older messages are added.
+             * prepending messages.
              */
             previousScrollHeight.current =
                 container.scrollHeight;
@@ -228,7 +226,7 @@ function MessageList({
                 true;
 
 
-            await dispatch(
+            void dispatch(
                 fetchOlderMessages({
                     conversationId,
                     before: oldestMessage.id,
@@ -257,13 +255,11 @@ function MessageList({
             return;
         }
 
-
         const currentCount =
             messages.length;
 
         const previousCount =
             previousMessageCount.current;
-
 
         const newestMessage =
             messages[messages.length - 1];
@@ -272,22 +268,21 @@ function MessageList({
             newestMessage?.id ?? null;
 
 
-        /*
-         * INITIAL LOAD
-         *
-         * Always show the latest message.
-         */
+        /* =========================
+           INITIAL LOAD
+        ========================= */
+
         if (
             initialLoad.current &&
             currentCount > 0
         ) {
 
-            requestAnimationFrame(() => {
-
-                container.scrollTop =
-                    container.scrollHeight;
-
-            });
+            /*
+             * Direct assignment is cheaper than
+             * scheduling another animation frame.
+             */
+            container.scrollTop =
+                container.scrollHeight;
 
             initialLoad.current =
                 false;
@@ -305,13 +300,10 @@ function MessageList({
         }
 
 
-        /*
-         * OLDER MESSAGES WERE LOADED
-         *
-         * Older messages are inserted at
-         * the beginning, so preserve the
-         * user's exact viewport.
-         */
+        /* =========================
+           OLDER MESSAGES
+        ========================= */
+
         if (
             preserveScrollPosition.current &&
             currentCount > previousCount
@@ -324,15 +316,9 @@ function MessageList({
                 newScrollHeight -
                 previousScrollHeight.current;
 
-
-            requestAnimationFrame(() => {
-
-                container.scrollTop =
-                    previousScrollTop.current +
-                    heightDifference;
-
-            });
-
+            container.scrollTop =
+                previousScrollTop.current +
+                heightDifference;
 
             preserveScrollPosition.current =
                 false;
@@ -347,11 +333,10 @@ function MessageList({
         }
 
 
-        /*
-         * NEW MESSAGE / NEW ATTACHMENT
-         *
-         * The newest message ID changed.
-         */
+        /* =========================
+           NEW MESSAGE
+        ========================= */
+
         const receivedNewMessage =
             newestMessageId !== null &&
             newestMessageId !==
@@ -363,18 +348,10 @@ function MessageList({
             currentCount >= previousCount
         ) {
 
-            /*
-             * Only move to the bottom if the
-             * user was already near the bottom.
-             */
             if (wasNearBottom.current) {
 
-                requestAnimationFrame(() => {
-
-                    container.scrollTop =
-                        container.scrollHeight;
-
-                });
+                container.scrollTop =
+                    container.scrollHeight;
 
             }
 
@@ -389,7 +366,7 @@ function MessageList({
 
 
         /*
-         * Keep refs synchronized.
+         * Keep tracking state synchronized.
          */
         previousMessageCount.current =
             currentCount;
@@ -399,6 +376,10 @@ function MessageList({
 
     }, [messages]);
 
+
+    /* =========================
+       ATTACHMENT LOAD
+    ========================= */
 
     const handleImageLoad =
         useCallback(() => {
@@ -412,12 +393,8 @@ function MessageList({
 
             if (wasNearBottom.current) {
 
-                requestAnimationFrame(() => {
-
-                    container.scrollTop =
-                        container.scrollHeight;
-
-                });
+                container.scrollTop =
+                    container.scrollHeight;
 
             }
 
@@ -436,6 +413,7 @@ function MessageList({
             "unsend_message",
             messageId
         );
+
     };
 
 
@@ -447,6 +425,7 @@ function MessageList({
             "delete_message_for_me",
             messageId
         );
+
     };
 
 
@@ -455,13 +434,19 @@ function MessageList({
             ref={scrollRef}
             onScroll={handleScroll}
             className="
+                h-full
                 min-h-0
-                flex-1
                 overflow-y-auto
+                overscroll-contain
+                scroll-smooth
+                px-3
+                py-4
+                sm:px-5
+                sm:py-5
             "
         >
 
-            <div className="flex flex-col gap-4 p-6">
+            <div className="flex min-h-full flex-col gap-3">
 
                 {messages.length === 0 ? (
 
@@ -472,7 +457,8 @@ function MessageList({
                             flex-col
                             items-center
                             justify-center
-                            py-20
+                            px-4
+                            py-16
                             text-center
                         "
                     >
@@ -497,7 +483,7 @@ function MessageList({
                             No messages yet
                         </h3>
 
-                        <p className="mt-1 text-xs text-muted-foreground">
+                        <p className="mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">
                             Send a message to start the conversation.
                         </p>
 
@@ -546,10 +532,6 @@ function MessageList({
                         } | null = null;
 
 
-                        /*
-                         * Do not parse attachment data
-                         * for an unsent message.
-                         */
                         if (!isUnsent) {
 
                             try {
@@ -576,6 +558,7 @@ function MessageList({
                             } catch {
                                 // Normal text message.
                             }
+
                         }
 
 
@@ -602,7 +585,7 @@ function MessageList({
 
                                 {!mine && (
 
-                                    <Avatar className="size-8 shrink-0">
+                                    <Avatar className="size-7 shrink-0 sm:size-8">
 
                                         <AvatarImage
                                             src={
@@ -628,8 +611,9 @@ function MessageList({
                                 <div
                                     className={`
                                         flex
-                                        max-w-[75%]
+                                        max-w-[85%]
                                         flex-col
+                                        sm:max-w-[75%]
                                         ${
                                             mine
                                                 ? "items-end"
@@ -692,11 +676,13 @@ function MessageList({
                                                         onLoad={
                                                             handleImageLoad
                                                         }
+                                                        loading="lazy"
                                                         className="
-                                                            max-h-96
+                                                            max-h-80
                                                             max-w-full
                                                             rounded-xl
                                                             object-contain
+                                                            sm:max-h-96
                                                         "
                                                     />
 
@@ -709,10 +695,10 @@ function MessageList({
                                                         rounded-2xl
                                                         border
                                                         bg-background
-                                                        text-foreground
                                                         px-4
                                                         py-2.5
                                                         text-sm
+                                                        text-foreground
                                                         shadow-sm
                                                         ${
                                                             mine
@@ -734,6 +720,7 @@ function MessageList({
                                                                 rel="noreferrer"
                                                                 className="
                                                                     flex
+                                                                    min-w-0
                                                                     items-center
                                                                     gap-3
                                                                     rounded-xl
@@ -741,6 +728,7 @@ function MessageList({
                                                                     border-current/10
                                                                     px-3
                                                                     py-2
+                                                                    transition-colors
                                                                     hover:bg-black/5
                                                                     dark:hover:bg-white/5
                                                                 "
@@ -763,7 +751,6 @@ function MessageList({
                                                                 <Download className="size-4 shrink-0" />
 
                                                             </a>
-
 
                                                             {attachment.text && (
 
@@ -808,29 +795,27 @@ function MessageList({
 
                                             <DropdownMenu>
 
-                                                <DropdownMenuTrigger>
+                                                <DropdownMenuTrigger
+                                                    render={
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="
+                                                                size-7
+                                                                shrink-0
+                                                                text-muted-foreground
+                                                                hover:text-foreground
+                                                            "
+                                                        >
+                                                            <MoreHorizontal className="size-4" />
 
-                                                    <Button
-                                                        type="button"
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="
-                                                            size-7
-                                                            shrink-0
-                                                            text-muted-foreground
-                                                            hover:text-foreground
-                                                        "
-                                                    >
-
-                                                        <MoreHorizontal className="size-4" />
-
-                                                        <span className="sr-only">
-                                                            Message options
-                                                        </span>
-
-                                                    </Button>
-
-                                                </DropdownMenuTrigger>
+                                                            <span className="sr-only">
+                                                                Message options
+                                                            </span>
+                                                        </Button>
+                                                    }
+                                                />
 
 
                                                 <DropdownMenuContent
@@ -859,6 +844,7 @@ function MessageList({
                                                     {mine && (
                                                         <DropdownMenuSeparator />
                                                     )}
+
 
                                                     <DropdownMenuItem
                                                         onClick={() =>

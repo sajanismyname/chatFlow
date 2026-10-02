@@ -88,11 +88,15 @@ const SocketManager = () => {
         };
 
         const handleSocketError = (
-            error: { message: string }
+            error: {
+                message: string;
+                operation?: string;
+                messageId?: number;
+            }
         ) => {
             console.error(
                 "Socket error:",
-                error.message
+                error
             );
         };
 
