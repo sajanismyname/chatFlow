@@ -7,6 +7,10 @@ export interface Message {
     sender: User;
     readAt: string | null;
     createdAt: string;
+
+    // Message deletion / unsend state
+    deletedAt: string | null;
+    deletedForEveryone: boolean;
 }
 
 export interface MessageState {
