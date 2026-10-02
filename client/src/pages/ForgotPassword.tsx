@@ -1,6 +1,17 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { ArrowLeft, Mail, Loader2 } from "lucide-react";
+import {
+    useEffect,
+    useState,
+} from "react";
+
+import {
+    Link,
+} from "react-router-dom";
+
+import {
+    ArrowLeft,
+    Mail,
+    Loader2,
+} from "lucide-react";
 
 import api from "../api/axios";
 
@@ -27,7 +38,8 @@ import {
 
 function ForgotPassword() {
 
-    const [email, setEmail] = useState("");
+    const [email, setEmail] =
+        useState("");
 
     const [loading, setLoading] =
         useState(false);
@@ -37,6 +49,57 @@ function ForgotPassword() {
 
     const [success, setSuccess] =
         useState("");
+
+    const [remainingSeconds, setRemainingSeconds] =
+        useState(0);
+
+
+    /*
+     * Countdown
+     */
+    useEffect(() => {
+
+        if (remainingSeconds <= 0) {
+            return;
+        }
+
+        const timer =
+            window.setInterval(() => {
+
+                setRemainingSeconds(
+                    (seconds) =>
+                        Math.max(
+                            0,
+                            seconds - 1
+                        )
+                );
+
+            }, 1000);
+
+        return () => {
+            window.clearInterval(timer);
+        };
+
+    }, [remainingSeconds]);
+
+
+    /*
+     * Format countdown as MM:SS
+     */
+    const formatCountdown = (
+        totalSeconds: number
+    ) => {
+
+        const minutes =
+            Math.floor(
+                totalSeconds / 60
+            );
+
+        const seconds =
+            totalSeconds % 60;
+
+        return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+    };
 
 
     const handleSubmit = async (
@@ -48,39 +111,111 @@ function ForgotPassword() {
         setError("");
         setSuccess("");
 
+
         if (!email.trim()) {
-            setError("Please enter your email address.");
+
+            setError(
+                "Please enter your email address."
+            );
+
             return;
         }
+
+
+        /*
+         * Frontend convenience check.
+         *
+         * Backend remains the real protection.
+         */
+        if (remainingSeconds > 0) {
+
+            setError(
+                `Please wait ${formatCountdown(
+                    remainingSeconds
+                )} before requesting another reset link.`
+            );
+
+            return;
+        }
+
 
         try {
 
             setLoading(true);
 
-            const response = await api.post(
-                "/auth/forgot-password",
-                {
-                    email: email.trim(),
-                }
-            );
+
+            const response =
+                await api.post(
+                    "/auth/forgot-password",
+                    {
+                        email:
+                            email
+                                .trim()
+                                .toLowerCase(),
+                    }
+                );
+
 
             setSuccess(
                 response.data.message
             );
 
+
+            /*
+             * Start the 30-minute countdown
+             * after a successful request.
+             */
+            if (
+                response.data
+                    .retryAfterSeconds
+            ) {
+
+                setRemainingSeconds(
+                    response.data
+                        .retryAfterSeconds
+                );
+            }
+
+
         } catch (error: any) {
 
-            setError(
-                error.response?.data?.message ||
-                "Unable to process your request."
-            );
+            const retryAfterSeconds =
+                error.response?.data
+                    ?.retryAfterSeconds;
+
+
+            /*
+             * Backend rate limit.
+             */
+            if (
+                error.response?.status ===
+                    429 &&
+                retryAfterSeconds
+            ) {
+
+                setRemainingSeconds(
+                    retryAfterSeconds
+                );
+
+                setError(
+                    `Please wait ${formatCountdown(
+                        retryAfterSeconds
+                    )} before requesting another reset link.`
+                );
+
+            } else {
+
+                setError(
+                    error.response?.data
+                        ?.message ||
+                    "Unable to process your request."
+                );
+            }
 
         } finally {
 
             setLoading(false);
-
         }
-
     };
 
 
@@ -114,6 +249,7 @@ function ForgotPassword() {
                         <Mail className="size-5" />
                     </div>
 
+
                     <div>
 
                         <CardTitle className="text-2xl">
@@ -138,8 +274,6 @@ function ForgotPassword() {
                         className="space-y-5"
                     >
 
-                        {/* EMAIL */}
-
                         <div className="space-y-2">
 
                             <Label htmlFor="email">
@@ -163,7 +297,7 @@ function ForgotPassword() {
                         </div>
 
 
-                        {/* ERROR */}
+                        {/* RATE LIMIT / ERROR */}
 
                         {error && (
 
@@ -187,7 +321,7 @@ function ForgotPassword() {
 
                         {/* SUCCESS */}
 
-                        {success && (
+                        {success && !error && (
 
                             <div
                                 className="
@@ -202,7 +336,26 @@ function ForgotPassword() {
                                     dark:text-green-400
                                 "
                             >
-                                {success}
+                                <p>
+                                    {success}
+                                </p>
+
+                                {remainingSeconds > 0 && (
+
+                                    <p className="mt-1">
+                                        You can request
+                                        another reset link
+                                        in{" "}
+                                        <strong>
+                                            {formatCountdown(
+                                                remainingSeconds
+                                            )}
+                                        </strong>
+                                        .
+                                    </p>
+
+                                )}
+
                             </div>
 
                         )}
@@ -211,7 +364,10 @@ function ForgotPassword() {
                         <Button
                             type="submit"
                             className="w-full"
-                            disabled={loading}
+                            disabled={
+                                loading ||
+                                remainingSeconds > 0
+                            }
                         >
 
                             {loading ? (
@@ -228,6 +384,12 @@ function ForgotPassword() {
                                     Sending...
                                 </>
 
+                            ) : remainingSeconds > 0 ? (
+
+                                `Try again in ${formatCountdown(
+                                    remainingSeconds
+                                )}`
+
                             ) : (
 
                                 "Send reset link"
@@ -236,8 +398,6 @@ function ForgotPassword() {
 
                         </Button>
 
-
-                        {/* BACK TO LOGIN */}
 
                         <div className="flex justify-center">
 
@@ -269,9 +429,7 @@ function ForgotPassword() {
             </Card>
 
         </div>
-
     );
-
 }
 
 

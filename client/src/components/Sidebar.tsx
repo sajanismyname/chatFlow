@@ -85,17 +85,17 @@ function Sidebar({
 
 
     /* =========================
-       GET OTHER USER
+       GET OTHER MEMBER
     ========================= */
 
-    const getOtherUser = (
+    const getOtherMember = (
         conversation: Conversation
     ) => {
 
         return conversation.members.find(
             (member) =>
                 member.user.id !== currentUser?.id
-        )?.user;
+        );
 
     };
 
@@ -108,12 +108,17 @@ function Sidebar({
         conversations.filter(
             (conversation) => {
 
-                const otherUser =
-                    getOtherUser(conversation);
+                const otherMember =
+                    getOtherMember(
+                        conversation
+                    );
 
                 const name =
-                    otherUser?.name
-                        ?.toLowerCase() ?? "";
+                    (
+                        otherMember?.nickname ||
+                        otherMember?.user.name ||
+                        ""
+                    ).toLowerCase();
 
                 return name.includes(
                     search.toLowerCase()
@@ -139,11 +144,9 @@ function Sidebar({
                 ).unwrap();
 
 
-            // Close user search
             setShowUserSearch(false);
 
 
-            // Make new conversation active
             dispatch(
                 setActiveConversation(
                     conversation.id
@@ -151,7 +154,6 @@ function Sidebar({
             );
 
 
-            // Update parent state
             onSelectConversation(
                 conversation.id
             );
@@ -314,10 +316,18 @@ function Sidebar({
                         {filteredConversations.map(
                             (conversation) => {
 
-                                const otherUser =
-                                    getOtherUser(
+                                const otherMember =
+                                    getOtherMember(
                                         conversation
                                     );
+
+                                const otherUser =
+                                    otherMember?.user;
+
+                                const displayName =
+                                    otherMember?.nickname ||
+                                    otherUser?.name ||
+                                    "Unknown user";
 
                                 const isActive =
                                     activeConversationId ===
@@ -338,8 +348,7 @@ function Sidebar({
                                         }
 
                                         name={
-                                            otherUser?.name ||
-                                            "Unknown user"
+                                            displayName
                                         }
 
                                         avatar={

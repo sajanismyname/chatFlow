@@ -69,17 +69,20 @@ function ChatFlow() {
                 activeConversationId
         );
 
-    const otherUser =
+    const otherMember =
         selectedConversationData
             ?.members
-            ?.filter(
-                (member) => member?.user
-            )
-            .find(
+            ?.find(
                 (member) =>
                     member.user.id !==
                     currentUser?.id
-            )?.user;
+            );
+
+    const otherUser =
+        otherMember?.user;
+
+    const otherUserNickname =
+        otherMember?.nickname ?? null;
 
     const otherUserOnline =
         otherUser?.id !== undefined &&
@@ -298,29 +301,36 @@ function ChatFlow() {
                         </div>
                     ) : (
                         <>
-                            <ChatHeader
-                                name={
-                                    otherUser?.name ||
-                                    "Select a conversation"
-                                }
-                                avatar={
-                                    otherUser?.avatar ??
-                                    null
-                                }
-                                online={
-                                    otherUserOnline
-                                }
-                                userId={
-                                    otherUser?.id
-                                }
-                                onDeleteConversation={
-                                    handleDeleteConversation
-                                }
-                            />
+
+                        <ChatHeader
+                            name={
+                                otherUserNickname ||
+                                otherUser?.name ||
+                                "Select a conversation"
+                            }
+                            avatar={
+                                otherUser?.avatar ?? null
+                            }
+                            online={
+                                otherUserOnline
+                            }
+                            userId={
+                                otherUser?.id
+                            }
+                            conversationId={
+                                activeConversationId
+                            }
+                            onDeleteConversation={
+                                handleDeleteConversation
+                            }
+                        />
 
                             <MessageList
                                 messages={
                                     messages
+                                }
+                                conversationId={
+                                    activeConversationId
                                 }
                             />
 

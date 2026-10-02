@@ -38,4 +38,10 @@ export class Message {
 
     @Column({ type: "timestamp", nullable: true })
     readAt!: Date | null;
+
+    @Column({type: "timestamp", nullable:true})
+    deletedAt!: Date | null;
+
+    @Column({ type: "boolean", default: false})
+    deletedForEveryone!: boolean;
 }

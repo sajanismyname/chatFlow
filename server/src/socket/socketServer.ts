@@ -4,7 +4,11 @@ import jwt from "jsonwebtoken";
 
 import { AppDataSource } from "../config/dataSource.js";
 import { ConversationMember } from "../entities/ConversationMember.js";
-import { createMessage } from "../services/messageServices.js";
+import {
+    createMessage,
+    unsendMessage,
+    deleteMessageForMe,
+} from "../services/messageServices.js";
 
 interface jwtPayLoad {
     userId: number;
@@ -219,6 +223,114 @@ export const initializeSocketServer = (
                 }
             }
         )
+
+            socket.on(
+        "unsend_message",
+        async (messageId: number) => {
+            try {
+                if (
+                    !Number.isInteger(messageId) ||
+                    messageId <= 0
+                ) {
+                    socket.emit("socket_error", {
+                        message: "Invalid message ID",
+                    });
+                    return;
+                }
+
+                const message = await unsendMessage({
+                    messageId,
+                    userId,
+                });
+
+                if (!message || !message.conversation) {
+                    socket.emit("socket_error", {
+                        message: "Message not found",
+                    });
+                    return;
+                }
+
+                io.to(
+                    `conversation:${message.conversation.id}`
+                ).emit("message_unsent", {
+                    messageId: message.id,
+                    conversationId:
+                        message.conversation.id,
+                });
+
+            } catch (error: any) {
+                console.error(
+                    "Socket unsend error:",
+                    error
+                );
+
+                socket.emit("socket_error", {
+                    message:
+                        error.message ||
+                        "Failed to unsend message",
+                });
+            }
+        }
+    );
+
+    socket.on(
+        "delete_message_for_me",
+        async (messageId: number) => {
+            try {
+                if (
+                    !Number.isInteger(messageId) ||
+                    messageId <= 0
+                ) {
+                    socket.emit("socket_error", {
+                        message: "Invalid message ID",
+                    });
+                    return;
+                }
+
+                await deleteMessageForMe({
+                    messageId,
+                    userId,
+                });
+
+                /*
+                * Only this user's client should
+                * remove the message.
+                */
+                const message = await deleteMessageForMe({
+                    messageId,
+                    userId,
+                });
+
+                if (!message || !message.conversation) {
+                    socket.emit("socket_error", {
+                        message: "Message not found",
+                    });
+                    return;
+                }
+
+                socket.emit(
+                    "message_deleted_for_me",
+                    {
+                        messageId,
+                        conversationId:
+                            message.conversation.id,
+                    }
+                );
+
+            } catch (error: any) {
+                console.error(
+                    "Socket delete-for-me error:",
+                    error
+                );
+
+                socket.emit("socket_error", {
+                    message:
+                        error.message ||
+                        "Failed to delete message",
+                });
+            }
+        }
+    );
     })
 
     return io

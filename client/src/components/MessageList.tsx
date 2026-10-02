@@ -1,9 +1,13 @@
 import {
+    useCallback,
     useLayoutEffect,
     useRef,
 } from "react";
 
-import { useAppSelector } from "../app/hooks";
+import {
+    useAppDispatch,
+    useAppSelector,
+} from "../app/hooks";
 
 import type {
     Message,
@@ -16,31 +20,236 @@ import {
 } from "@/components/ui/avatar";
 
 import {
+    Button,
+} from "@/components/ui/button";
+
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+import {
+    fetchOlderMessages,
+} from "../features/messages/messageSlice";
+
+import {
     FileText,
     Download,
+    MoreHorizontal,
 } from "lucide-react";
+
+import {
+    socket,
+} from "../socket/socket";
+
 
 interface MessageListProps {
     messages: Message[];
+    conversationId: number;
 }
+
 
 function MessageList({
     messages,
+    conversationId,
 }: MessageListProps) {
+
+    const dispatch = useAppDispatch();
+
     const currentUser = useAppSelector(
         (state) => state.auth.user
     );
 
+    const pagination = useAppSelector(
+        (state) =>
+            state.messages.pagination[
+                conversationId
+            ]
+    );
+
+    const hasMore =
+        pagination?.hasMore ?? false;
+
+    const loadingOlder =
+        pagination?.loadingOlder ?? false;
+
+
     const scrollRef =
         useRef<HTMLDivElement | null>(null);
 
+
+    /*
+     * Used to determine whether the user
+     * is currently near the bottom.
+     */
+    const wasNearBottom =
+        useRef(true);
+
+
+    /*
+     * Tracks the previous number of messages.
+     */
     const previousMessageCount =
         useRef(0);
 
+
+    /*
+     * Tracks the previous newest message.
+     */
+    const previousNewestMessageId =
+        useRef<number | null>(null);
+
+
+    /*
+     * Used when switching conversations.
+     */
+    const previousConversationId =
+        useRef<number | null>(null);
+
+
+    /*
+     * Used for the first load of a conversation.
+     */
     const initialLoad =
         useRef(true);
 
+
+    /*
+     * Used when older messages are prepended.
+     */
+    const preserveScrollPosition =
+        useRef(false);
+
+    const previousScrollHeight =
+        useRef(0);
+
+    const previousScrollTop =
+        useRef(0);
+
+
+    /* =========================
+       RESET ON CONVERSATION CHANGE
+    ========================= */
+
     useLayoutEffect(() => {
+
+        if (
+            previousConversationId.current !==
+            conversationId
+        ) {
+
+            previousConversationId.current =
+                conversationId;
+
+            previousMessageCount.current =
+                0;
+
+            previousNewestMessageId.current =
+                null;
+
+            initialLoad.current =
+                true;
+
+            preserveScrollPosition.current =
+                false;
+
+            wasNearBottom.current =
+                true;
+        }
+
+    }, [conversationId]);
+
+
+    /* =========================
+       LOAD OLDER MESSAGES
+    ========================= */
+
+    const handleScroll =
+        useCallback(async () => {
+
+            const container =
+                scrollRef.current;
+
+            if (!container) {
+                return;
+            }
+
+
+            const distanceFromBottom =
+                container.scrollHeight -
+                container.scrollTop -
+                container.clientHeight;
+
+
+            /*
+             * Always remember whether the user
+             * is near the bottom.
+             */
+            wasNearBottom.current =
+                distanceFromBottom <= 100;
+
+
+            /*
+             * Only load older messages when
+             * the user reaches the top.
+             */
+            if (
+                container.scrollTop > 100 ||
+                !hasMore ||
+                loadingOlder ||
+                messages.length === 0
+            ) {
+                return;
+            }
+
+
+            const oldestMessage =
+                messages[0];
+
+            if (!oldestMessage) {
+                return;
+            }
+
+
+            /*
+             * Save the current viewport before
+             * older messages are added.
+             */
+            previousScrollHeight.current =
+                container.scrollHeight;
+
+            previousScrollTop.current =
+                container.scrollTop;
+
+            preserveScrollPosition.current =
+                true;
+
+
+            await dispatch(
+                fetchOlderMessages({
+                    conversationId,
+                    before: oldestMessage.id,
+                })
+            );
+
+        }, [
+            conversationId,
+            dispatch,
+            hasMore,
+            loadingOlder,
+            messages,
+        ]);
+
+
+    /* =========================
+       HANDLE MESSAGE CHANGES
+    ========================= */
+
+    useLayoutEffect(() => {
+
         const container =
             scrollRef.current;
 
@@ -48,58 +257,210 @@ function MessageList({
             return;
         }
 
+
         const currentCount =
             messages.length;
 
         const previousCount =
             previousMessageCount.current;
 
+
+        const newestMessage =
+            messages[messages.length - 1];
+
+        const newestMessageId =
+            newestMessage?.id ?? null;
+
+
+        /*
+         * INITIAL LOAD
+         *
+         * Always show the latest message.
+         */
         if (
             initialLoad.current &&
             currentCount > 0
         ) {
-            container.scrollTop =
-                container.scrollHeight;
 
-            initialLoad.current = false;
+            requestAnimationFrame(() => {
+
+                container.scrollTop =
+                    container.scrollHeight;
+
+            });
+
+            initialLoad.current =
+                false;
 
             previousMessageCount.current =
                 currentCount;
 
+            previousNewestMessageId.current =
+                newestMessageId;
+
+            wasNearBottom.current =
+                true;
+
             return;
         }
 
-        if (
-            currentCount >
-            previousCount
-        ) {
-            const distanceFromBottom =
-                container.scrollHeight -
-                container.scrollTop -
-                container.clientHeight;
 
-            if (
-                distanceFromBottom <= 100
-            ) {
+        /*
+         * OLDER MESSAGES WERE LOADED
+         *
+         * Older messages are inserted at
+         * the beginning, so preserve the
+         * user's exact viewport.
+         */
+        if (
+            preserveScrollPosition.current &&
+            currentCount > previousCount
+        ) {
+
+            const newScrollHeight =
+                container.scrollHeight;
+
+            const heightDifference =
+                newScrollHeight -
+                previousScrollHeight.current;
+
+
+            requestAnimationFrame(() => {
+
                 container.scrollTop =
-                    container.scrollHeight;
-            }
+                    previousScrollTop.current +
+                    heightDifference;
+
+            });
+
+
+            preserveScrollPosition.current =
+                false;
+
+            previousMessageCount.current =
+                currentCount;
+
+            previousNewestMessageId.current =
+                newestMessageId;
+
+            return;
         }
 
+
+        /*
+         * NEW MESSAGE / NEW ATTACHMENT
+         *
+         * The newest message ID changed.
+         */
+        const receivedNewMessage =
+            newestMessageId !== null &&
+            newestMessageId !==
+                previousNewestMessageId.current;
+
+
+        if (
+            receivedNewMessage &&
+            currentCount >= previousCount
+        ) {
+
+            /*
+             * Only move to the bottom if the
+             * user was already near the bottom.
+             */
+            if (wasNearBottom.current) {
+
+                requestAnimationFrame(() => {
+
+                    container.scrollTop =
+                        container.scrollHeight;
+
+                });
+
+            }
+
+            previousMessageCount.current =
+                currentCount;
+
+            previousNewestMessageId.current =
+                newestMessageId;
+
+            return;
+        }
+
+
+        /*
+         * Keep refs synchronized.
+         */
         previousMessageCount.current =
             currentCount;
 
+        previousNewestMessageId.current =
+            newestMessageId;
+
     }, [messages]);
+
+
+    const handleImageLoad =
+        useCallback(() => {
+
+            const container =
+                scrollRef.current;
+
+            if (!container) {
+                return;
+            }
+
+            if (wasNearBottom.current) {
+
+                requestAnimationFrame(() => {
+
+                    container.scrollTop =
+                        container.scrollHeight;
+
+                });
+
+            }
+
+        }, []);
+
+
+    /* =========================
+       MESSAGE ACTIONS
+    ========================= */
+
+    const handleUnsend = (
+        messageId: number
+    ) => {
+
+        socket.emit(
+            "unsend_message",
+            messageId
+        );
+    };
+
+
+    const handleDeleteForMe = (
+        messageId: number
+    ) => {
+
+        socket.emit(
+            "delete_message_for_me",
+            messageId
+        );
+    };
+
 
     return (
         <div
             ref={scrollRef}
+            onScroll={handleScroll}
             className="
                 min-h-0
                 flex-1
                 overflow-y-auto
             "
         >
+
             <div className="flex flex-col gap-4 p-6">
 
                 {messages.length === 0 ? (
@@ -115,6 +476,7 @@ function MessageList({
                             text-center
                         "
                     >
+
                         <div
                             className="
                                 mb-4
@@ -138,6 +500,7 @@ function MessageList({
                         <p className="mt-1 text-xs text-muted-foreground">
                             Send a message to start the conversation.
                         </p>
+
                     </div>
 
                 ) : (
@@ -148,9 +511,18 @@ function MessageList({
                             message.sender.id ===
                             currentUser?.id;
 
+
+                        const isUnsent =
+                            Boolean(
+                                message.unsentAt
+                            ) ||
+                            message.deletedForEveryone;
+
+
                         const senderName =
                             message.sender.name ||
                             "User";
+
 
                         const initials =
                             senderName
@@ -163,6 +535,7 @@ function MessageList({
                                 .slice(0, 2)
                                 .toUpperCase();
 
+
                         let attachment: {
                             type: string;
                             text?: string;
@@ -172,30 +545,45 @@ function MessageList({
                             size?: number;
                         } | null = null;
 
-                        try {
-                            const parsed =
-                                JSON.parse(
-                                    message.content
-                                );
 
-                            if (
-                                parsed?.type ===
-                                    "attachment" &&
-                                typeof parsed.url ===
-                                    "string" &&
-                                typeof parsed.fileName ===
-                                    "string"
-                            ) {
-                                attachment = parsed;
+                        /*
+                         * Do not parse attachment data
+                         * for an unsent message.
+                         */
+                        if (!isUnsent) {
+
+                            try {
+
+                                const parsed =
+                                    JSON.parse(
+                                        message.content
+                                    );
+
+                                if (
+                                    parsed?.type ===
+                                        "attachment" &&
+                                    typeof parsed.url ===
+                                        "string" &&
+                                    typeof parsed.fileName ===
+                                        "string"
+                                ) {
+
+                                    attachment =
+                                        parsed;
+
+                                }
+
+                            } catch {
+                                // Normal text message.
                             }
-                        } catch {
-                            // Normal text message.
                         }
+
 
                         const isImage =
                             attachment?.mimeType.startsWith(
                                 "image/"
                             ) ?? false;
+
 
                         return (
                             <div
@@ -213,7 +601,9 @@ function MessageList({
                             >
 
                                 {!mine && (
+
                                     <Avatar className="size-8 shrink-0">
+
                                         <AvatarImage
                                             src={
                                                 message
@@ -229,8 +619,11 @@ function MessageList({
                                         <AvatarFallback>
                                             {initials}
                                         </AvatarFallback>
+
                                     </Avatar>
+
                                 )}
+
 
                                 <div
                                     className={`
@@ -245,126 +638,246 @@ function MessageList({
                                     `}
                                 >
 
-                                    {/* IMAGE ATTACHMENT */}
-
-                                    {attachment &&
-                                    isImage ? (
-
-                                        <a
-                                            href={
-                                                attachment.url
+                                    <div
+                                        className={`
+                                            flex
+                                            items-center
+                                            gap-1
+                                            ${
+                                                mine
+                                                    ? "flex-row-reverse"
+                                                    : "flex-row"
                                             }
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="block"
-                                        >
-                                            <img
-                                                src={
-                                                    attachment.url
-                                                }
-                                                alt={
-                                                    attachment.fileName
-                                                }
-                                                className="
-                                                    max-h-96
-                                                    max-w-full
-                                                    rounded-xl
-                                                    object-contain
-                                                "
-                                            />
-                                        </a>
+                                        `}
+                                    >
 
-                                    ) : (
+                                        <div>
 
-                                        /* NORMAL MESSAGE / FILE */
+                                            {isUnsent ? (
 
-                                        <div
-                                            className={`
-                                                rounded-2xl
-                                                border
-                                                bg-background
-                                                text-foreground
-                                                px-4
-                                                py-2.5
-                                                text-sm
-                                                shadow-sm
-                                                ${
-                                                    mine
-                                                        
-                                                            ? "rounded-br-md"
-                                                            : "rounded-bl-md"
-                                                }
-                                            `}
-                                        >
+                                                <div
+                                                    className="
+                                                        rounded-2xl
+                                                        border
+                                                        bg-muted/50
+                                                        px-4
+                                                        py-2.5
+                                                        text-sm
+                                                        italic
+                                                        text-muted-foreground
+                                                    "
+                                                >
+                                                    This message was unsent
+                                                </div>
 
-                                            {attachment ? (
+                                            ) : attachment &&
+                                              isImage ? (
 
-                                                <div className="space-y-2">
+                                                <a
+                                                    href={
+                                                        attachment.url
+                                                    }
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="block"
+                                                >
 
-                                                    <a
-                                                        href={
+                                                    <img
+                                                        src={
                                                             attachment.url
                                                         }
-                                                        target="_blank"
-                                                        rel="noreferrer"
+                                                        alt={
+                                                            attachment.fileName
+                                                        }
+                                                        onLoad={
+                                                            handleImageLoad
+                                                        }
                                                         className="
-                                                            flex
-                                                            items-center
-                                                            gap-3
+                                                            max-h-96
+                                                            max-w-full
                                                             rounded-xl
-                                                            border
-                                                            border-current/10
-                                                            px-3
-                                                            py-2
-                                                            hover:bg-black/5
-                                                            dark:hover:bg-white/5
+                                                            object-contain
                                                         "
-                                                    >
-                                                        <FileText className="size-5 shrink-0" />
+                                                    />
 
-                                                        <span
+                                                </a>
+
+                                            ) : (
+
+                                                <div
+                                                    className={`
+                                                        rounded-2xl
+                                                        border
+                                                        bg-background
+                                                        text-foreground
+                                                        px-4
+                                                        py-2.5
+                                                        text-sm
+                                                        shadow-sm
+                                                        ${
+                                                            mine
+                                                                ? "rounded-br-md"
+                                                                : "rounded-bl-md"
+                                                        }
+                                                    `}
+                                                >
+
+                                                    {attachment ? (
+
+                                                        <div className="space-y-2">
+
+                                                            <a
+                                                                href={
+                                                                    attachment.url
+                                                                }
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                className="
+                                                                    flex
+                                                                    items-center
+                                                                    gap-3
+                                                                    rounded-xl
+                                                                    border
+                                                                    border-current/10
+                                                                    px-3
+                                                                    py-2
+                                                                    hover:bg-black/5
+                                                                    dark:hover:bg-white/5
+                                                                "
+                                                            >
+
+                                                                <FileText className="size-5 shrink-0" />
+
+                                                                <span
+                                                                    className="
+                                                                        min-w-0
+                                                                        flex-1
+                                                                        truncate
+                                                                    "
+                                                                >
+                                                                    {
+                                                                        attachment.fileName
+                                                                    }
+                                                                </span>
+
+                                                                <Download className="size-4 shrink-0" />
+
+                                                            </a>
+
+
+                                                            {attachment.text && (
+
+                                                                <p
+                                                                    className="
+                                                                        whitespace-pre-wrap
+                                                                        wrap-break-word
+                                                                    "
+                                                                >
+                                                                    {
+                                                                        attachment.text
+                                                                    }
+                                                                </p>
+
+                                                            )}
+
+                                                        </div>
+
+                                                    ) : (
+
+                                                        <p
                                                             className="
-                                                                min-w-0
-                                                                flex-1
-                                                                truncate
+                                                                whitespace-pre-wrap
+                                                                wrap-break-word
                                                             "
                                                         >
                                                             {
-                                                                attachment.fileName
-                                                            }
-                                                        </span>
-
-                                                        <Download className="size-4 shrink-0" />
-                                                    </a>
-
-                                                    {attachment.text && (
-                                                        <p className="
-                                                            whitespace-pre-wrap
-                                                            wrap-break-word
-                                                        ">
-                                                            {
-                                                                attachment.text
+                                                                message.content
                                                             }
                                                         </p>
+
                                                     )}
 
                                                 </div>
 
-                                            ) : (
-
-                                                <p className="
-                                                    whitespace-pre-wrap
-                                                    wrap-break-word
-                                                ">
-                                                    {
-                                                        message.content
-                                                    }
-                                                </p>
-
                                             )}
 
                                         </div>
-                                    )}
+
+
+                                        {!isUnsent && (
+
+                                            <DropdownMenu>
+
+                                                <DropdownMenuTrigger>
+
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="
+                                                            size-7
+                                                            shrink-0
+                                                            text-muted-foreground
+                                                            hover:text-foreground
+                                                        "
+                                                    >
+
+                                                        <MoreHorizontal className="size-4" />
+
+                                                        <span className="sr-only">
+                                                            Message options
+                                                        </span>
+
+                                                    </Button>
+
+                                                </DropdownMenuTrigger>
+
+
+                                                <DropdownMenuContent
+                                                    align={
+                                                        mine
+                                                            ? "end"
+                                                            : "start"
+                                                    }
+                                                >
+
+                                                    {mine && (
+
+                                                        <DropdownMenuItem
+                                                            onClick={() =>
+                                                                handleUnsend(
+                                                                    message.id
+                                                                )
+                                                            }
+                                                        >
+                                                            Unsend
+                                                        </DropdownMenuItem>
+
+                                                    )}
+
+
+                                                    {mine && (
+                                                        <DropdownMenuSeparator />
+                                                    )}
+
+                                                    <DropdownMenuItem
+                                                        onClick={() =>
+                                                            handleDeleteForMe(
+                                                                message.id
+                                                            )
+                                                        }
+                                                    >
+                                                        Delete for me
+                                                    </DropdownMenuItem>
+
+                                                </DropdownMenuContent>
+
+                                            </DropdownMenu>
+
+                                        )}
+
+                                    </div>
+
 
                                     <span
                                         className="
@@ -389,12 +902,16 @@ function MessageList({
 
                             </div>
                         );
+
                     })
+
                 )}
 
             </div>
+
         </div>
     );
 }
+
 
 export default MessageList;

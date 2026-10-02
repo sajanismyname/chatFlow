@@ -1,10 +1,13 @@
 import type { Request, Response } from "express";
 
 import { AppDataSource } from "../config/dataSource.js";
+import { In } from "typeorm";
+import { ConversationNickname } from "../entities/ConversationNickname.js";
 import { Conversation } from "../entities/Conversation.js";
 import { ConversationMember } from "../entities/ConversationMember.js";
 import { User } from "../entities/User.js";
 import { Message } from "../entities/Message.js";
+
 
 import {
     createConversationSchema,
@@ -21,6 +24,8 @@ const messageRepository =
 const conversationMemberRepository =
     AppDataSource.getRepository(ConversationMember);
 
+const conversationNicknameRepository =
+    AppDataSource.getRepository(ConversationNickname);
 
 export const getConversations = async (
     req: Request,
@@ -38,9 +43,7 @@ export const getConversations = async (
 
         const memberships =
             await AppDataSource
-                .getRepository(
-                    ConversationMember
-                )
+                .getRepository(ConversationMember)
                 .find({
                     where: {
                         user: {
@@ -55,6 +58,26 @@ export const getConversations = async (
                         },
                     },
                 });
+
+        const conversationIds = memberships.map(
+            (membership) =>
+                membership.conversation.id
+        );
+
+        const nicknames =
+            conversationIds.length > 0
+                ? await conversationNicknameRepository.find({
+                      where: {
+                          conversation: {
+                              id: In(conversationIds),
+                          },
+                      },
+                      relations: {
+                          conversation: true,
+                          user: true,
+                      },
+                  })
+                : [];
 
         const conversations =
             await Promise.all(
@@ -81,17 +104,41 @@ export const getConversations = async (
                         return {
                             ...conversation,
 
+                            members:
+                                conversation.members.map(
+                                    (member) => {
+                                        const nicknameRecord =
+                                            nicknames.find(
+                                                (nickname) =>
+                                                    nickname
+                                                        .conversation
+                                                        .id ===
+                                                        conversation.id &&
+                                                    nickname.user.id ===
+                                                        member.user.id
+                                            );
+
+                                        return {
+                                            ...member,
+                                            nickname:
+                                                nicknameRecord
+                                                    ?.nickname ??
+                                                null,
+                                        };
+                                    }
+                                ),
+
                             lastMessage:
                                 lastMessage
                                     ? {
-                                          id: lastMessage.id,
-                                          content:
-                                              lastMessage.content,
-                                          createdAt:
-                                              lastMessage.createdAt,
-                                          sender:
-                                              lastMessage.sender,
-                                      }
+                                            id: lastMessage.id,
+                                            content:
+                                                lastMessage.content,
+                                            createdAt:
+                                                lastMessage.createdAt,
+                                            sender:
+                                                lastMessage.sender,
+                                        }
                                     : null,
                         };
                     }
