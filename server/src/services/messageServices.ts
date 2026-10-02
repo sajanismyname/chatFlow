@@ -22,7 +22,6 @@ export const createMessage = async ({
     conversationId: number;
     content: string;
 }) => {
-
     const message =
         messageRepository.create({
             content: content.trim(),
@@ -66,7 +65,6 @@ export const deleteMessageForMe = async ({
     messageId: number;
     userId: number;
 }) => {
-
     const message =
         await messageRepository.findOne({
             where: {
@@ -75,7 +73,6 @@ export const deleteMessageForMe = async ({
 
             relations: {
                 conversation: true,
-                sender: true,
             },
         });
 
@@ -85,11 +82,10 @@ export const deleteMessageForMe = async ({
 
 
     /*
-     * Check whether this user has already
-     * deleted the message.
+     * Delete-for-me is idempotent.
      *
-     * This operation is intentionally
-     * idempotent.
+     * If the user already deleted this message,
+     * simply return the message instead of throwing.
      */
     const existingDeletion =
         await messageDeletionRepository.findOne({
@@ -104,12 +100,6 @@ export const deleteMessageForMe = async ({
             },
         });
 
-
-    /*
-     * Already deleted for this user.
-     *
-     * Do not throw an error.
-     */
     if (existingDeletion) {
         return message;
     }
@@ -126,11 +116,9 @@ export const deleteMessageForMe = async ({
             },
         });
 
-
     await messageDeletionRepository.save(
         messageDeletion
     );
-
 
     return message;
 };
@@ -147,7 +135,6 @@ export const unsendMessage = async ({
     messageId: number;
     userId: number;
 }) => {
-
     const message =
         await messageRepository.findOne({
             where: {
@@ -159,7 +146,6 @@ export const unsendMessage = async ({
                 conversation: true,
             },
         });
-
 
     if (!message) {
         throw new Error(
@@ -176,7 +162,7 @@ export const unsendMessage = async ({
 
 
     /*
-     * Keep this operation idempotent too.
+     * Already unsent.
      */
     if (message.deletedForEveryone) {
         return message;
@@ -187,14 +173,11 @@ export const unsendMessage = async ({
     message.deletedAt = new Date();
 
     /*
-     * The original content is no longer
-     * exposed after unsending.
+     * Remove the original content from the database.
      */
     message.content = "";
 
-
     await messageRepository.save(message);
-
 
     return message;
 };

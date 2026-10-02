@@ -47,7 +47,9 @@ export const fetchMessages =
                 rejectWithValue,
             }
         ) => {
+
             try {
+
                 const response =
                     await api.get(
                         `/conversations/${conversationId}/messages`,
@@ -58,11 +60,13 @@ export const fetchMessages =
                         }
                     );
 
+
                 const messages =
                     response.data.messages;
 
                 const hasMore =
                     response.data.hasMore;
+
 
                 dispatch(
                     setMessages({
@@ -71,6 +75,7 @@ export const fetchMessages =
                     })
                 );
 
+
                 return {
                     conversationId,
                     messages,
@@ -78,6 +83,7 @@ export const fetchMessages =
                 };
 
             } catch (error: any) {
+
                 return rejectWithValue(
                     error.response?.data?.message ||
                     "Failed to fetch messages"
@@ -116,7 +122,9 @@ export const fetchOlderMessages =
                 rejectWithValue,
             }
         ) => {
+
             try {
+
                 const response =
                     await api.get(
                         `/conversations/${conversationId}/messages`,
@@ -128,11 +136,13 @@ export const fetchOlderMessages =
                         }
                     );
 
+
                 const messages =
                     response.data.messages;
 
                 const hasMore =
                     response.data.hasMore;
+
 
                 dispatch(
                     prependMessages({
@@ -141,6 +151,7 @@ export const fetchOlderMessages =
                     })
                 );
 
+
                 return {
                     conversationId,
                     messages,
@@ -148,6 +159,7 @@ export const fetchOlderMessages =
                 };
 
             } catch (error: any) {
+
                 return rejectWithValue(
                     error.response?.data?.message ||
                     "Failed to fetch older messages"
@@ -182,7 +194,9 @@ export const sendMessage =
                 rejectWithValue,
             }
         ) => {
+
             try {
+
                 const response =
                     await api.post(
                         `/conversations/${conversationId}/messages`,
@@ -191,16 +205,28 @@ export const sendMessage =
                         }
                     );
 
+
                 const message =
                     response.data.message;
 
+
+                /*
+                 * The REST response adds the message
+                 * immediately for the sender.
+                 *
+                 * SocketManager also receives the
+                 * broadcast, but chatSlice.addMessage()
+                 * prevents the duplicate by ID.
+                 */
                 dispatch(
                     addMessage(message)
                 );
 
+
                 return message;
 
             } catch (error: any) {
+
                 return rejectWithValue(
                     error.response?.data?.message ||
                     "Failed to send message"
@@ -215,6 +241,7 @@ export const sendMessage =
 ========================= */
 
 const messageSlice = createSlice({
+
     name: "messages",
 
     initialState,
@@ -232,7 +259,9 @@ const messageSlice = createSlice({
             .addCase(
                 fetchMessages.pending,
                 (state) => {
+
                     state.loading = true;
+
                     state.error = null;
                 }
             )
@@ -243,6 +272,7 @@ const messageSlice = createSlice({
                     state,
                     action
                 ) => {
+
                     state.loading = false;
 
                     state.pagination[
@@ -252,6 +282,7 @@ const messageSlice = createSlice({
                         hasMore:
                             action.payload
                                 .hasMore,
+
                         loadingOlder: false,
                     };
                 }
@@ -263,6 +294,7 @@ const messageSlice = createSlice({
                     state,
                     action
                 ) => {
+
                     state.loading = false;
 
                     state.error =
@@ -282,18 +314,22 @@ const messageSlice = createSlice({
                     state,
                     action
                 ) => {
+
                     const conversationId =
                         action.meta.arg
                             .conversationId;
 
+
                     state.pagination[
                         conversationId
                     ] = {
+
                         ...(state.pagination[
                             conversationId
                         ] ?? {
                             hasMore: true,
                         }),
+
                         loadingOlder: true,
                     };
                 }
@@ -305,13 +341,16 @@ const messageSlice = createSlice({
                     state,
                     action
                 ) => {
+
                     state.pagination[
                         action.payload
                             .conversationId
                     ] = {
+
                         hasMore:
                             action.payload
                                 .hasMore,
+
                         loadingOlder: false,
                     };
                 }
@@ -323,20 +362,25 @@ const messageSlice = createSlice({
                     state,
                     action
                 ) => {
+
                     const conversationId =
                         action.meta.arg
                             .conversationId;
 
+
                     state.pagination[
                         conversationId
                     ] = {
+
                         ...(state.pagination[
                             conversationId
                         ] ?? {
                             hasMore: true,
                         }),
+
                         loadingOlder: false,
                     };
+
 
                     state.error =
                         action.payload ||
@@ -352,7 +396,9 @@ const messageSlice = createSlice({
             .addCase(
                 sendMessage.pending,
                 (state) => {
+
                     state.loading = true;
+
                     state.error = null;
                 }
             )
@@ -360,6 +406,7 @@ const messageSlice = createSlice({
             .addCase(
                 sendMessage.fulfilled,
                 (state) => {
+
                     state.loading = false;
                 }
             )
@@ -370,6 +417,7 @@ const messageSlice = createSlice({
                     state,
                     action
                 ) => {
+
                     state.loading = false;
 
                     state.error =

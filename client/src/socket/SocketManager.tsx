@@ -1,5 +1,9 @@
 import { useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
+
+import {
+    useAppDispatch,
+    useAppSelector,
+} from "../app/hooks";
 
 import {
     addMessage,
@@ -11,51 +15,83 @@ import {
 
 import type { RootState } from "../app/store";
 
+import type { Message } from "../features/messages/messageType";
+
 import {
     connectSocket,
     disconnectSocket,
     socket,
 } from "./socket";
 
+
 const SocketManager = () => {
-    const accessToken = useSelector(
-        (state: RootState) => state.auth.accessToken
-    );
 
-    const activeConversationId = useSelector(
-        (state: RootState) =>
-            state.chat.activeConversationId
-    );
+    const accessToken =
+        useAppSelector(
+            (state: RootState) =>
+                state.auth.accessToken
+        );
 
-    const dispatch = useDispatch();
+
+    const activeConversationId =
+        useAppSelector(
+            (state: RootState) =>
+                state.chat.activeConversationId
+        );
+
+
+    const dispatch =
+        useAppDispatch();
+
 
     useEffect(() => {
+
         if (!accessToken) {
             disconnectSocket();
             return;
         }
 
+
         const handleConnect = () => {
-            console.log("Socket connected:", socket.id);
+
+            console.log(
+                "Socket connected:",
+                socket.id
+            );
         };
 
-        const handleDisconnect = (reason: string) => {
+
+        const handleDisconnect = (
+            reason: string
+        ) => {
+
             console.log(
                 "Socket disconnected:",
                 reason
             );
         };
 
-        const handleConnectError = (error: Error) => {
+
+        const handleConnectError = (
+            error: Error
+        ) => {
+
             console.log(
                 "Socket connection error:",
                 error.message
             );
         };
 
-        const handleNewMessage = (message: any) => {
-            dispatch(addMessage(message));
+
+        const handleNewMessage = (
+            message: Message
+        ) => {
+
+            dispatch(
+                addMessage(message)
+            );
         };
+
 
         const handleMessageUnsent = ({
             messageId,
@@ -64,6 +100,7 @@ const SocketManager = () => {
             messageId: number;
             conversationId: number;
         }) => {
+
             dispatch(
                 unsendMessage({
                     conversationId,
@@ -72,6 +109,7 @@ const SocketManager = () => {
             );
         };
 
+
         const handleMessageDeletedForMe = ({
             messageId,
             conversationId,
@@ -79,6 +117,7 @@ const SocketManager = () => {
             messageId: number;
             conversationId: number;
         }) => {
+
             dispatch(
                 deleteMessageForMe({
                     conversationId,
@@ -87,6 +126,7 @@ const SocketManager = () => {
             );
         };
 
+
         const handleSocketError = (
             error: {
                 message: string;
@@ -94,41 +134,60 @@ const SocketManager = () => {
                 messageId?: number;
             }
         ) => {
+
             console.error(
                 "Socket error:",
                 error
             );
         };
 
+
         const handleOnlineUsers = ({
             userIds,
         }: {
             userIds: number[];
         }) => {
-            userIds.forEach((userId) => {
-                dispatch(
-                    setUserOnline(userId)
-                );
-            });
+
+            userIds.forEach(
+                (userId) => {
+
+                    dispatch(
+                        setUserOnline(
+                            userId
+                        )
+                    );
+                }
+            );
         };
+
 
         const handleUserOnline = (
             userId: number
         ) => {
+
             dispatch(
-                setUserOnline(userId)
+                setUserOnline(
+                    userId
+                )
             );
         };
+
 
         const handleUserOffline = (
             userId: number
         ) => {
+
             dispatch(
-                setUserOffline(userId)
+                setUserOffline(
+                    userId
+                )
             );
         };
 
-        // Register listeners FIRST
+
+        /* =========================
+           REGISTER LISTENERS
+        ========================= */
 
         socket.on(
             "connect",
@@ -180,11 +239,14 @@ const SocketManager = () => {
             handleOnlineUsers
         );
 
-        // Connect AFTER listeners are ready
 
-        connectSocket(accessToken);
+        connectSocket(
+            accessToken
+        );
+
 
         return () => {
+
             socket.off(
                 "connect",
                 handleConnect
@@ -237,50 +299,72 @@ const SocketManager = () => {
 
             disconnectSocket();
         };
-    }, [accessToken, dispatch]);
 
-    /*
-     * Conversation room management
-     */
+    }, [
+        accessToken,
+        dispatch,
+    ]);
+
+
+    /* =========================
+       CONVERSATION ROOM
+    ========================= */
+
     useEffect(() => {
+
         if (
             activeConversationId === null
         ) {
             return;
         }
 
+
         const joinConversation = () => {
+
             socket.emit(
                 "join_conversation",
                 activeConversationId
             );
         };
 
+
         if (socket.connected) {
+
             joinConversation();
+
         } else {
+
             socket.once(
                 "connect",
                 joinConversation
             );
         }
 
+
         return () => {
+
             socket.off(
                 "connect",
                 joinConversation
             );
 
+
             if (socket.connected) {
+
                 socket.emit(
                     "leave_conversation",
                     activeConversationId
                 );
             }
         };
-    }, [activeConversationId]);
+
+    }, [
+        activeConversationId,
+    ]);
+
 
     return null;
 };
+
 
 export default SocketManager;
