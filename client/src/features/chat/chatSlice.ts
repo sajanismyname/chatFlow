@@ -56,32 +56,25 @@ const isUnsent = (
     message: Message
 ) => {
     return (
-        message.deletedForEveryone === true
+        message.deletedForEveryone === true ||
+        message.deletedAt !== null
     );
 };
 
 
-const getLastVisibleMessage = (
-    messages: Message[]
-): Message | null => {
-
-    const lastMessage =
-        messages[messages.length - 1];
-
-    return lastMessage ?? null;
-};
-
 const getPreviewContent = (
     message: Message | null
-) => {
+): string => {
 
     if (!message) {
         return "";
     }
 
+
     if (isUnsent(message)) {
         return "This message was unsent";
     }
+
 
     try {
 
@@ -90,6 +83,7 @@ const getPreviewContent = (
                 message.content
             );
 
+
         if (
             parsed?.type ===
             "attachment"
@@ -97,11 +91,12 @@ const getPreviewContent = (
 
             if (
                 typeof parsed.text ===
-                "string" &&
+                    "string" &&
                 parsed.text.trim()
             ) {
                 return parsed.text;
             }
+
 
             if (
                 typeof parsed.fileName ===
@@ -110,6 +105,7 @@ const getPreviewContent = (
                 return parsed.fileName;
             }
 
+
             return "Attachment";
         }
 
@@ -117,7 +113,27 @@ const getPreviewContent = (
         // Normal text message.
     }
 
+
     return message.content;
+};
+
+
+const getLastMessage = (
+    messages: Message[]
+): Message | null => {
+
+    if (
+        messages.length === 0
+    ) {
+        return null;
+    }
+
+
+    return (
+        messages[
+            messages.length - 1
+        ] ?? null
+    );
 };
 
 
@@ -127,13 +143,15 @@ const updateConversationPreview = (
 ) => {
 
     if (!message) {
-        conversation.lastMessage = null;
+        conversation.lastMessage =
+            null;
+
         return;
     }
 
+
     conversation.lastMessage = {
         ...message,
-
         content:
             getPreviewContent(message),
     };
@@ -152,6 +170,7 @@ const moveConversationToTop = (
                 conversation.id ===
                 conversationId
         );
+
 
     if (index === -1) {
         return;
@@ -173,6 +192,7 @@ const moveConversationToTop = (
     const conversation =
         state.conversations[index];
 
+
     if (!conversation) {
         return;
     }
@@ -183,81 +203,10 @@ const moveConversationToTop = (
         1
     );
 
+
     state.conversations.unshift(
         conversation
     );
-};
-
-const restoreConversationPosition = (
-    state: ChatState,
-    conversationId: number,
-    messageId: number
-) => {
-
-    const topMessageId =
-        state.conversationTopMessageIds[
-            conversationId
-        ];
-
-    const previousPosition =
-        state.previousConversationPositions[
-            conversationId
-        ];
-
-    if (
-        topMessageId !== messageId ||
-        previousPosition === undefined
-    ) {
-        return;
-    }
-
-
-    const currentIndex =
-        state.conversations.findIndex(
-            (conversation) =>
-                conversation.id ===
-                conversationId
-        );
-
-    if (currentIndex === -1) {
-        return;
-    }
-
-
-    const [
-        conversation,
-    ] = state.conversations.splice(
-        currentIndex,
-        1
-    );
-
-
-    if (!conversation) {
-        return;
-    }
-
-
-    const targetIndex =
-        Math.min(
-            previousPosition,
-            state.conversations.length
-        );
-
-
-    state.conversations.splice(
-        targetIndex,
-        0,
-        conversation
-    );
-
-
-    delete state.previousConversationPositions[
-        conversationId
-    ];
-
-    delete state.conversationTopMessageIds[
-        conversationId
-    ];
 };
 
 
@@ -303,27 +252,13 @@ const chatSlice = createSlice({
                         action.payload.id
                 );
 
+
             if (!exists) {
 
                 state.conversations.unshift(
                     action.payload
                 );
 
-            } else {
-
-                const index =
-                    state.conversations.findIndex(
-                        (conversation) =>
-                            conversation.id ===
-                            action.payload.id
-                    );
-
-                if (index !== -1) {
-
-                    state.conversations[index] =
-                        action.payload;
-
-                }
             }
         },
 
@@ -375,6 +310,36 @@ const chatSlice = createSlice({
            PRESENCE
         ===================== */
 
+        setOnlineUsers: (
+            state,
+            action: PayloadAction<
+                number[]
+            >
+        ) => {
+
+            state.onlineUsers =
+                action.payload;
+
+
+            state.conversations.forEach(
+                (conversation) => {
+
+                    conversation.members.forEach(
+                        (member) => {
+
+                            member.user.online =
+                                action.payload.includes(
+                                    member.user.id
+                                );
+
+                        }
+                    );
+
+                }
+            );
+        },
+
+
         setUserOnline: (
             state,
             action: PayloadAction<number>
@@ -393,7 +358,6 @@ const chatSlice = createSlice({
                 state.onlineUsers.push(
                     userId
                 );
-
             }
 
 
@@ -553,32 +517,37 @@ const chatSlice = createSlice({
                 state.messages[
                     conversationId
                 ] = [];
-
             }
 
 
-            const existingMessages =
+            const messages =
                 state.messages[
                     conversationId
                 ];
 
 
-            const alreadyExists =
-                existingMessages.some(
-                    (existingMessage) =>
-                        existingMessage.id ===
+            const existing =
+                messages.find(
+                    (item) =>
+                        item.id ===
                         message.id
                 );
 
 
-            if (alreadyExists) {
-                return;
+            if (!existing) {
+
+                messages.push(
+                    message
+                );
+
+            } else {
+
+                Object.assign(
+                    existing,
+                    message
+                );
+
             }
-
-
-            existingMessages.push(
-                message
-            );
 
 
             const conversation =
@@ -598,6 +567,7 @@ const chatSlice = createSlice({
                 conversation,
                 message
             );
+
 
             moveConversationToTop(
                 state,
@@ -648,6 +618,7 @@ const chatSlice = createSlice({
                 return;
             }
 
+
             message.content = "";
 
             message.deletedForEveryone =
@@ -670,6 +641,11 @@ const chatSlice = createSlice({
                 return;
             }
 
+
+            /*
+             * Keep the unsent message as
+             * the sidebar preview.
+             */
             updateConversationPreview(
                 conversation,
                 message
@@ -714,14 +690,17 @@ const chatSlice = createSlice({
                 );
 
 
-            if (deletedIndex === -1) {
+            if (
+                deletedIndex === -1
+            ) {
                 return;
             }
 
 
-            const wasLatestMessage =
+            const wasLatest =
                 deletedIndex ===
                 messages.length - 1;
+
 
             state.messages[
                 conversationId
@@ -731,12 +710,6 @@ const chatSlice = createSlice({
                         message.id !==
                         messageId
                 );
-
-
-            const updatedMessages =
-                state.messages[
-                    conversationId
-                ];
 
 
             const conversation =
@@ -751,26 +724,106 @@ const chatSlice = createSlice({
                 return;
             }
 
-            if (!wasLatestMessage) {
+
+            if (!wasLatest) {
                 return;
             }
 
-            const latestVisibleMessage =
-                getLastVisibleMessage(
-                    updatedMessages
+
+            const remainingMessages =
+                state.messages[
+                    conversationId
+                ] ?? [];
+
+
+            const previousMessage =
+                getLastMessage(
+                    remainingMessages
                 );
 
 
             updateConversationPreview(
                 conversation,
-                latestVisibleMessage
+                previousMessage
             );
 
-            restoreConversationPosition(
-                state,
-                conversationId,
-                messageId
-            );
+
+            const movedByMessageId =
+                state.conversationTopMessageIds[
+                    conversationId
+                ];
+
+
+            const previousPosition =
+                state.previousConversationPositions[
+                    conversationId
+                ];
+
+
+            /*
+             * Restore the conversation to
+             * its original position only if
+             * this exact message caused it
+             * to move to the top.
+             */
+            if (
+                movedByMessageId ===
+                    messageId &&
+                previousPosition !==
+                    undefined
+            ) {
+
+                const currentIndex =
+                    state.conversations.findIndex(
+                        (item) =>
+                            item.id ===
+                            conversationId
+                    );
+
+
+                if (
+                    currentIndex !== -1
+                ) {
+
+                    const [
+                        conversationToMove,
+                    ] =
+                        state.conversations.splice(
+                            currentIndex,
+                            1
+                        );
+
+
+                    if (
+                        conversationToMove
+                    ) {
+
+                        const targetIndex =
+                            Math.min(
+                                previousPosition,
+                                state
+                                    .conversations
+                                    .length
+                            );
+
+
+                        state.conversations.splice(
+                            targetIndex,
+                            0,
+                            conversationToMove
+                        );
+                    }
+                }
+
+
+                delete state.previousConversationPositions[
+                    conversationId
+                ];
+
+                delete state.conversationTopMessageIds[
+                    conversationId
+                ];
+            }
         },
 
 
@@ -807,6 +860,7 @@ export const {
     removeConversation,
     setActiveConversation,
 
+    setOnlineUsers,
     setUserOnline,
     setUserOffline,
 

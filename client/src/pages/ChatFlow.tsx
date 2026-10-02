@@ -1,5 +1,8 @@
 import { useEffect } from "react";
-import { ArrowLeft } from "lucide-react";
+
+import {
+    ArrowLeft,
+} from "lucide-react";
 
 import {
     useAppDispatch,
@@ -11,6 +14,7 @@ import Sidebar from "../components/Sidebar";
 import ChatHeader from "../components/ChatHeader";
 import MessageList from "../components/MessageList";
 import MessageInput from "../components/MessageInput";
+
 import { socket } from "@/socket/socket";
 
 import {
@@ -26,16 +30,26 @@ import {
     setActiveConversation,
 } from "../features/chat/chatSlice";
 
-import type { Message } from "@/features/messages/messageType";
+import type {
+    Message,
+} from "@/features/messages/messageType";
+
 
 const EMPTY_MESSAGES: Message[] = [];
 
-function ChatFlow() {
-    const dispatch = useAppDispatch();
 
-    const conversations = useAppSelector(
-        (state) => state.chat.conversations
-    );
+function ChatFlow() {
+
+    const dispatch =
+        useAppDispatch();
+
+
+    const conversations =
+        useAppSelector(
+            (state) =>
+                state.chat.conversations
+        );
+
 
     const activeConversationId =
         useAppSelector(
@@ -43,35 +57,42 @@ function ChatFlow() {
                 state.chat.activeConversationId
         );
 
-    const messages = useAppSelector(
-        (state) =>
-            activeConversationId !== null
-                ? state.chat.messages[
-                      activeConversationId
-                  ] ?? EMPTY_MESSAGES
-                : EMPTY_MESSAGES
-    );
 
-    const onlineUsers = useAppSelector(
-        (state) =>
-            (state.chat as {
-                onlineUsers?: number[];
-            }).onlineUsers ?? []
-    );
+    const messages =
+        useAppSelector(
+            (state) =>
+                activeConversationId !== null
+                    ? state.chat.messages[
+                          activeConversationId
+                      ] ?? EMPTY_MESSAGES
+                    : EMPTY_MESSAGES
+        );
 
-    const currentUser = useAppSelector(
-        (state) => state.auth.user
-    );
 
-    const selectedConversationData =
+    const onlineUsers =
+        useAppSelector(
+            (state) =>
+                state.chat.onlineUsers
+        );
+
+
+    const currentUser =
+        useAppSelector(
+            (state) =>
+                state.auth.user
+        );
+
+
+    const selectedConversation =
         conversations.find(
             (conversation) =>
                 conversation.id ===
                 activeConversationId
         );
 
+
     const otherMember =
-        selectedConversationData
+        selectedConversation
             ?.members
             ?.find(
                 (member) =>
@@ -79,11 +100,14 @@ function ChatFlow() {
                     currentUser?.id
             );
 
+
     const otherUser =
         otherMember?.user;
 
+
     const otherUserNickname =
         otherMember?.nickname ?? null;
+
 
     const otherUserOnline =
         otherUser?.id !== undefined &&
@@ -91,76 +115,55 @@ function ChatFlow() {
             otherUser.id
         );
 
+
+    /* =========================
+       LOAD CONVERSATIONS
+    ========================= */
+
     useEffect(() => {
+
         dispatch(
             fetchConversations()
         );
-    }, [dispatch]);
+
+    }, [
+        dispatch,
+    ]);
+
+
+    /* =========================
+       LOAD MESSAGES
+    ========================= */
 
     useEffect(() => {
+
         if (
             activeConversationId === null
         ) {
             return;
         }
+
 
         dispatch(
             fetchMessages(
                 activeConversationId
             )
         );
+
     }, [
         activeConversationId,
         dispatch,
     ]);
 
-    useEffect(() => {
-        if (
-            activeConversationId === null
-        ) {
-            return;
-        }
 
-        const previousConversationId =
-            activeConversationId;
-
-        if (socket.connected) {
-            socket.emit(
-                "join_conversation",
-                activeConversationId
-            );
-        } else {
-            const handleConnect = () => {
-                socket.emit(
-                    "join_conversation",
-                    activeConversationId
-                );
-            };
-
-            socket.once(
-                "connect",
-                handleConnect
-            );
-
-            return () => {
-                socket.off(
-                    "connect",
-                    handleConnect
-                );
-            };
-        }
-
-        return () => {
-            socket.emit(
-                "leave_conversation",
-                previousConversationId
-            );
-        };
-    }, [activeConversationId]);
+    /* =========================
+       SELECT CONVERSATION
+    ========================= */
 
     const handleSelectConversation = (
         conversationId: number
     ) => {
+
         dispatch(
             setActiveConversation(
                 conversationId
@@ -168,15 +171,29 @@ function ChatFlow() {
         );
     };
 
+
+    /* =========================
+       MOBILE BACK
+    ========================= */
+
     const handleBackToConversations = () => {
+
         dispatch(
-            setActiveConversation(null)
+            setActiveConversation(
+                null
+            )
         );
     };
+
+
+    /* =========================
+       SEND MESSAGE
+    ========================= */
 
     const handleSendMessage = (
         content: string
     ) => {
+
         if (
             activeConversationId === null ||
             !content.trim()
@@ -184,31 +201,60 @@ function ChatFlow() {
             return;
         }
 
+
         socket.emit(
             "send_message",
             {
                 conversationId:
                     activeConversationId,
+
                 content,
             }
         );
     };
 
+
+    /* =========================
+       SIDEBAR PREVIEW
+    ========================= */
+
     const getLastMessagePreview = (
         content?: string
     ) => {
+
         if (!content) {
             return "No messages yet";
         }
 
+
         try {
+
             const parsed =
                 JSON.parse(content);
+
 
             if (
                 parsed?.type ===
                 "attachment"
             ) {
+
+                if (
+                    typeof parsed.text ===
+                        "string" &&
+                    parsed.text.trim()
+                ) {
+                    return parsed.text;
+                }
+
+
+                if (
+                    typeof parsed.fileName ===
+                    "string"
+                ) {
+                    return parsed.fileName;
+                }
+
+
                 if (
                     typeof parsed.mimeType ===
                         "string" &&
@@ -219,47 +265,66 @@ function ChatFlow() {
                     return "📎 Image";
                 }
 
+
                 return "📎 File";
             }
+
         } catch {
             // Normal text message.
         }
 
+
         return content;
     };
 
+
+    /* =========================
+       DELETE CONVERSATION
+    ========================= */
+
     const handleDeleteConversation =
         async () => {
+
             if (
                 activeConversationId === null
             ) {
                 return;
             }
 
+
             const conversationId =
                 activeConversationId;
 
+
             try {
+
                 await dispatch(
                     deleteConversation(
                         conversationId
                     )
                 ).unwrap();
 
-                socket.emit(
-                    "leave_conversation",
-                    conversationId
-                );
+
+                if (socket.connected) {
+
+                    socket.emit(
+                        "leave_conversation",
+                        conversationId
+                    );
+                }
+
 
                 dispatch(
                     setActiveConversation(
                         null
                     )
                 );
+
             } catch {
                 // Deletion failed.
             }
         };
+
 
     return (
         <div
@@ -272,7 +337,9 @@ function ChatFlow() {
                 bg-background
             "
         >
+
             <Navbar />
+
 
             <div
                 className="
@@ -282,10 +349,14 @@ function ChatFlow() {
                     overflow-hidden
                 "
             >
-                {/* SIDEBAR */}
+
+                {/* =========================
+                    SIDEBAR
+                ========================= */}
 
                 <div
                     className={`
+                        flex
                         h-full
                         min-h-0
                         shrink-0
@@ -299,41 +370,52 @@ function ChatFlow() {
                         md:w-80
                     `}
                 >
+
                     <Sidebar
                         conversations={
                             conversations.map(
                                 (
                                     conversation
                                 ) => ({
+
                                     ...conversation,
+
                                     lastMessage:
                                         conversation.lastMessage
                                             ? {
-                                                  ...conversation.lastMessage,
-                                                  content:
-                                                      getLastMessagePreview(
-                                                          conversation
-                                                              .lastMessage
-                                                              .content
-                                                      ),
-                                              }
-                                            : conversation.lastMessage,
+                                                    ...conversation.lastMessage,
+
+                                                    content:
+                                                        getLastMessagePreview(
+                                                            conversation
+                                                                .lastMessage
+                                                                .content
+                                                        ),
+                                                }
+                                            : null,
                                 })
                             )
                         }
+
                         selectedConversation={
                             activeConversationId
                         }
+
                         onSelectConversation={
                             handleSelectConversation
                         }
                     />
+
                 </div>
 
-                {/* CHAT */}
+
+                {/* =========================
+                    CHAT
+                ========================= */}
 
                 <main
                     className={`
+                        flex
                         min-h-0
                         min-w-0
                         flex-1
@@ -347,10 +429,22 @@ function ChatFlow() {
                         }
                     `}
                 >
+
                     {activeConversationId ===
                     null ? (
-                        <div className="flex min-h-0 flex-1 items-center justify-center">
+
+                        <div
+                            className="
+                                flex
+                                min-h-0
+                                flex-1
+                                items-center
+                                justify-center
+                            "
+                        >
+
                             <div className="px-4 text-center">
+
                                 <div className="mb-4 text-4xl">
                                     💬
                                 </div>
@@ -363,11 +457,16 @@ function ChatFlow() {
                                     Select a conversation
                                     to start chatting.
                                 </p>
+
                             </div>
+
                         </div>
+
                     ) : (
+
                         <>
-                            {/* MOBILE BACK BUTTON */}
+
+                            {/* MOBILE BACK */}
 
                             <div
                                 className="
@@ -382,6 +481,7 @@ function ChatFlow() {
                                     md:hidden
                                 "
                             >
+
                                 <button
                                     type="button"
                                     onClick={
@@ -400,51 +500,73 @@ function ChatFlow() {
                                     "
                                     aria-label="Back to conversations"
                                 >
+
                                     <ArrowLeft className="size-5" />
+
                                 </button>
 
                                 <span className="text-sm font-medium">
                                     Conversations
                                 </span>
+
                             </div>
+
 
                             {/* CHAT HEADER */}
 
-                            <div className="shrink-0 border-b">
+                            <div
+                                className="
+                                    shrink-0
+                                    border-b
+                                    bg-background
+                                "
+                            >
+
                                 <ChatHeader
                                     name={
                                         otherUserNickname ||
                                         otherUser?.name ||
                                         "Select a conversation"
                                     }
+
                                     avatar={
                                         otherUser?.avatar ??
                                         null
                                     }
+
                                     online={
                                         otherUserOnline
                                     }
+
                                     userId={
                                         otherUser?.id
                                     }
+
                                     conversationId={
                                         activeConversationId
                                     }
+
                                     onDeleteConversation={
                                         handleDeleteConversation
                                     }
                                 />
+
                             </div>
 
-                            {/* MESSAGES */}
+
+                            {/* =========================
+                                MESSAGE VIEWPORT
+                            ========================= */}
 
                             <div
                                 className="
                                     min-h-0
+                                    min-w-0
                                     flex-1
                                     overflow-hidden
                                 "
                             >
+
                                 <MessageList
                                     messages={
                                         messages
@@ -453,17 +575,23 @@ function ChatFlow() {
                                         activeConversationId
                                     }
                                 />
+
                             </div>
 
-                            {/* INPUT */}
+
+                            {/* =========================
+                                MESSAGE INPUT
+                            ========================= */}
 
                             <div
                                 className="
+                                    min-h-0
                                     shrink-0
                                     border-t
                                     bg-background
                                 "
                             >
+
                                 <MessageInput
                                     onSend={
                                         handleSendMessage
@@ -472,13 +600,19 @@ function ChatFlow() {
                                         false
                                     }
                                 />
+
                             </div>
+
                         </>
                     )}
+
                 </main>
+
             </div>
+
         </div>
     );
 }
+
 
 export default ChatFlow;

@@ -43,19 +43,31 @@ function Sidebar({
     selectedConversation,
     onSelectConversation,
 }: SidebarProps) {
-    const [search, setSearch] = useState("");
+
+    const [search, setSearch] =
+        useState("");
+
     const [showUserSearch, setShowUserSearch] =
         useState(false);
 
-    const dispatch = useAppDispatch();
 
-    const currentUser = useAppSelector(
-        (state) => state.auth.user
-    );
+    const dispatch =
+        useAppDispatch();
 
-    const onlineUsers = useAppSelector(
-        (state) => state.chat.onlineUsers
-    );
+
+    const currentUser =
+        useAppSelector(
+            (state) =>
+                state.auth.user
+        );
+
+
+    const onlineUsers =
+        useAppSelector(
+            (state) =>
+                state.chat.onlineUsers
+        );
+
 
     const activeConversationId =
         useAppSelector(
@@ -63,28 +75,44 @@ function Sidebar({
                 state.chat.activeConversationId
         );
 
+
+    /* =========================
+       OTHER MEMBER
+    ========================= */
+
     const getOtherMember = (
         conversation: Conversation
     ) => {
+
         return conversation.members.find(
             (member) =>
-                member.user.id !== currentUser?.id
+                member.user.id !==
+                currentUser?.id
         );
     };
+
+
+    /* =========================
+       SEARCH
+    ========================= */
 
     const filteredConversations =
         conversations.filter(
             (conversation) => {
+
                 const otherMember =
                     getOtherMember(
                         conversation
                     );
 
-                const name = (
-                    otherMember?.nickname ||
-                    otherMember?.user.name ||
-                    ""
-                ).toLowerCase();
+
+                const name =
+                    (
+                        otherMember?.nickname ||
+                        otherMember?.user.name ||
+                        ""
+                    ).toLowerCase();
+
 
                 return name.includes(
                     search.toLowerCase()
@@ -92,41 +120,66 @@ function Sidebar({
             }
         );
 
-    const handleSelectUser = async (
-        userId: number
-    ) => {
-        try {
-            const conversation =
-                await dispatch(
-                    createConversation(userId)
-                ).unwrap();
 
-            setShowUserSearch(false);
+    /* =========================
+       SELECT USER
+    ========================= */
 
-            dispatch(
-                setActiveConversation(
+    const handleSelectUser =
+        async (
+            userId: number
+        ) => {
+
+            try {
+
+                const conversation =
+                    await dispatch(
+                        createConversation(
+                            userId
+                        )
+                    ).unwrap();
+
+
+                setShowUserSearch(
+                    false
+                );
+
+
+                dispatch(
+                    setActiveConversation(
+                        conversation.id
+                    )
+                );
+
+
+                onSelectConversation(
                     conversation.id
-                )
-            );
+                );
+
+            } catch (error) {
+
+                console.error(
+                    "Failed to create conversation:",
+                    error
+                );
+            }
+        };
+
+
+    /* =========================
+       SELECT CONVERSATION
+    ========================= */
+
+    const handleSelectConversation =
+        (
+            conversationId: number
+        ) => {
 
             onSelectConversation(
-                conversation.id
+                conversationId
             );
-        } catch (error) {
-            console.error(
-                "Failed to create conversation:",
-                error
-            );
-        }
-    };
+        };
 
-    const handleSelectConversation = (
-        conversationId: number
-    ) => {
-        onSelectConversation(
-            conversationId
-        );
-    };
 
     return (
         <aside
@@ -143,6 +196,7 @@ function Sidebar({
                 md:w-80
             "
         >
+
             {/* HEADER */}
 
             <div
@@ -156,8 +210,11 @@ function Sidebar({
                     sm:py-4
                 "
             >
+
                 <div className="flex items-center justify-between gap-3">
+
                     <div className="min-w-0">
+
                         <h2 className="truncate text-base font-semibold tracking-tight sm:text-lg">
                             Conversations
                         </h2>
@@ -165,7 +222,9 @@ function Sidebar({
                         <p className="mt-0.5 text-xs text-muted-foreground">
                             Your messages
                         </p>
+
                     </div>
+
 
                     <Button
                         type="button"
@@ -178,17 +237,22 @@ function Sidebar({
                             shadow-sm
                         "
                         onClick={() =>
-                            setShowUserSearch(true)
+                            setShowUserSearch(
+                                true
+                            )
                         }
                         aria-label="New conversation"
                     >
                         <Plus className="size-4" />
                     </Button>
+
                 </div>
+
 
                 {/* SEARCH */}
 
                 <div className="relative mt-3 sm:mt-4">
+
                     <Search
                         className="
                             pointer-events-none
@@ -200,6 +264,7 @@ function Sidebar({
                             text-muted-foreground
                         "
                     />
+
 
                     <Input
                         value={search}
@@ -221,7 +286,9 @@ function Sidebar({
                         "
                     />
 
+
                     {search && (
+
                         <button
                             type="button"
                             onClick={() =>
@@ -241,9 +308,13 @@ function Sidebar({
                         >
                             ×
                         </button>
+
                     )}
+
                 </div>
+
             </div>
+
 
             {/* CONVERSATIONS */}
 
@@ -259,26 +330,36 @@ function Sidebar({
                     sm:py-3
                 "
             >
+
                 {filteredConversations.length > 0 ? (
+
                     <div className="space-y-1">
+
                         {filteredConversations.map(
-                            (conversation) => {
+                            (
+                                conversation
+                            ) => {
+
                                 const otherMember =
                                     getOtherMember(
                                         conversation
                                     );
 
+
                                 const otherUser =
                                     otherMember?.user;
+
 
                                 const displayName =
                                     otherMember?.nickname ||
                                     otherUser?.name ||
                                     "Unknown user";
 
+
                                 const isActive =
                                     activeConversationId ===
                                     conversation.id;
+
 
                                 const isOnline =
                                     otherUser?.id !==
@@ -287,32 +368,51 @@ function Sidebar({
                                         otherUser.id
                                     );
 
+
+                                const lastMessage =
+                                    conversation.lastMessage;
+
+
+                                /*
+                                 * ChatFlow already converts
+                                 * the content into the final
+                                 * preview string.
+                                 */
+                                const preview =
+                                    lastMessage
+                                        ?.content ||
+                                    "No messages yet";
+
+
                                 return (
                                     <ConversationItem
                                         key={
                                             conversation.id
                                         }
+
                                         name={
                                             displayName
                                         }
+
                                         avatar={
                                             otherUser?.avatar ||
                                             undefined
                                         }
+
                                         lastMessage={
-                                            conversation
-                                                .lastMessage
-                                                ?.content ||
-                                            "No messages yet"
+                                            preview
                                         }
+
                                         active={
                                             isActive ||
                                             selectedConversation ===
                                                 conversation.id
                                         }
+
                                         online={
                                             isOnline
                                         }
+
                                         onClick={() =>
                                             handleSelectConversation(
                                                 conversation.id
@@ -322,8 +422,11 @@ function Sidebar({
                                 );
                             }
                         )}
+
                     </div>
+
                 ) : (
+
                     <div
                         className="
                             flex
@@ -336,6 +439,7 @@ function Sidebar({
                             text-center
                         "
                     >
+
                         <div
                             className="
                                 mb-4
@@ -347,36 +451,58 @@ function Sidebar({
                                 bg-muted
                             "
                         >
-                            <Search className="size-5 text-muted-foreground" />
+
+                            <Search
+                                className="
+                                    size-5
+                                    text-muted-foreground
+                                "
+                            />
+
                         </div>
+
 
                         <p className="text-sm font-medium">
                             No conversations found
                         </p>
 
+
                         <p className="mt-1 max-w-55 text-xs leading-relaxed text-muted-foreground">
                             Try searching for another person.
                         </p>
+
                     </div>
+
                 )}
+
             </div>
+
 
             {/* USER SEARCH */}
 
             {showUserSearch && (
+
                 <UserSearch
                     onClose={() =>
-                        setShowUserSearch(false)
+                        setShowUserSearch(
+                            false
+                        )
                     }
-                    onSelectUser={(user) =>
+
+                    onSelectUser={(
+                        user
+                    ) =>
                         handleSelectUser(
                             user.id
                         )
                     }
                 />
+
             )}
+
         </aside>
     );
 }
+
 
 export default Sidebar;

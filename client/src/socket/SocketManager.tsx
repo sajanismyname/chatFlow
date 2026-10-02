@@ -7,6 +7,7 @@ import {
 
 import {
     addMessage,
+    setOnlineUsers,
     setUserOffline,
     setUserOnline,
     unsendMessage,
@@ -15,7 +16,9 @@ import {
 
 import type { RootState } from "../app/store";
 
-import type { Message } from "../features/messages/messageType";
+import type {
+    Message,
+} from "../features/messages/messageType";
 
 import {
     connectSocket,
@@ -47,7 +50,9 @@ const SocketManager = () => {
     useEffect(() => {
 
         if (!accessToken) {
+
             disconnectSocket();
+
             return;
         }
 
@@ -76,7 +81,7 @@ const SocketManager = () => {
             error: Error
         ) => {
 
-            console.log(
+            console.error(
                 "Socket connection error:",
                 error.message
             );
@@ -142,21 +147,22 @@ const SocketManager = () => {
         };
 
 
+        /*
+         * IMPORTANT:
+         *
+         * This event represents the complete
+         * presence snapshot.
+         */
         const handleOnlineUsers = ({
             userIds,
         }: {
             userIds: number[];
         }) => {
 
-            userIds.forEach(
-                (userId) => {
-
-                    dispatch(
-                        setUserOnline(
-                            userId
-                        )
-                    );
-                }
+            dispatch(
+                setOnlineUsers(
+                    userIds
+                )
             );
         };
 
@@ -184,10 +190,6 @@ const SocketManager = () => {
             );
         };
 
-
-        /* =========================
-           REGISTER LISTENERS
-        ========================= */
 
         socket.on(
             "connect",
@@ -313,41 +315,20 @@ const SocketManager = () => {
     useEffect(() => {
 
         if (
-            activeConversationId === null
+            activeConversationId === null ||
+            !socket.connected
         ) {
             return;
         }
 
 
-        const joinConversation = () => {
-
-            socket.emit(
-                "join_conversation",
-                activeConversationId
-            );
-        };
-
-
-        if (socket.connected) {
-
-            joinConversation();
-
-        } else {
-
-            socket.once(
-                "connect",
-                joinConversation
-            );
-        }
+        socket.emit(
+            "join_conversation",
+            activeConversationId
+        );
 
 
         return () => {
-
-            socket.off(
-                "connect",
-                joinConversation
-            );
-
 
             if (socket.connected) {
 
@@ -356,6 +337,47 @@ const SocketManager = () => {
                     activeConversationId
                 );
             }
+        };
+
+    }, [
+        activeConversationId,
+    ]);
+
+
+    /*
+     * When the socket connects after the
+     * conversation effect ran, join the room.
+     */
+    useEffect(() => {
+
+        if (
+            activeConversationId === null
+        ) {
+            return;
+        }
+
+
+        const handleConnect = () => {
+
+            socket.emit(
+                "join_conversation",
+                activeConversationId
+            );
+        };
+
+
+        socket.on(
+            "connect",
+            handleConnect
+        );
+
+
+        return () => {
+
+            socket.off(
+                "connect",
+                handleConnect
+            );
         };
 
     }, [
