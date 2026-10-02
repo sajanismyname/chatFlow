@@ -278,16 +278,20 @@ export const initializeSocketServer = (
     socket.on(
         "delete_message_for_me",
         async (messageId: number) => {
+
             try {
+
                 if (
                     !Number.isInteger(messageId) ||
                     messageId <= 0
                 ) {
-                    socket.emit("socket_error", {
-                        message: "Invalid message ID",
-                        operation: "delete_for_me",
-                        messageId,
-                    });
+                    socket.emit(
+                        "socket_error",
+                        {
+                            message:
+                                "Invalid message ID",
+                        }
+                    );
 
                     return;
                 }
@@ -304,25 +308,32 @@ export const initializeSocketServer = (
                     !message ||
                     !message.conversation
                 ) {
-                    socket.emit("socket_error", {
-                        message: "Message not found",
-                        operation: "delete_for_me",
-                        messageId,
-                    });
+                    socket.emit(
+                        "socket_error",
+                        {
+                            message:
+                                "Message not found",
+
+                            operation:
+                                "delete_for_me",
+
+                            messageId,
+                        }
+                    );
 
                     return;
                 }
 
 
                 /*
-                * Only the user who selected
-                * "Delete for me" should receive
-                * this event.
+                * Only this user's socket should
+                * remove the message.
                 */
+
                 socket.emit(
                     "message_deleted_for_me",
                     {
-                        messageId: message.id,
+                        messageId,
 
                         conversationId:
                             message.conversation.id,
@@ -336,15 +347,15 @@ export const initializeSocketServer = (
                     error
                 );
 
-                socket.emit("socket_error", {
-                    message:
-                        error.message ||
-                        "Failed to delete message for me",
 
-                    operation: "delete_for_me",
-
-                    messageId,
-                });
+                socket.emit(
+                    "socket_error",
+                    {
+                        message:
+                            error.message ||
+                            "Failed to delete message",
+                    }
+                );
             }
         }
     );

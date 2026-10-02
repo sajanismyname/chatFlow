@@ -25,18 +25,9 @@ interface ChatState {
 
     onlineUsers: number[];
 
-    /*
-     * Original sidebar position before
-     * a new message moved the conversation
-     * to the top.
-     */
     previousConversationPositions:
         Record<number, number>;
 
-    /*
-     * Message that caused the conversation
-     * to move to the top.
-     */
     conversationTopMessageIds:
         Record<number, number>;
 }
@@ -65,44 +56,24 @@ const isUnsent = (
     message: Message
 ) => {
     return (
-        message.deletedForEveryone === true ||
-        message.deletedAt !== null
+        message.deletedForEveryone === true
     );
 };
 
 
-/*
- * Returns the latest message currently
- * visible to this user.
- *
- * Delete-for-me messages should already
- * be removed from the local array.
- *
- * Unsent messages remain in the array
- * because they are still visible.
- */
 const getLastVisibleMessage = (
     messages: Message[]
 ): Message | null => {
 
-    if (messages.length === 0) {
-        return null;
-    }
+    const lastMessage =
+        messages[messages.length - 1];
 
-    return (
-        messages[messages.length - 1] ??
-        null
-    );
+    return lastMessage ?? null;
 };
 
-
-/*
- * Converts a message into the text shown
- * in the conversation sidebar.
- */
 const getPreviewContent = (
     message: Message | null
-): string => {
+) => {
 
     if (!message) {
         return "";
@@ -115,7 +86,9 @@ const getPreviewContent = (
     try {
 
         const parsed =
-            JSON.parse(message.content);
+            JSON.parse(
+                message.content
+            );
 
         if (
             parsed?.type ===
@@ -124,7 +97,7 @@ const getPreviewContent = (
 
             if (
                 typeof parsed.text ===
-                    "string" &&
+                "string" &&
                 parsed.text.trim()
             ) {
                 return parsed.text;
@@ -141,19 +114,13 @@ const getPreviewContent = (
         }
 
     } catch {
-        /*
-         * Normal text message.
-         */
+        // Normal text message.
     }
 
     return message.content;
 };
 
 
-/*
- * Updates the sidebar preview without
- * changing the conversation position.
- */
 const updateConversationPreview = (
     conversation: Conversation,
     message: Message | null
@@ -173,10 +140,6 @@ const updateConversationPreview = (
 };
 
 
-/*
- * Moves a conversation to the top and
- * remembers where it came from.
- */
 const moveConversationToTop = (
     state: ChatState,
     conversationId: number,
@@ -195,10 +158,6 @@ const moveConversationToTop = (
     }
 
 
-    /*
-     * Only store the old position when
-     * the conversation actually moved.
-     */
     if (index > 0) {
 
         state.previousConversationPositions[
@@ -229,12 +188,6 @@ const moveConversationToTop = (
     );
 };
 
-
-/*
- * Restores the conversation to the position
- * it occupied before a particular message
- * moved it to the top.
- */
 const restoreConversationPosition = (
     state: ChatState,
     conversationId: number,
@@ -251,12 +204,6 @@ const restoreConversationPosition = (
             conversationId
         ];
 
-
-    /*
-     * Do not move the conversation if the
-     * deleted message was not responsible
-     * for moving it to the top.
-     */
     if (
         topMessageId !== messageId ||
         previousPosition === undefined
@@ -364,11 +311,6 @@ const chatSlice = createSlice({
 
             } else {
 
-                /*
-                 * If the conversation already
-                 * exists, update its data without
-                 * moving it.
-                 */
                 const index =
                     state.conversations.findIndex(
                         (conversation) =>
@@ -621,9 +563,6 @@ const chatSlice = createSlice({
                 ];
 
 
-            /*
-             * Prevent duplicate messages.
-             */
             const alreadyExists =
                 existingMessages.some(
                     (existingMessage) =>
@@ -632,14 +571,6 @@ const chatSlice = createSlice({
                 );
 
 
-            /*
-             * IMPORTANT:
-             *
-             * If the socket event arrives after
-             * the REST request already inserted
-             * the message, do not move the
-             * conversation again.
-             */
             if (alreadyExists) {
                 return;
             }
@@ -663,19 +594,11 @@ const chatSlice = createSlice({
             }
 
 
-            /*
-             * Update sidebar preview.
-             */
             updateConversationPreview(
                 conversation,
                 message
             );
 
-
-            /*
-             * Every genuinely new message moves
-             * the conversation to the top.
-             */
             moveConversationToTop(
                 state,
                 conversationId,
@@ -725,10 +648,6 @@ const chatSlice = createSlice({
                 return;
             }
 
-
-            /*
-             * Keep the message in the chat.
-             */
             message.content = "";
 
             message.deletedForEveryone =
@@ -751,12 +670,6 @@ const chatSlice = createSlice({
                 return;
             }
 
-
-            /*
-             * The unsent message remains the
-             * latest message, so the conversation
-             * stays at the top.
-             */
             updateConversationPreview(
                 conversation,
                 message
@@ -806,18 +719,10 @@ const chatSlice = createSlice({
             }
 
 
-            /*
-             * Only the latest message can affect
-             * the sidebar preview.
-             */
             const wasLatestMessage =
                 deletedIndex ===
                 messages.length - 1;
 
-
-            /*
-             * Remove the message locally.
-             */
             state.messages[
                 conversationId
             ] =
@@ -846,21 +751,10 @@ const chatSlice = createSlice({
                 return;
             }
 
-
-            /*
-             * If the deleted message was not
-             * the latest message, the sidebar
-             * preview remains unchanged.
-             */
             if (!wasLatestMessage) {
                 return;
             }
 
-
-            /*
-             * Find the message that should now
-             * appear in the sidebar.
-             */
             const latestVisibleMessage =
                 getLastVisibleMessage(
                     updatedMessages
@@ -872,29 +766,6 @@ const chatSlice = createSlice({
                 latestVisibleMessage
             );
 
-
-            /*
-             * If the deleted message was the
-             * message that moved this conversation
-             * to the top, restore its old position.
-             *
-             * Example:
-             *
-             * Before sending:
-             * A
-             * B
-             * C
-             *
-             * New message in C:
-             * C
-             * A
-             * B
-             *
-             * Delete that message for me:
-             * A
-             * B
-             * C
-             */
             restoreConversationPosition(
                 state,
                 conversationId,

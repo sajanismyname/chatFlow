@@ -77,28 +77,13 @@ function MessageList({
         pagination?.loadingOlder ?? false;
 
 
-    /*
-     * Single scroll container ref.
-     *
-     * IMPORTANT:
-     * Do not use a second ref for the same
-     * scrolling element.
-     */
     const scrollRef =
         useRef<HTMLDivElement | null>(null);
 
 
-    /*
-     * Whether the user was close to the
-     * bottom before a message/layout change.
-     */
     const wasNearBottom =
         useRef(true);
 
-
-    /*
-     * Previous message state.
-     */
     const previousMessageCount =
         useRef(0);
 
@@ -106,23 +91,13 @@ function MessageList({
         useRef<number | null>(null);
 
 
-    /*
-     * Conversation tracking.
-     */
     const previousConversationId =
         useRef<number | null>(null);
 
 
-    /*
-     * Initial message load.
-     */
     const initialLoad =
         useRef(true);
 
-
-    /*
-     * Older-message scroll preservation.
-     */
     const preserveScrollPosition =
         useRef(false);
 
@@ -434,15 +409,10 @@ function MessageList({
             ref={scrollRef}
             onScroll={handleScroll}
             className="
-                h-full
-                min-h-0
-                overflow-y-auto
-                overscroll-contain
-                scroll-smooth
-                px-3
-                py-4
-                sm:px-5
-                sm:py-5
+                    flex-1
+                    min-h-0
+                    overflow-y-auto
+                    overscroll-contain
             "
         >
 
@@ -500,7 +470,7 @@ function MessageList({
 
                         const isUnsent =
                             Boolean(
-                                message.unsentAt
+                                message.deletedAt
                             ) ||
                             message.deletedForEveryone;
 

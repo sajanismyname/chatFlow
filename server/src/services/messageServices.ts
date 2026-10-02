@@ -22,6 +22,7 @@ export const createMessage = async ({
     conversationId: number;
     content: string;
 }) => {
+
     const message =
         messageRepository.create({
             content: content.trim(),
@@ -35,8 +36,21 @@ export const createMessage = async ({
             },
         });
 
+
     const savedMessage =
-        await messageRepository.save(message);
+        await messageRepository.save(
+            message
+        );
+
+
+    /*
+     * Return the complete message that
+     * the frontend needs.
+     *
+     * conversationId is explicitly included
+     * because the frontend Message type uses
+     * conversationId rather than conversation.
+     */
 
     const completeMessage =
         await messageRepository.findOne({
@@ -46,16 +60,27 @@ export const createMessage = async ({
 
             relations: {
                 sender: true,
-                conversation: true,
             },
         });
 
-    return completeMessage;
+
+    if (!completeMessage) {
+        throw new Error(
+            "Failed to create message"
+        );
+    }
+
+
+    return {
+        ...completeMessage,
+
+        conversationId,
+    };
 };
 
 
 /* =========================
-   DELETE MESSAGE FOR ME
+   DELETE FOR ME
 ========================= */
 
 export const deleteMessageForMe = async ({
@@ -65,6 +90,7 @@ export const deleteMessageForMe = async ({
     messageId: number;
     userId: number;
 }) => {
+
     const message =
         await messageRepository.findOne({
             where: {
@@ -76,17 +102,14 @@ export const deleteMessageForMe = async ({
             },
         });
 
+
     if (!message) {
-        throw new Error("Message not found");
+        throw new Error(
+            "Message not found"
+        );
     }
 
 
-    /*
-     * Delete-for-me is idempotent.
-     *
-     * If the user already deleted this message,
-     * simply return the message instead of throwing.
-     */
     const existingDeletion =
         await messageDeletionRepository.findOne({
             where: {
@@ -99,6 +122,15 @@ export const deleteMessageForMe = async ({
                 },
             },
         });
+
+
+    /*
+     * Deleting for me is idempotent.
+     *
+     * If the user already deleted it,
+     * simply return the message instead
+     * of throwing an error.
+     */
 
     if (existingDeletion) {
         return message;
@@ -116,16 +148,18 @@ export const deleteMessageForMe = async ({
             },
         });
 
+
     await messageDeletionRepository.save(
         messageDeletion
     );
+
 
     return message;
 };
 
 
 /* =========================
-   UNSEND MESSAGE
+   UNSEND
 ========================= */
 
 export const unsendMessage = async ({
@@ -135,6 +169,7 @@ export const unsendMessage = async ({
     messageId: number;
     userId: number;
 }) => {
+
     const message =
         await messageRepository.findOne({
             where: {
@@ -147,6 +182,7 @@ export const unsendMessage = async ({
             },
         });
 
+
     if (!message) {
         throw new Error(
             "Message not found or you are not the sender"
@@ -154,30 +190,36 @@ export const unsendMessage = async ({
     }
 
 
-    if (message.sender.id !== userId) {
+    if (
+        message.sender.id !==
+        userId
+    ) {
         throw new Error(
             "You are not the sender of this message"
         );
     }
 
 
-    /*
-     * Already unsent.
-     */
-    if (message.deletedForEveryone) {
+    if (
+        message.deletedForEveryone
+    ) {
         return message;
     }
 
 
-    message.deletedForEveryone = true;
-    message.deletedAt = new Date();
+    message.deletedForEveryone =
+        true;
 
-    /*
-     * Remove the original content from the database.
-     */
+    message.deletedAt =
+        new Date();
+
     message.content = "";
 
-    await messageRepository.save(message);
+
+    await messageRepository.save(
+        message
+    );
+
 
     return message;
 };
