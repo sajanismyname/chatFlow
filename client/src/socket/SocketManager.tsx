@@ -5,6 +5,8 @@ import {
     addMessage,
     setUserOffline,
     setUserOnline,
+    unsendMessage,
+    deleteMessageForMe,
 } from "@/features/chat/chatSlice";
 
 import type { RootState } from "../app/store";
@@ -55,6 +57,36 @@ const SocketManager = () => {
             dispatch(addMessage(message));
         };
 
+        const handleMessageUnsent = ({
+            messageId,
+            conversationId,
+        }: {
+            messageId: number;
+            conversationId: number;
+        }) => {
+            dispatch(
+                unsendMessage({
+                    conversationId,
+                    messageId,
+                })
+            );
+        };
+
+        const handleMessageDeletedForMe = ({
+            messageId,
+            conversationId,
+        }: {
+            messageId: number;
+            conversationId: number;
+        }) => {
+            dispatch(
+                deleteMessageForMe({
+                    conversationId,
+                    messageId,
+                })
+            );
+        };
+
         const handleSocketError = (
             error: { message: string }
         ) => {
@@ -93,6 +125,7 @@ const SocketManager = () => {
         };
 
         // Register listeners FIRST
+
         socket.on(
             "connect",
             handleConnect
@@ -111,6 +144,16 @@ const SocketManager = () => {
         socket.on(
             "new_message",
             handleNewMessage
+        );
+
+        socket.on(
+            "message_unsent",
+            handleMessageUnsent
+        );
+
+        socket.on(
+            "message_deleted_for_me",
+            handleMessageDeletedForMe
         );
 
         socket.on(
@@ -134,6 +177,7 @@ const SocketManager = () => {
         );
 
         // Connect AFTER listeners are ready
+
         connectSocket(accessToken);
 
         return () => {
@@ -155,6 +199,16 @@ const SocketManager = () => {
             socket.off(
                 "new_message",
                 handleNewMessage
+            );
+
+            socket.off(
+                "message_unsent",
+                handleMessageUnsent
+            );
+
+            socket.off(
+                "message_deleted_for_me",
+                handleMessageDeletedForMe
             );
 
             socket.off(

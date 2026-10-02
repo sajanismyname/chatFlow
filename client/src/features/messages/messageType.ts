@@ -8,9 +8,9 @@ export interface Message {
     readAt: string | null;
     createdAt: string;
 
-    // Message deletion / unsend state
     deletedAt: string | null;
     deletedForEveryone: boolean;
+    unsentAt: string | null;
 }
 
 export interface MessageState {

@@ -157,6 +157,65 @@ const chatSlice = createSlice({
             ] = action.payload.messages;
         },
 
+        unsendMessage: (
+            state,
+            action: PayloadAction<{
+                conversationId: number;
+                messageId: number;
+            }>
+        ) => {
+            const messages =
+                state.messages[
+                    action.payload.conversationId
+                ];
+
+            if (!messages) {
+                return;
+            }
+
+            const message = messages.find(
+                (message) =>
+                    message.id ===
+                    action.payload.messageId
+            );
+
+            if (message) {
+                message.content =
+                    "This message was unsent";
+
+                message.unsentAt =
+                    new Date().toISOString();
+
+                message.deletedForEveryone =
+                    true;
+            }
+        },
+
+        deleteMessageForMe: (
+            state,
+            action: PayloadAction<{
+                conversationId: number;
+                messageId: number;
+            }>
+        ) => {
+            const messages =
+                state.messages[
+                    action.payload.conversationId
+                ];
+
+            if (!messages) {
+                return;
+            }
+
+            state.messages[
+                action.payload.conversationId
+            ] = messages.filter(
+                (message) =>
+                    message.id !==
+                    action.payload.messageId
+            );
+        },
+
 
         addMessage: (
             state,
@@ -243,6 +302,8 @@ export const {
     setMessages,
     addMessage,
     prependMessages,
+    unsendMessage,
+    deleteMessageForMe,
     clearChat,
 } = chatSlice.actions;
 

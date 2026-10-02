@@ -296,10 +296,24 @@ export const initializeSocketServer = (
                 * Only this user's client should
                 * remove the message.
                 */
+                const message = await deleteMessageForMe({
+                    messageId,
+                    userId,
+                });
+
+                if (!message || !message.conversation) {
+                    socket.emit("socket_error", {
+                        message: "Message not found",
+                    });
+                    return;
+                }
+
                 socket.emit(
                     "message_deleted_for_me",
                     {
                         messageId,
+                        conversationId:
+                            message.conversation.id,
                     }
                 );
 

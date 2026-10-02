@@ -20,13 +20,30 @@ import {
 } from "@/components/ui/avatar";
 
 import {
+    Button,
+} from "@/components/ui/button";
+
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+import {
     fetchOlderMessages,
 } from "../features/messages/messageSlice";
 
 import {
     FileText,
     Download,
+    MoreHorizontal,
 } from "lucide-react";
+
+import {
+    socket,
+} from "../socket/socket";
 
 
 interface MessageListProps {
@@ -382,20 +399,55 @@ function MessageList({
 
     }, [messages]);
 
-    const handleImageLoad = useCallback(() => {
-    const container = scrollRef.current;
 
-        if (!container) {
-            return;
-        }
+    const handleImageLoad =
+        useCallback(() => {
 
-        if (wasNearBottom.current) {
-            requestAnimationFrame(() => {
-                container.scrollTop =
-                    container.scrollHeight;
-            });
-        }
-    }, []);
+            const container =
+                scrollRef.current;
+
+            if (!container) {
+                return;
+            }
+
+            if (wasNearBottom.current) {
+
+                requestAnimationFrame(() => {
+
+                    container.scrollTop =
+                        container.scrollHeight;
+
+                });
+
+            }
+
+        }, []);
+
+
+    /* =========================
+       MESSAGE ACTIONS
+    ========================= */
+
+    const handleUnsend = (
+        messageId: number
+    ) => {
+
+        socket.emit(
+            "unsend_message",
+            messageId
+        );
+    };
+
+
+    const handleDeleteForMe = (
+        messageId: number
+    ) => {
+
+        socket.emit(
+            "delete_message_for_me",
+            messageId
+        );
+    };
 
 
     return (
@@ -460,6 +512,13 @@ function MessageList({
                             currentUser?.id;
 
 
+                        const isUnsent =
+                            Boolean(
+                                message.unsentAt
+                            ) ||
+                            message.deletedForEveryone;
+
+
                         const senderName =
                             message.sender.name ||
                             "User";
@@ -487,27 +546,36 @@ function MessageList({
                         } | null = null;
 
 
-                        try {
+                        /*
+                         * Do not parse attachment data
+                         * for an unsent message.
+                         */
+                        if (!isUnsent) {
 
-                            const parsed =
-                                JSON.parse(
-                                    message.content
-                                );
+                            try {
 
-                            if (
-                                parsed?.type ===
-                                    "attachment" &&
-                                typeof parsed.url ===
-                                    "string" &&
-                                typeof parsed.fileName ===
-                                    "string"
-                            ) {
-                                attachment =
-                                    parsed;
+                                const parsed =
+                                    JSON.parse(
+                                        message.content
+                                    );
+
+                                if (
+                                    parsed?.type ===
+                                        "attachment" &&
+                                    typeof parsed.url ===
+                                        "string" &&
+                                    typeof parsed.fileName ===
+                                        "string"
+                                ) {
+
+                                    attachment =
+                                        parsed;
+
+                                }
+
+                            } catch {
+                                // Normal text message.
                             }
-
-                        } catch {
-                            // Normal text message.
                         }
 
 
@@ -570,100 +638,151 @@ function MessageList({
                                     `}
                                 >
 
-                                    {attachment &&
-                                    isImage ? (
-
-                                        <a
-                                            href={
-                                                attachment.url
+                                    <div
+                                        className={`
+                                            flex
+                                            items-center
+                                            gap-1
+                                            ${
+                                                mine
+                                                    ? "flex-row-reverse"
+                                                    : "flex-row"
                                             }
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="block"
-                                        >
+                                        `}
+                                    >
 
-                                            <img
-                                                src={
-                                                    attachment.url
-                                                }
-                                                alt={
-                                                    attachment.fileName
-                                                }
-                                                onLoad={handleImageLoad}
-                                                className="
-                                                    max-h-96
-                                                    max-w-full
-                                                    rounded-xl
-                                                    object-contain
-                                                "
-                                            />
+                                        <div>
 
-                                        </a>
+                                            {isUnsent ? (
 
-                                    ) : (
+                                                <div
+                                                    className="
+                                                        rounded-2xl
+                                                        border
+                                                        bg-muted/50
+                                                        px-4
+                                                        py-2.5
+                                                        text-sm
+                                                        italic
+                                                        text-muted-foreground
+                                                    "
+                                                >
+                                                    This message was unsent
+                                                </div>
 
-                                        <div
-                                            className={`
-                                                rounded-2xl
-                                                border
-                                                bg-background
-                                                text-foreground
-                                                px-4
-                                                py-2.5
-                                                text-sm
-                                                shadow-sm
-                                                ${
-                                                    mine
-                                                        ? "rounded-br-md"
-                                                        : "rounded-bl-md"
-                                                }
-                                            `}
-                                        >
+                                            ) : attachment &&
+                                              isImage ? (
 
-                                            {attachment ? (
+                                                <a
+                                                    href={
+                                                        attachment.url
+                                                    }
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="block"
+                                                >
 
-                                                <div className="space-y-2">
-
-                                                    <a
-                                                        href={
+                                                    <img
+                                                        src={
                                                             attachment.url
                                                         }
-                                                        target="_blank"
-                                                        rel="noreferrer"
+                                                        alt={
+                                                            attachment.fileName
+                                                        }
+                                                        onLoad={
+                                                            handleImageLoad
+                                                        }
                                                         className="
-                                                            flex
-                                                            items-center
-                                                            gap-3
+                                                            max-h-96
+                                                            max-w-full
                                                             rounded-xl
-                                                            border
-                                                            border-current/10
-                                                            px-3
-                                                            py-2
-                                                            hover:bg-black/5
-                                                            dark:hover:bg-white/5
+                                                            object-contain
                                                         "
-                                                    >
+                                                    />
 
-                                                        <FileText className="size-5 shrink-0" />
+                                                </a>
 
-                                                        <span
-                                                            className="
-                                                                min-w-0
-                                                                flex-1
-                                                                truncate
-                                                            "
-                                                        >
-                                                            {
-                                                                attachment.fileName
-                                                            }
-                                                        </span>
+                                            ) : (
 
-                                                        <Download className="size-4 shrink-0" />
+                                                <div
+                                                    className={`
+                                                        rounded-2xl
+                                                        border
+                                                        bg-background
+                                                        text-foreground
+                                                        px-4
+                                                        py-2.5
+                                                        text-sm
+                                                        shadow-sm
+                                                        ${
+                                                            mine
+                                                                ? "rounded-br-md"
+                                                                : "rounded-bl-md"
+                                                        }
+                                                    `}
+                                                >
 
-                                                    </a>
+                                                    {attachment ? (
+
+                                                        <div className="space-y-2">
+
+                                                            <a
+                                                                href={
+                                                                    attachment.url
+                                                                }
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                className="
+                                                                    flex
+                                                                    items-center
+                                                                    gap-3
+                                                                    rounded-xl
+                                                                    border
+                                                                    border-current/10
+                                                                    px-3
+                                                                    py-2
+                                                                    hover:bg-black/5
+                                                                    dark:hover:bg-white/5
+                                                                "
+                                                            >
+
+                                                                <FileText className="size-5 shrink-0" />
+
+                                                                <span
+                                                                    className="
+                                                                        min-w-0
+                                                                        flex-1
+                                                                        truncate
+                                                                    "
+                                                                >
+                                                                    {
+                                                                        attachment.fileName
+                                                                    }
+                                                                </span>
+
+                                                                <Download className="size-4 shrink-0" />
+
+                                                            </a>
 
 
-                                                    {attachment.text && (
+                                                            {attachment.text && (
+
+                                                                <p
+                                                                    className="
+                                                                        whitespace-pre-wrap
+                                                                        wrap-break-word
+                                                                    "
+                                                                >
+                                                                    {
+                                                                        attachment.text
+                                                                    }
+                                                                </p>
+
+                                                            )}
+
+                                                        </div>
+
+                                                    ) : (
 
                                                         <p
                                                             className="
@@ -672,7 +791,7 @@ function MessageList({
                                                             "
                                                         >
                                                             {
-                                                                attachment.text
+                                                                message.content
                                                             }
                                                         </p>
 
@@ -680,24 +799,84 @@ function MessageList({
 
                                                 </div>
 
-                                            ) : (
-
-                                                <p
-                                                    className="
-                                                        whitespace-pre-wrap
-                                                        wrap-break-word
-                                                    "
-                                                >
-                                                    {
-                                                        message.content
-                                                    }
-                                                </p>
-
                                             )}
 
                                         </div>
 
-                                    )}
+
+                                        {!isUnsent && (
+
+                                            <DropdownMenu>
+
+                                                <DropdownMenuTrigger>
+
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="
+                                                            size-7
+                                                            shrink-0
+                                                            text-muted-foreground
+                                                            hover:text-foreground
+                                                        "
+                                                    >
+
+                                                        <MoreHorizontal className="size-4" />
+
+                                                        <span className="sr-only">
+                                                            Message options
+                                                        </span>
+
+                                                    </Button>
+
+                                                </DropdownMenuTrigger>
+
+
+                                                <DropdownMenuContent
+                                                    align={
+                                                        mine
+                                                            ? "end"
+                                                            : "start"
+                                                    }
+                                                >
+
+                                                    {mine && (
+
+                                                        <DropdownMenuItem
+                                                            onClick={() =>
+                                                                handleUnsend(
+                                                                    message.id
+                                                                )
+                                                            }
+                                                        >
+                                                            Unsend
+                                                        </DropdownMenuItem>
+
+                                                    )}
+
+
+                                                    {mine && (
+                                                        <DropdownMenuSeparator />
+                                                    )}
+
+                                                    <DropdownMenuItem
+                                                        onClick={() =>
+                                                            handleDeleteForMe(
+                                                                message.id
+                                                            )
+                                                        }
+                                                    >
+                                                        Delete for me
+                                                    </DropdownMenuItem>
+
+                                                </DropdownMenuContent>
+
+                                            </DropdownMenu>
+
+                                        )}
+
+                                    </div>
 
 
                                     <span
