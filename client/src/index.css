@@ -114,6 +114,14 @@
 
     --sidebar-border: oklch(0.88 0.035 145);
     --sidebar-ring: oklch(0.62 0.15 145);
+
+    /* =====================================
+       NEW MESSAGE HIGHLIGHT (LIGHT: BLACK)
+       ===================================== */
+    --highlight-foreground: #000000;
+    --highlight-foreground-bg: rgba(0, 0, 0, 0.05);
+    --highlight-foreground-border: #000000;
+    --highlight-foreground-ring: rgba(0, 0, 0, 0.25);
 }
 
 /* =====================================
@@ -166,6 +174,14 @@
 
     --sidebar-border: oklch(1 0 0 / 12%);
     --sidebar-ring: oklch(0.65 0.14 145);
+
+    /* =====================================
+       NEW MESSAGE HIGHLIGHT (DARK: GREEN)
+       ===================================== */
+    --highlight-foreground: #22c55e;
+    --highlight-foreground-bg: rgba(34, 197, 94, 0.12);
+    --highlight-foreground-border: #22c55e;
+    --highlight-foreground-ring: rgba(34, 197, 94, 0.35);
 }
 
 @layer base {
@@ -197,4 +213,52 @@ input:-webkit-autofill:active {
     -webkit-box-shadow: 0 0 0 1000px var(--background) inset !important;
     box-shadow: 0 0 0 1000px var(--background) inset !important;
     caret-color: var(--foreground);
+}
+
+/* =====================================
+   NEW MESSAGE ARRIVAL ANIMATIONS & STYLES
+   ===================================== */
+
+@keyframes messageArrivalGlow {
+    0% {
+        box-shadow: 0 0 0 0 var(--highlight-foreground-ring);
+        transform: scale(0.98);
+    }
+    40% {
+        box-shadow: 0 0 0 6px var(--highlight-foreground-ring);
+        transform: scale(1.008);
+    }
+    100% {
+        box-shadow: 0 0 0 0 transparent;
+        transform: scale(1);
+    }
+}
+
+@keyframes conversationPulseGlow {
+    0%, 100% {
+        box-shadow: 0 0 0 0 var(--highlight-foreground-ring);
+    }
+    50% {
+        box-shadow: 0 0 0 4px var(--highlight-foreground-ring);
+    }
+}
+
+.animate-message-arrival {
+    animation: messageArrivalGlow 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-conversation-pulse {
+    animation: conversationPulseGlow 1.8s ease-in-out infinite;
+}
+
+.highlight-foreground-text {
+    color: var(--highlight-foreground);
+}
+
+.highlight-foreground-bg {
+    background-color: var(--highlight-foreground);
+}
+
+.highlight-foreground-border {
+    border-color: var(--highlight-foreground);
 }

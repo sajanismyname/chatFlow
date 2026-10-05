@@ -139,7 +139,7 @@ export const initializeAuth = createAsyncThunk<
 
 export const updateProfileThunk = createAsyncThunk<
     User,
-    { name?: string; avatar?: string | null },
+    { name?: string; avatar?: string | null; note?: string | null },
     { rejectValue: string }
 >(
     "auth/updateProfile",
@@ -208,6 +208,15 @@ const authSlice = createSlice({
             action: PayloadAction<string>
         ) => {
             state.accessToken = action.payload;
+        },
+
+        updateCurrentUserNote: (
+            state,
+            action: PayloadAction<string | null>
+        ) => {
+            if (state.user) {
+                state.user.note = action.payload;
+            }
         },
 
         logout: (state) => {
@@ -350,6 +359,7 @@ export const {
     setAccessToken,
     logout,
     setUser,
+    updateCurrentUserNote,
 } = authSlice.actions;
 
 export default authSlice.reducer;

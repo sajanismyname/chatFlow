@@ -14,11 +14,21 @@ import {
 
 const router = Router();
 
+
+/* =========================
+   GET MESSAGES
+========================= */
+
 router.get(
     "/:conversationId/messages",
     authenticate,
     getMessages
 );
+
+
+/* =========================
+   SEND MESSAGE
+========================= */
 
 router.post(
     "/:conversationId/messages",
@@ -26,16 +36,27 @@ router.post(
     sendMessage
 );
 
-router.delete(
-    "messages/:messageId",
-    authenticate,
-    deleteMessageForMeController
-)
+
+/* =========================
+   DELETE FOR ME
+========================= */
 
 router.delete(
-    "messages/:messageId/unsend",
+    "/messages/:messageId",
+    authenticate,
+    deleteMessageForMeController
+);
+
+
+/* =========================
+   UNSEND
+========================= */
+
+router.delete(
+    "/messages/:messageId/unsend",
     authenticate,
     unsendMessageController
-)
+);
+
 
 export default router;

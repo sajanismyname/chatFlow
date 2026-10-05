@@ -4,16 +4,15 @@ import {
 } from "@reduxjs/toolkit";
 
 import type {
-    Message,
-} from "../messages/messageType";
-
-import type {
     Conversation,
 } from "../conversation/conversationTypes";
 
+import type {
+    Message,
+} from "../messages/messageType";
+
 
 interface ChatState {
-
     conversations: Conversation[];
 
     messages: Record<
@@ -25,11 +24,28 @@ interface ChatState {
         number | null;
 
     onlineUsers: number[];
+
+    previousConversationPositions:
+        Record<number, number>;
+
+    conversationTopMessageIds:
+        Record<number, number>;
+
+    typingUsers:
+        Record<number, number[]>;
+
+    unreadCounts:
+        Record<number, number>;
+
+    newlyArrivedConversationId:
+        number | null;
+
+    newlyArrivedMessageIds:
+        number[];
 }
 
 
 const initialState: ChatState = {
-
     conversations: [],
 
     messages: {},
@@ -37,8 +53,186 @@ const initialState: ChatState = {
     activeConversationId: null,
 
     onlineUsers: [],
+
+    previousConversationPositions: {},
+
+    conversationTopMessageIds: {},
+
+    typingUsers: {},
+
+    unreadCounts: {},
+
+    newlyArrivedConversationId: null,
+
+    newlyArrivedMessageIds: [],
 };
 
+
+/* =========================
+   HELPERS
+========================= */
+
+const isUnsent = (
+    message: Message
+) => {
+    return (
+        message.deletedForEveryone === true ||
+        message.deletedAt !== null
+    );
+};
+
+
+const getPreviewContent = (
+    message: Message | null
+): string => {
+
+    if (!message) {
+        return "";
+    }
+
+
+    if (isUnsent(message)) {
+        return "This message was unsent";
+    }
+
+
+    try {
+
+        const parsed =
+            JSON.parse(
+                message.content
+            );
+
+
+        if (
+            parsed?.type ===
+            "attachment"
+        ) {
+
+            if (
+                typeof parsed.text ===
+                    "string" &&
+                parsed.text.trim()
+            ) {
+                return parsed.text;
+            }
+
+
+            if (
+                typeof parsed.fileName ===
+                "string"
+            ) {
+                return parsed.fileName;
+            }
+
+
+            return "Attachment";
+        }
+
+    } catch {
+        // Normal text message.
+    }
+
+
+    return message.content;
+};
+
+
+const getLastMessage = (
+    messages: Message[]
+): Message | null => {
+
+    if (
+        messages.length === 0
+    ) {
+        return null;
+    }
+
+
+    return (
+        messages[
+            messages.length - 1
+        ] ?? null
+    );
+};
+
+
+const updateConversationPreview = (
+    conversation: Conversation,
+    message: Message | null
+) => {
+
+    if (!message) {
+        conversation.lastMessage =
+            null;
+
+        return;
+    }
+
+
+    conversation.lastMessage = {
+        ...message,
+        content:
+            getPreviewContent(message),
+    };
+};
+
+
+const moveConversationToTop = (
+    state: ChatState,
+    conversationId: number,
+    messageId: number
+) => {
+
+    const index =
+        state.conversations.findIndex(
+            (conversation) =>
+                conversation.id ===
+                conversationId
+        );
+
+
+    if (index === -1) {
+        return;
+    }
+
+
+    if (index > 0) {
+
+        state.previousConversationPositions[
+            conversationId
+        ] = index;
+
+        state.conversationTopMessageIds[
+            conversationId
+        ] = messageId;
+    }
+
+
+    const conversation =
+        state.conversations[index];
+
+
+    if (!conversation) {
+        return;
+    }
+
+
+    state.conversations.splice(
+        index,
+        1
+    );
+
+
+    state.conversations.unshift(
+        conversation
+    );
+};
+
+
+/* =========================
+   SLICE
+========================= */
 
 const chatSlice = createSlice({
 
@@ -48,9 +242,9 @@ const chatSlice = createSlice({
 
     reducers: {
 
-        /* =========================
+        /* =====================
            CONVERSATIONS
-        ========================= */
+        ===================== */
 
         setConversations: (
             state,
@@ -79,25 +273,13 @@ const chatSlice = createSlice({
                 );
 
 
-            if (exists) {
+            if (!exists) {
 
-                const index =
-                    state.conversations.findIndex(
-                        (conversation) =>
-                            conversation.id ===
-                            action.payload.id
-                    );
+                state.conversations.unshift(
+                    action.payload
+                );
 
-                state.conversations[index] =
-                    action.payload;
-
-                return;
             }
-
-
-            state.conversations.unshift(
-                action.payload
-            );
         },
 
 
@@ -106,16 +288,28 @@ const chatSlice = createSlice({
             action: PayloadAction<number>
         ) => {
 
+            const conversationId =
+                action.payload;
+
+
             state.conversations =
                 state.conversations.filter(
                     (conversation) =>
                         conversation.id !==
-                        action.payload
+                        conversationId
                 );
 
 
             delete state.messages[
-                action.payload
+                conversationId
+            ];
+
+            delete state.previousConversationPositions[
+                conversationId
+            ];
+
+            delete state.conversationTopMessageIds[
+                conversationId
             ];
         },
 
@@ -129,12 +323,171 @@ const chatSlice = createSlice({
 
             state.activeConversationId =
                 action.payload;
+
+            if (action.payload !== null) {
+                state.unreadCounts[action.payload] = 0;
+                if (state.newlyArrivedConversationId === action.payload) {
+                    state.newlyArrivedConversationId = null;
+                }
+            }
         },
 
 
-        /* =========================
+        markConversationAsRead: (
+            state,
+            action: PayloadAction<number>
+        ) => {
+
+            state.unreadCounts[action.payload] = 0;
+            if (state.newlyArrivedConversationId === action.payload) {
+                state.newlyArrivedConversationId = null;
+            }
+        },
+
+
+        clearNewlyArrivedMessageId: (
+            state,
+            action: PayloadAction<number>
+        ) => {
+
+            state.newlyArrivedMessageIds =
+                state.newlyArrivedMessageIds.filter(
+                    (id) => id !== action.payload
+                );
+        },
+
+
+        clearNewlyArrivedHighlight: (
+            state
+        ) => {
+
+            state.newlyArrivedConversationId = null;
+            state.newlyArrivedMessageIds = [];
+        },
+
+
+        /* =====================
+           PRESENCE
+        ===================== */
+
+        setOnlineUsers: (
+            state,
+            action: PayloadAction<
+                number[]
+            >
+        ) => {
+
+            state.onlineUsers =
+                action.payload;
+
+
+            state.conversations.forEach(
+                (conversation) => {
+
+                    conversation.members.forEach(
+                        (member) => {
+
+                            member.user.online =
+                                action.payload.includes(
+                                    member.user.id
+                                );
+
+                        }
+                    );
+
+                }
+            );
+        },
+
+
+        setUserOnline: (
+            state,
+            action: PayloadAction<number>
+        ) => {
+
+            const userId =
+                action.payload;
+
+
+            if (
+                !state.onlineUsers.includes(
+                    userId
+                )
+            ) {
+
+                state.onlineUsers.push(
+                    userId
+                );
+            }
+
+
+            state.conversations.forEach(
+                (conversation) => {
+
+                    conversation.members.forEach(
+                        (member) => {
+
+                            if (
+                                member.user.id ===
+                                userId
+                            ) {
+
+                                member.user.online =
+                                    true;
+
+                            }
+
+                        }
+                    );
+
+                }
+            );
+        },
+
+
+        setUserOffline: (
+            state,
+            action: PayloadAction<number>
+        ) => {
+
+            const userId =
+                action.payload;
+
+
+            state.onlineUsers =
+                state.onlineUsers.filter(
+                    (id) =>
+                        id !== userId
+                );
+
+
+            state.conversations.forEach(
+                (conversation) => {
+
+                    conversation.members.forEach(
+                        (member) => {
+
+                            if (
+                                member.user.id ===
+                                userId
+                            ) {
+
+                                member.user.online =
+                                    false;
+
+                            }
+
+                        }
+                    );
+
+                }
+            );
+        },
+
+
+        /* =====================
            MESSAGES
-        ========================= */
+        ===================== */
 
         setMessages: (
             state,
@@ -146,7 +499,8 @@ const chatSlice = createSlice({
 
             state.messages[
                 action.payload.conversationId
-            ] = action.payload.messages;
+            ] =
+                action.payload.messages;
         },
 
 
@@ -158,10 +512,15 @@ const chatSlice = createSlice({
             }>
         ) => {
 
+            const {
+                conversationId,
+                messages,
+            } = action.payload;
+
+
             const existing =
                 state.messages[
-                    action.payload
-                        .conversationId
+                    conversationId
                 ] ?? [];
 
 
@@ -175,7 +534,7 @@ const chatSlice = createSlice({
 
 
             const newMessages =
-                action.payload.messages.filter(
+                messages.filter(
                     (message) =>
                         !existingIds.has(
                             message.id
@@ -184,8 +543,7 @@ const chatSlice = createSlice({
 
 
             state.messages[
-                action.payload
-                    .conversationId
+                conversationId
             ] = [
                 ...newMessages,
                 ...existing,
@@ -193,50 +551,53 @@ const chatSlice = createSlice({
         },
 
 
+        /* =====================
+           ADD MESSAGE
+        ===================== */
+
         addMessage: (
             state,
-            action: PayloadAction<Message>
+            action: PayloadAction<Message | { message: Message; isIncoming?: boolean }>
         ) => {
+            const payload = action.payload;
+            const message = "message" in payload ? payload.message : payload;
+            const isIncoming = "isIncoming" in payload ? (payload.isIncoming ?? true) : true;
 
-            const message =
-                action.payload;
+            const conversationId = message.conversationId;
 
-            const conversationId =
-                message.conversationId;
-
+            if (
+                !state.messages[
+                    conversationId
+                ]
+            ) {
+                state.messages[
+                    conversationId
+                ] = [];
+            }
 
             const messages =
                 state.messages[
                     conversationId
-                ] ?? [];
+                ];
 
-
-            /*
-             * Prevent duplicate messages.
-             */
-            if (
-                messages.some(
-                    (existing) =>
-                        existing.id ===
+            const existing =
+                messages.find(
+                    (item) =>
+                        item.id ===
                         message.id
-                )
-            ) {
-                return;
+                );
+
+            if (!existing) {
+                messages.push(
+                    message
+                );
+            } else {
+                Object.assign(
+                    existing,
+                    message
+                );
             }
 
-
-            messages.push(message);
-
-
-            state.messages[
-                conversationId
-            ] = messages;
-
-
-            /*
-             * Keep sidebar preview
-             * synchronized with new messages.
-             */
             const conversation =
                 state.conversations.find(
                     (item) =>
@@ -244,18 +605,40 @@ const chatSlice = createSlice({
                         conversationId
                 );
 
+            if (!conversation) {
+                return;
+            }
 
-            if (conversation) {
+            updateConversationPreview(
+                conversation,
+                message
+            );
 
-                conversation.lastMessage =
-                    message;
+            moveConversationToTop(
+                state,
+                conversationId,
+                message.id
+            );
+
+            if (isIncoming) {
+                // Track newly arrived message and conversation for highlight
+                if (!state.newlyArrivedMessageIds.includes(message.id)) {
+                    state.newlyArrivedMessageIds.push(message.id);
+                }
+                state.newlyArrivedConversationId = conversationId;
+
+                // Increment unread count if the conversation is not currently open
+                if (state.activeConversationId !== conversationId) {
+                    state.unreadCounts[conversationId] =
+                        (state.unreadCounts[conversationId] || 0) + 1;
+                }
             }
         },
 
 
-        /* =========================
+        /* =====================
            UNSEND
-        ========================= */
+        ===================== */
 
         unsendMessage: (
             state,
@@ -295,24 +678,16 @@ const chatSlice = createSlice({
             }
 
 
-            /*
-             * Keep the message in the
-             * conversation.
-             */
             message.content = "";
 
             message.deletedForEveryone =
                 true;
 
-            message.unsentAt =
-                message.unsentAt ??
+            message.deletedAt =
+                message.deletedAt ??
                 new Date().toISOString();
 
 
-            /*
-             * If this was the newest message,
-             * update the sidebar preview.
-             */
             const conversation =
                 state.conversations.find(
                     (item) =>
@@ -321,21 +696,25 @@ const chatSlice = createSlice({
                 );
 
 
-            if (
-                conversation &&
-                conversation.lastMessage?.id ===
-                    messageId
-            ) {
-
-                conversation.lastMessage =
-                    message;
+            if (!conversation) {
+                return;
             }
+
+
+            /*
+             * Keep the unsent message as
+             * the sidebar preview.
+             */
+            updateConversationPreview(
+                conversation,
+                message
+            );
         },
 
 
-        /* =========================
+        /* =====================
            DELETE FOR ME
-        ========================= */
+        ===================== */
 
         deleteMessageForMe: (
             state,
@@ -362,26 +741,34 @@ const chatSlice = createSlice({
             }
 
 
-            /*
-             * Remove the message only
-             * from this user's Redux state.
-             */
+            const deletedIndex =
+                messages.findIndex(
+                    (message) =>
+                        message.id ===
+                        messageId
+                );
+
+
+            if (
+                deletedIndex === -1
+            ) {
+                return;
+            }
+
+
+            const wasLatest =
+                deletedIndex ===
+                messages.length - 1;
+
+
             state.messages[
                 conversationId
-            ] = messages.filter(
-                (message) =>
-                    message.id !==
-                    messageId
-            );
-
-
-            /*
-             * Find the new newest message.
-             */
-            const remainingMessages =
-                state.messages[
-                    conversationId
-                ];
+            ] =
+                messages.filter(
+                    (message) =>
+                        message.id !==
+                        messageId
+                );
 
 
             const conversation =
@@ -397,60 +784,246 @@ const chatSlice = createSlice({
             }
 
 
+            if (!wasLatest) {
+                return;
+            }
+
+
+            const remainingMessages =
+                state.messages[
+                    conversationId
+                ] ?? [];
+
+
+            const previousMessage =
+                getLastMessage(
+                    remainingMessages
+                );
+
+
+            updateConversationPreview(
+                conversation,
+                previousMessage
+            );
+
+
+            const movedByMessageId =
+                state.conversationTopMessageIds[
+                    conversationId
+                ];
+
+
+            const previousPosition =
+                state.previousConversationPositions[
+                    conversationId
+                ];
+
+
             /*
-             * Only update the sidebar if
-             * the deleted message was the
-             * current sidebar preview.
+             * Restore the conversation to
+             * its original position only if
+             * this exact message caused it
+             * to move to the top.
              */
             if (
-                conversation.lastMessage?.id ===
-                messageId
+                movedByMessageId ===
+                    messageId &&
+                previousPosition !==
+                    undefined
             ) {
 
-                const previousMessage =
-                    remainingMessages[
-                        remainingMessages.length - 1
-                    ];
+                const currentIndex =
+                    state.conversations.findIndex(
+                        (item) =>
+                            item.id ===
+                            conversationId
+                    );
 
 
-                conversation.lastMessage =
-                    previousMessage ?? null;
+                if (
+                    currentIndex !== -1
+                ) {
+
+                    const [
+                        conversationToMove,
+                    ] =
+                        state.conversations.splice(
+                            currentIndex,
+                            1
+                        );
+
+
+                    if (
+                        conversationToMove
+                    ) {
+
+                        const targetIndex =
+                            Math.min(
+                                previousPosition,
+                                state
+                                    .conversations
+                                    .length
+                            );
+
+
+                        state.conversations.splice(
+                            targetIndex,
+                            0,
+                            conversationToMove
+                        );
+                    }
+                }
+
+
+                delete state.previousConversationPositions[
+                    conversationId
+                ];
+
+                delete state.conversationTopMessageIds[
+                    conversationId
+                ];
             }
         },
 
 
-        /* =========================
-           ONLINE USERS
-        ========================= */
+        /* =====================
+           TYPING
+        ===================== */
 
-        setUserOnline: (
+        setUserTyping: (
             state,
-            action: PayloadAction<number>
+            action: PayloadAction<{
+                conversationId: number;
+                userId: number;
+            }>
         ) => {
 
+            const {
+                conversationId,
+                userId: typingUserId,
+            } = action.payload;
+
+
             if (
-                !state.onlineUsers.includes(
-                    action.payload
+                !state.typingUsers[
+                    conversationId
+                ]
+            ) {
+
+                state.typingUsers[
+                    conversationId
+                ] = [];
+            }
+
+
+            if (
+                !state.typingUsers[
+                    conversationId
+                ].includes(
+                    typingUserId
                 )
             ) {
 
-                state.onlineUsers.push(
-                    action.payload
+                state.typingUsers[
+                    conversationId
+                ].push(
+                    typingUserId
                 );
             }
         },
 
 
-        setUserOffline: (
+        clearUserTyping: (
             state,
-            action: PayloadAction<number>
+            action: PayloadAction<{
+                conversationId: number;
+                userId: number;
+            }>
         ) => {
 
-            state.onlineUsers =
-                state.onlineUsers.filter(
-                    (id) =>
-                        id !== action.payload
-                );
+            const {
+                conversationId,
+                userId: typingUserId,
+            } = action.payload;
+
+
+            if (
+                state.typingUsers[
+                    conversationId
+                ]
+            ) {
+
+                state.typingUsers[
+                    conversationId
+                ] =
+                    state.typingUsers[
+                        conversationId
+                    ].filter(
+                        (id) =>
+                            id !==
+                            typingUserId
+                    );
+            }
+        },
+
+
+        /* =====================
+           MEMBER NOTE
+        ===================== */
+
+        updateMemberNote: (
+            state,
+            action: PayloadAction<{
+                userId: number;
+                note: string | null;
+            }>
+        ) => {
+            const { userId, note } = action.payload;
+
+            state.conversations.forEach((conversation) => {
+                conversation.members.forEach((member) => {
+                    if (member.user.id === userId) {
+                        member.user.note = note;
+                    }
+                });
+            });
+        },
+
+
+        /* =====================
+           CLEAR
+        ===================== */
+
+        clearChat: (
+            state
+        ) => {
+
+            state.conversations = [];
+
+            state.messages = {};
+
+            state.activeConversationId =
+                null;
+
+            state.onlineUsers = [];
+
+            state.previousConversationPositions =
+                {};
+
+            state.conversationTopMessageIds =
+                {};
+
+            state.typingUsers =
+                {};
+
+            state.unreadCounts =
+                {};
+
+            state.newlyArrivedConversationId =
+                null;
+
+            state.newlyArrivedMessageIds =
+                [];
         },
     },
 });
@@ -461,16 +1034,27 @@ export const {
     addConversation,
     removeConversation,
     setActiveConversation,
+    markConversationAsRead,
+    clearNewlyArrivedMessageId,
+    clearNewlyArrivedHighlight,
+
+    setOnlineUsers,
+    setUserOnline,
+    setUserOffline,
 
     setMessages,
     prependMessages,
-    addMessage,
 
+    addMessage,
     unsendMessage,
     deleteMessageForMe,
 
-    setUserOnline,
-    setUserOffline,
+    setUserTyping,
+    clearUserTyping,
+
+    updateMemberNote,
+
+    clearChat,
 } = chatSlice.actions;
 
 

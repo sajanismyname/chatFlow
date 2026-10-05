@@ -5,6 +5,7 @@ export interface User {
     googleId: string | null;
     avatar: string | null;
     online?:boolean,
+    note?: string | null;
 }
 
 export interface AuthResponse {

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
@@ -13,9 +14,17 @@ import {
 import api from "../api/axios";
 
 import {
+    Bell,
+    BellOff,
     LogOut,
     User,
 } from "lucide-react";
+
+import {
+    playNotificationSound,
+    isSoundNotificationEnabled,
+    setSoundNotificationEnabled,
+} from "../utils/notificationSound";
 
 import {
     Avatar,
@@ -33,6 +42,10 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+import {
+    disconnectSocket,
+} from "@/socket/socket";
+
 
 function Navbar() {
 
@@ -43,12 +56,35 @@ function Navbar() {
         (state: RootState) => state.auth
     );
 
+    const [soundEnabled, setSoundEnabled] = useState(
+        isSoundNotificationEnabled
+    );
+
+    const handleToggleSound = () => {
+        if (soundEnabled) {
+            setSoundNotificationEnabled(false);
+            setSoundEnabled(false);
+        } else {
+            setSoundNotificationEnabled(true);
+            setSoundEnabled(true);
+            playNotificationSound();
+        }
+    };
+
 
     /* =========================
        LOGOUT
     ========================= */
 
     const handleLogout = async () => {
+
+        /*
+         * Disconnect Socket.IO immediately.
+         *
+         * This prevents the socket from remaining
+         * connected while the auth state is being cleared.
+         */
+        disconnectSocket();
 
         try {
 
@@ -65,7 +101,12 @@ function Navbar() {
 
             dispatch(logout());
 
-            navigate("/login");
+            navigate(
+                "/login",
+                {
+                    replace: true,
+                }
+            );
         }
     };
 
@@ -78,7 +119,10 @@ function Navbar() {
         user?.name
             ?.trim()
             .split(/\s+/)
-            .map((word) => word.charAt(0))
+            .map(
+                (word) =>
+                    word.charAt(0)
+            )
             .join("")
             .slice(0, 2)
             .toUpperCase() || "U";
@@ -131,13 +175,47 @@ function Navbar() {
             {/* =========================
                 USER MENU
             ========================= */}
-{/* RIGHT SIDE */}
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5 sm:gap-3">
+
+                <button
+                    type="button"
+                    onClick={handleToggleSound}
+                    className="
+                        relative
+                        flex
+                        size-9
+                        items-center
+                        justify-center
+                        rounded-full
+                        border
+                        bg-muted/50
+                        text-muted-foreground
+                        transition-colors
+                        hover:bg-muted
+                        hover:text-foreground
+                        focus:outline-none
+                        focus-visible:ring-2
+                        focus-visible:ring-ring
+                    "
+                    title={
+                        soundEnabled
+                            ? "Notification sound: Enabled (Click to mute)"
+                            : "Notification sound: Muted (Click to enable & test)"
+                    }
+                    aria-label="Toggle notification sound"
+                >
+                    {soundEnabled ? (
+                        <Bell className="size-4 text-foreground" />
+                    ) : (
+                        <BellOff className="size-4 text-muted-foreground" />
+                    )}
+                </button>
 
                 <ThemeToggle />
 
                 {user && (
+
                     <DropdownMenu>
 
                         {/* =========================
@@ -175,7 +253,10 @@ function Navbar() {
                             <Avatar className="size-9">
 
                                 <AvatarImage
-                                    src={user.avatar ?? undefined}
+                                    src={
+                                        user.avatar ??
+                                        undefined
+                                    }
                                     alt={user.name}
                                 />
 
@@ -204,7 +285,10 @@ function Navbar() {
                                     <Avatar className="size-10">
 
                                         <AvatarImage
-                                            src={user.avatar ?? undefined}
+                                            src={
+                                                user.avatar ??
+                                                undefined
+                                            }
                                             alt={user.name}
                                         />
 
@@ -244,7 +328,9 @@ function Navbar() {
 
 
                             <DropdownMenuItem
-                                onClick={() => navigate("/profile")}
+                                onClick={() =>
+                                    navigate("/profile")
+                                }
                             >
 
                                 <User className="size-4" />
@@ -278,6 +364,7 @@ function Navbar() {
                         </DropdownMenuContent>
 
                     </DropdownMenu>
+
                 )}
 
             </div>
