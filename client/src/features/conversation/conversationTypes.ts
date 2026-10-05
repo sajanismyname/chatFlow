@@ -32,5 +32,7 @@ export interface ConversationItemProps {
     active?: boolean;
     online?: boolean;
     avatar?: string | null;
+    isTyping?: boolean;
+    lastMessageDate?: string | null;
     onClick?: () => void;
 }

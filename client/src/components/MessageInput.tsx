@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
     Camera,
@@ -17,11 +17,14 @@ import {
     Input,
 } from "@/components/ui/input";
 
+import { socket } from "@/socket/socket";
+
 import api from "@/api/axios";
 
 interface MessageInputProps {
     onSend: (message: string) => void;
     disabled?: boolean;
+    conversationId: number | null;
 }
 
 interface PendingAttachment {
@@ -34,6 +37,7 @@ interface PendingAttachment {
 function MessageInput({
     onSend,
     disabled = false,
+    conversationId,
 }: MessageInputProps) {
     const [message, setMessage] = useState("");
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -43,6 +47,52 @@ function MessageInput({
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const cameraInputRef = useRef<HTMLInputElement>(null);
+
+    /*
+     * Typing indicator refs.
+     * We use refs instead of state to avoid
+     * re-renders on every keystroke.
+     */
+    const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const isTypingRef = useRef(false);
+
+    const emitStopTyping = useCallback(() => {
+        if (isTypingRef.current && conversationId !== null) {
+            socket.emit("stop_typing", conversationId);
+            isTypingRef.current = false;
+        }
+    }, [conversationId]);
+
+    const handleTyping = useCallback(() => {
+        if (conversationId === null) return;
+
+        if (!isTypingRef.current) {
+            socket.emit("typing", conversationId);
+            isTypingRef.current = true;
+        }
+
+        // Reset the stop-typing timeout
+        if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current);
+        }
+
+        typingTimeoutRef.current = setTimeout(() => {
+            emitStopTyping();
+        }, 2000);
+    }, [conversationId, emitStopTyping]);
+
+    /*
+     * Clear typing timeout on unmount or
+     * conversation change.
+     */
+    useEffect(() => {
+        return () => {
+            if (typingTimeoutRef.current) {
+                clearTimeout(typingTimeoutRef.current);
+            }
+            emitStopTyping();
+        };
+    }, [conversationId, emitStopTyping]);
 
     const emojis = [
         "😀", "😂", "😍", "😊", "👍", "❤️",
@@ -100,6 +150,9 @@ function MessageInput({
         if (!trimmedMessage && !attachment) {
             return;
         }
+
+        // Stop typing indicator on send
+        emitStopTyping();
 
         if (attachment) {
             onSend(JSON.stringify({
@@ -230,7 +283,14 @@ function MessageInput({
                 <div className="relative flex-1">
                     <Input
                         value={message}
-                        onChange={(e) => setMessage(e.target.value)}
+                        onChange={(e) => {
+                            setMessage(e.target.value);
+                            if (e.target.value.trim()) {
+                                handleTyping();
+                            } else {
+                                emitStopTyping();
+                            }
+                        }}
                         disabled={disabled || uploading}
                         placeholder={
                             disabled

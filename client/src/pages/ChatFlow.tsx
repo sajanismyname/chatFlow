@@ -116,6 +116,21 @@ function ChatFlow() {
         );
 
 
+    const typingUsers =
+        useAppSelector(
+            (state) =>
+                state.chat.typingUsers
+        );
+
+
+    const otherUserTyping =
+        otherUser?.id !== undefined &&
+        activeConversationId !== null &&
+        typingUsers[activeConversationId]?.includes(
+            otherUser.id
+        );
+
+
     /* =========================
        LOAD CONVERSATIONS
     ========================= */
@@ -541,6 +556,10 @@ function ChatFlow() {
                                         otherUserOnline
                                     }
 
+                                    isTyping={
+                                        otherUserTyping
+                                    }
+
                                     userId={
                                         otherUser?.id
                                     }
@@ -581,6 +600,9 @@ function ChatFlow() {
                                     conversationId={
                                         activeConversationId
                                     }
+                                    isTyping={
+                                        otherUserTyping
+                                    }
                                 />
 
                             </div>
@@ -600,6 +622,9 @@ function ChatFlow() {
                             >
 
                                 <MessageInput
+                                    conversationId={
+                                        activeConversationId
+                                    }
                                     onSend={
                                         handleSendMessage
                                     }

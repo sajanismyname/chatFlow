@@ -5,7 +5,7 @@ export const generateAccessToken = (userId: number) =>{
         {userId},
         process.env.JWT_ACCESS_SECRET!,
         {
-            expiresIn:"1m",
+            expiresIn:"1hr",
         }
     )
 }

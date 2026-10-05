@@ -313,6 +313,44 @@ export const initializeSocketServer = (
 
 
             /* =========================
+               TYPING INDICATORS
+            ========================= */
+
+            socket.on(
+                "typing",
+                (conversationId: number) => {
+
+                    socket.to(
+                        `conversation:${conversationId}`
+                    ).emit(
+                        "user_typing",
+                        {
+                            conversationId,
+                            userId,
+                        }
+                    );
+                }
+            );
+
+
+            socket.on(
+                "stop_typing",
+                (conversationId: number) => {
+
+                    socket.to(
+                        `conversation:${conversationId}`
+                    ).emit(
+                        "user_stop_typing",
+                        {
+                            conversationId,
+                            userId,
+                        }
+                    );
+                }
+            );
+
+
+            /* =========================
                SEND MESSAGE
             ========================= */
 

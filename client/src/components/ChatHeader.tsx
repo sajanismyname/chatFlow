@@ -29,6 +29,7 @@ interface ChatHeaderProps {
     name: string;
     avatar?: string | null;
     online?: boolean;
+    isTyping?: boolean;
     userId?: number;
     conversationId?: number;
     onDeleteConversation: () => void;
@@ -39,6 +40,7 @@ function ChatHeader({
     name,
     avatar,
     online = false,
+    isTyping = false,
     userId,
     conversationId,
     onDeleteConversation,
@@ -148,15 +150,19 @@ function ChatHeader({
                         className={`
                             text-xs
                             ${
-                                online
-                                    ? "text-emerald-600"
-                                    : "text-muted-foreground"
+                                isTyping
+                                    ? "text-emerald-500 font-medium"
+                                    : online
+                                        ? "text-emerald-600"
+                                        : "text-muted-foreground"
                             }
                         `}
                     >
-                        {online
-                            ? "Online"
-                            : "Offline"}
+                        {isTyping
+                            ? "Typing..."
+                            : online
+                                ? "Online"
+                                : "Offline"}
                     </p>
 
                 </div>

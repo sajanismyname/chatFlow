@@ -69,6 +69,13 @@ function Sidebar({
         );
 
 
+    const typingUsers =
+        useAppSelector(
+            (state) =>
+                state.chat.typingUsers
+        );
+
+
     const activeConversationId =
         useAppSelector(
             (state) =>
@@ -384,6 +391,22 @@ function Sidebar({
                                     "No messages yet";
 
 
+                                /*
+                                 * Check if other user is
+                                 * typing in this conversation.
+                                 */
+                                const conversationTypingUsers =
+                                    typingUsers[
+                                        conversation.id
+                                    ] ?? [];
+
+                                const isOtherUserTyping =
+                                    otherUser?.id !== undefined &&
+                                    conversationTypingUsers.includes(
+                                        otherUser.id
+                                    );
+
+
                                 return (
                                     <ConversationItem
                                         key={
@@ -411,6 +434,16 @@ function Sidebar({
 
                                         online={
                                             isOnline
+                                        }
+
+                                        isTyping={
+                                            isOtherUserTyping
+                                        }
+
+                                        lastMessageDate={
+                                            lastMessage
+                                                ?.createdAt ??
+                                            null
                                         }
 
                                         onClick={() =>

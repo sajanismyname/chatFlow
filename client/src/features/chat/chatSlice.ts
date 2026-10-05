@@ -30,6 +30,9 @@ interface ChatState {
 
     conversationTopMessageIds:
         Record<number, number>;
+
+    typingUsers:
+        Record<number, number[]>;
 }
 
 
@@ -45,6 +48,8 @@ const initialState: ChatState = {
     previousConversationPositions: {},
 
     conversationTopMessageIds: {},
+
+    typingUsers: {},
 };
 
 
@@ -828,6 +833,87 @@ const chatSlice = createSlice({
 
 
         /* =====================
+           TYPING
+        ===================== */
+
+        setUserTyping: (
+            state,
+            action: PayloadAction<{
+                conversationId: number;
+                userId: number;
+            }>
+        ) => {
+
+            const {
+                conversationId,
+                userId: typingUserId,
+            } = action.payload;
+
+
+            if (
+                !state.typingUsers[
+                    conversationId
+                ]
+            ) {
+
+                state.typingUsers[
+                    conversationId
+                ] = [];
+            }
+
+
+            if (
+                !state.typingUsers[
+                    conversationId
+                ].includes(
+                    typingUserId
+                )
+            ) {
+
+                state.typingUsers[
+                    conversationId
+                ].push(
+                    typingUserId
+                );
+            }
+        },
+
+
+        clearUserTyping: (
+            state,
+            action: PayloadAction<{
+                conversationId: number;
+                userId: number;
+            }>
+        ) => {
+
+            const {
+                conversationId,
+                userId: typingUserId,
+            } = action.payload;
+
+
+            if (
+                state.typingUsers[
+                    conversationId
+                ]
+            ) {
+
+                state.typingUsers[
+                    conversationId
+                ] =
+                    state.typingUsers[
+                        conversationId
+                    ].filter(
+                        (id) =>
+                            id !==
+                            typingUserId
+                    );
+            }
+        },
+
+
+        /* =====================
            CLEAR
         ===================== */
 
@@ -848,6 +934,9 @@ const chatSlice = createSlice({
                 {};
 
             state.conversationTopMessageIds =
+                {};
+
+            state.typingUsers =
                 {};
         },
     },
@@ -870,6 +959,9 @@ export const {
     addMessage,
     unsendMessage,
     deleteMessageForMe,
+
+    setUserTyping,
+    clearUserTyping,
 
     clearChat,
 } = chatSlice.actions;

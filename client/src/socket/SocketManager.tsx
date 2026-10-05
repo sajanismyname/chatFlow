@@ -12,6 +12,8 @@ import {
     setUserOnline,
     unsendMessage,
     deleteMessageForMe,
+    setUserTyping,
+    clearUserTyping,
 } from "@/features/chat/chatSlice";
 
 import type { RootState } from "../app/store";
@@ -191,6 +193,40 @@ const SocketManager = () => {
         };
 
 
+        const handleUserTyping = ({
+            conversationId,
+            userId,
+        }: {
+            conversationId: number;
+            userId: number;
+        }) => {
+
+            dispatch(
+                setUserTyping({
+                    conversationId,
+                    userId,
+                })
+            );
+        };
+
+
+        const handleUserStopTyping = ({
+            conversationId,
+            userId,
+        }: {
+            conversationId: number;
+            userId: number;
+        }) => {
+
+            dispatch(
+                clearUserTyping({
+                    conversationId,
+                    userId,
+                })
+            );
+        };
+
+
         socket.on(
             "connect",
             handleConnect
@@ -239,6 +275,18 @@ const SocketManager = () => {
         socket.on(
             "online_user",
             handleOnlineUsers
+        );
+
+
+        socket.on(
+            "user_typing",
+            handleUserTyping
+        );
+
+
+        socket.on(
+            "user_stop_typing",
+            handleUserStopTyping
         );
 
 
@@ -297,6 +345,16 @@ const SocketManager = () => {
             socket.off(
                 "online_user",
                 handleOnlineUsers
+            );
+
+            socket.off(
+                "user_typing",
+                handleUserTyping
+            );
+
+            socket.off(
+                "user_stop_typing",
+                handleUserStopTyping
             );
 
             disconnectSocket();

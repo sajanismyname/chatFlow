@@ -49,12 +49,14 @@ import {
 interface MessageListProps {
     messages: Message[];
     conversationId: number;
+    isTyping?: boolean;
 }
 
 
 function MessageList({
     messages,
     conversationId,
+    isTyping = false,
 }: MessageListProps) {
 
     const dispatch = useAppDispatch();
@@ -874,6 +876,22 @@ function MessageList({
                             </div>
                         );
                     })
+                )}
+
+                {isTyping && (
+                    <div className="flex w-full justify-start mt-2 mb-2 pr-12">
+                        <div className="flex flex-col">
+                            <div className="relative group flex items-start gap-2 flex-row">
+                                <div className="rounded-2xl px-4 py-2 bg-muted text-foreground rounded-tl-sm">
+                                    <div className="flex gap-1 items-center h-5">
+                                        <div className="w-1.5 h-1.5 bg-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                                        <div className="w-1.5 h-1.5 bg-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                                        <div className="w-1.5 h-1.5 bg-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 )}
 
             </div>

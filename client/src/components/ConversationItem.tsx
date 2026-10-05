@@ -1,5 +1,6 @@
 import {
     useEffect,
+    useMemo,
     useRef,
     useState,
 } from "react";
@@ -21,6 +22,8 @@ function ConversationItem({
     lastMessage,
     active = false,
     online = false,
+    isTyping = false,
+    lastMessageDate,
     onClick,
 }: ConversationItemProps) {
 
@@ -96,6 +99,65 @@ function ConversationItem({
         .join("")
         .slice(0, 2)
         .toUpperCase();
+
+
+    /* =========================
+       FORMAT DATE
+    ========================= */
+
+    const formattedDate = useMemo(() => {
+
+        if (!lastMessageDate) {
+            return null;
+        }
+
+        const date = new Date(lastMessageDate);
+        const now = new Date();
+
+        const today = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate()
+        );
+
+        const messageDay = new Date(
+            date.getFullYear(),
+            date.getMonth(),
+            date.getDate()
+        );
+
+        const diffMs =
+            today.getTime() - messageDay.getTime();
+
+        const diffDays =
+            Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 0) {
+            // Today — show time
+            return date.toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+            });
+        }
+
+        if (diffDays === 1) {
+            return "Yesterday";
+        }
+
+        if (diffDays < 7) {
+            // This week — show day name
+            return date.toLocaleDateString([], {
+                weekday: "short",
+            });
+        }
+
+        // Older — show short date
+        return date.toLocaleDateString([], {
+            month: "short",
+            day: "numeric",
+        });
+
+    }, [lastMessageDate]);
 
 
     return (
@@ -188,24 +250,58 @@ function ConversationItem({
                         {name}
                     </p>
 
+                    {formattedDate && (
+
+                        <span
+                            className={`
+                                shrink-0
+                                text-[11px]
+                                ${
+                                    hasUnreadMessage &&
+                                    !active
+                                        ? "font-semibold text-primary"
+                                        : "text-muted-foreground"
+                                }
+                            `}
+                        >
+                            {formattedDate}
+                        </span>
+
+                    )}
+
                 </div>
 
 
                 <div className="mt-0.5 flex items-center justify-between gap-2">
 
-                    <p className={`
-                        truncate
-                        text-xs
-                        ${
-                            hasUnreadMessage &&
-                            !active
-                                ? "font-bold text-foreground"
-                                : "text-muted-foreground"
-                        }
-                    `}>
-                        {lastMessage ||
-                            "No messages yet"}
-                    </p>
+                    {isTyping ? (
+
+                        <p className="
+                            truncate
+                            text-xs
+                            font-medium
+                            text-emerald-500
+                        ">
+                            Typing...
+                        </p>
+
+                    ) : (
+
+                        <p className={`
+                            truncate
+                            text-xs
+                            ${
+                                hasUnreadMessage &&
+                                !active
+                                    ? "font-bold text-foreground"
+                                    : "text-muted-foreground"
+                            }
+                        `}>
+                            {lastMessage ||
+                                "No messages yet"}
+                        </p>
+
+                    )}
 
                 </div>
 
