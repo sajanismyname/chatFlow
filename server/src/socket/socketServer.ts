@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 
 import { AppDataSource } from "../config/dataSource.js";
 import { ConversationMember } from "../entities/ConversationMember.js";
+import { User } from "../entities/User.js";
 
 import {
     createMessage,
@@ -43,6 +44,9 @@ export const initializeSocketServer = (
      */
     const onlineUsers =
         new Map<number, Set<string>>();
+
+    const userRepository =
+        AppDataSource.getRepository(User);
 
 
     /* =========================
@@ -346,6 +350,34 @@ export const initializeSocketServer = (
                             userId,
                         }
                     );
+                }
+            );
+
+
+            /* =========================
+               USER NOTE
+            ========================= */
+
+            socket.on(
+                "update_note",
+                async (note: string | null) => {
+                    try {
+                        const trimmedNote =
+                            typeof note === "string" && note.trim().length > 0
+                                ? note.trim().slice(0, 1500)
+                                : null;
+
+                        await userRepository.update(userId, {
+                            note: trimmedNote,
+                        });
+
+                        io.emit("user_note_updated", {
+                            userId,
+                            note: trimmedNote,
+                        });
+                    } catch (error) {
+                        console.error("Failed to update note via socket:", error);
+                    }
                 }
             );
 

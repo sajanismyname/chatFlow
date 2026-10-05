@@ -14,7 +14,10 @@ import {
     deleteMessageForMe,
     setUserTyping,
     clearUserTyping,
+    updateMemberNote,
 } from "@/features/chat/chatSlice";
+
+import { updateCurrentUserNote } from "@/features/auth/authSlice";
 
 import type { RootState } from "../app/store";
 
@@ -42,6 +45,12 @@ const SocketManager = () => {
         useAppSelector(
             (state: RootState) =>
                 state.chat.activeConversationId
+        );
+
+    const currentUser =
+        useAppSelector(
+            (state: RootState) =>
+                state.auth.user
         );
 
 
@@ -227,6 +236,27 @@ const SocketManager = () => {
         };
 
 
+        const handleUserNoteUpdated = ({
+            userId,
+            note,
+        }: {
+            userId: number;
+            note: string | null;
+        }) => {
+
+            dispatch(
+                updateMemberNote({
+                    userId,
+                    note,
+                })
+            );
+
+            if (currentUser?.id === userId) {
+                dispatch(updateCurrentUserNote(note));
+            }
+        };
+
+
         socket.on(
             "connect",
             handleConnect
@@ -287,6 +317,11 @@ const SocketManager = () => {
         socket.on(
             "user_stop_typing",
             handleUserStopTyping
+        );
+
+        socket.on(
+            "user_note_updated",
+            handleUserNoteUpdated
         );
 
 
@@ -355,6 +390,11 @@ const SocketManager = () => {
             socket.off(
                 "user_stop_typing",
                 handleUserStopTyping
+            );
+
+            socket.off(
+                "user_note_updated",
+                handleUserNoteUpdated
             );
 
             disconnectSocket();

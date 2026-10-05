@@ -29,6 +29,9 @@ export class User {
     @Column({ type: "varchar", nullable: true })
     avatar!: string | null;
 
+    @Column({ type: "text", nullable: true })
+    note!: string | null;
+
     @OneToMany(() => Message, (message) => message.sender)
     messages!: Message[];
 

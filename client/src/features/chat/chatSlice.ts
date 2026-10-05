@@ -914,6 +914,29 @@ const chatSlice = createSlice({
 
 
         /* =====================
+           MEMBER NOTE
+        ===================== */
+
+        updateMemberNote: (
+            state,
+            action: PayloadAction<{
+                userId: number;
+                note: string | null;
+            }>
+        ) => {
+            const { userId, note } = action.payload;
+
+            state.conversations.forEach((conversation) => {
+                conversation.members.forEach((member) => {
+                    if (member.user.id === userId) {
+                        member.user.note = note;
+                    }
+                });
+            });
+        },
+
+
+        /* =====================
            CLEAR
         ===================== */
 
@@ -962,6 +985,8 @@ export const {
 
     setUserTyping,
     clearUserTyping,
+
+    updateMemberNote,
 
     clearChat,
 } = chatSlice.actions;

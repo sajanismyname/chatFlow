@@ -26,6 +26,7 @@ router.post("/login", login);
 router.post("/register", register);
 router.get("/profile",authenticate, getCurrentUser)
 router.patch("/myProfile",authenticate, updateProfile)
+router.patch("/profile",authenticate, updateProfile)
 router.get("/:id/profile",authenticate, getUserProfile)
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);

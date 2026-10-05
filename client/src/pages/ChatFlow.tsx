@@ -384,7 +384,7 @@ function ChatFlow() {
                                 : "flex"
                         }
                         w-full
-                        md:w-80
+                        md:w-1/3
                     `}
                 >
 

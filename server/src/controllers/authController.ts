@@ -204,7 +204,8 @@ export const getCurrentUser = async (
                 googleId:true,
                 email:true,
                 name:true,
-                avatar:true
+                avatar:true,
+                note:true
             }
         })
 
@@ -247,7 +248,8 @@ export const getUserProfile = async(
             select:{
                 id:true,
                 name:true,
-                avatar: true
+                avatar: true,
+                note: true
             }
         })
 
@@ -604,7 +606,7 @@ export const updateProfile =async (
 ): Promise<void> =>{
     try {
         const userId = req.user?.id
-        const {name, avatar}=req.body
+        const {name, avatar, note}=req.body
 
         const user = await userRepository.findOne({
             where:{
@@ -642,6 +644,10 @@ export const updateProfile =async (
         user.avatar = avatar;
         }
 
+        if (note !== undefined) {
+            user.note = typeof note === "string" && note.trim().length > 0 ? note.trim() : null;
+        }
+
         await userRepository.save(user);
 
         res.status(200).json({
@@ -652,6 +658,7 @@ export const updateProfile =async (
             email: user.email,
             name: user.name,
             avatar: user.avatar,
+            note: user.note,
         },
         });
 
