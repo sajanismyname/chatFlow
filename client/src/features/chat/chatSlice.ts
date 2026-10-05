@@ -33,6 +33,15 @@ interface ChatState {
 
     typingUsers:
         Record<number, number[]>;
+
+    unreadCounts:
+        Record<number, number>;
+
+    newlyArrivedConversationId:
+        number | null;
+
+    newlyArrivedMessageIds:
+        number[];
 }
 
 
@@ -50,6 +59,12 @@ const initialState: ChatState = {
     conversationTopMessageIds: {},
 
     typingUsers: {},
+
+    unreadCounts: {},
+
+    newlyArrivedConversationId: null,
+
+    newlyArrivedMessageIds: [],
 };
 
 
@@ -308,6 +323,46 @@ const chatSlice = createSlice({
 
             state.activeConversationId =
                 action.payload;
+
+            if (action.payload !== null) {
+                state.unreadCounts[action.payload] = 0;
+                if (state.newlyArrivedConversationId === action.payload) {
+                    state.newlyArrivedConversationId = null;
+                }
+            }
+        },
+
+
+        markConversationAsRead: (
+            state,
+            action: PayloadAction<number>
+        ) => {
+
+            state.unreadCounts[action.payload] = 0;
+            if (state.newlyArrivedConversationId === action.payload) {
+                state.newlyArrivedConversationId = null;
+            }
+        },
+
+
+        clearNewlyArrivedMessageId: (
+            state,
+            action: PayloadAction<number>
+        ) => {
+
+            state.newlyArrivedMessageIds =
+                state.newlyArrivedMessageIds.filter(
+                    (id) => id !== action.payload
+                );
+        },
+
+
+        clearNewlyArrivedHighlight: (
+            state
+        ) => {
+
+            state.newlyArrivedConversationId = null;
+            state.newlyArrivedMessageIds = [];
         },
 
 
@@ -579,6 +634,18 @@ const chatSlice = createSlice({
                 conversationId,
                 message.id
             );
+
+            // Track newly arrived message and conversation for highlight
+            if (!state.newlyArrivedMessageIds.includes(message.id)) {
+                state.newlyArrivedMessageIds.push(message.id);
+            }
+            state.newlyArrivedConversationId = conversationId;
+
+            // Increment unread count if the conversation is not currently open
+            if (state.activeConversationId !== conversationId) {
+                state.unreadCounts[conversationId] =
+                    (state.unreadCounts[conversationId] || 0) + 1;
+            }
         },
 
 
@@ -961,6 +1028,15 @@ const chatSlice = createSlice({
 
             state.typingUsers =
                 {};
+
+            state.unreadCounts =
+                {};
+
+            state.newlyArrivedConversationId =
+                null;
+
+            state.newlyArrivedMessageIds =
+                [];
         },
     },
 });
@@ -971,6 +1047,9 @@ export const {
     addConversation,
     removeConversation,
     setActiveConversation,
+    markConversationAsRead,
+    clearNewlyArrivedMessageId,
+    clearNewlyArrivedHighlight,
 
     setOnlineUsers,
     setUserOnline,

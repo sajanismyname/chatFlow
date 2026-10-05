@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import {
     useAppDispatch,
@@ -31,6 +31,8 @@ import {
     socket,
 } from "./socket";
 
+import { playNotificationSound } from "../utils/notificationSound";
+
 
 const SocketManager = () => {
 
@@ -52,6 +54,11 @@ const SocketManager = () => {
             (state: RootState) =>
                 state.auth.user
         );
+
+    const currentUserRef = useRef(currentUser);
+    useEffect(() => {
+        currentUserRef.current = currentUser;
+    }, [currentUser]);
 
 
     const dispatch =
@@ -106,6 +113,27 @@ const SocketManager = () => {
             dispatch(
                 addMessage(message)
             );
+
+            // Play notification sound on incoming new messages
+            const isIncoming =
+                !currentUserRef.current ||
+                message.sender?.id !== currentUserRef.current.id;
+            if (isIncoming) {
+                playNotificationSound();
+
+                // If window/tab is in the background, alert user in document title
+                if (typeof document !== "undefined" && document.hidden) {
+                    const senderName = message.sender?.name || "User";
+                    const originalTitle = document.title.replace(/^🔔\s*(\(\d+\)\s*)?/u, "");
+                    document.title = `🔔 New message from ${senderName}`;
+
+                    const handleFocus = () => {
+                        document.title = originalTitle || "ChatFlow";
+                        window.removeEventListener("focus", handleFocus);
+                    };
+                    window.addEventListener("focus", handleFocus);
+                }
+            }
         };
 
 
@@ -251,7 +279,7 @@ const SocketManager = () => {
                 })
             );
 
-            if (currentUser?.id === userId) {
+            if (currentUserRef.current?.id === userId) {
                 dispatch(updateCurrentUserNote(note));
             }
         };

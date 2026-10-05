@@ -24,6 +24,8 @@ function ConversationItem({
     online = false,
     isTyping = false,
     lastMessageDate,
+    unreadCount = 0,
+    isNewlyArrived = false,
     onClick,
 }: ConversationItemProps) {
 
@@ -84,6 +86,9 @@ function ConversationItem({
         active,
         lastMessage,
     ]);
+
+
+    const isUnread = (hasUnreadMessage || unreadCount > 0) && !active;
 
 
     /* =========================
@@ -167,6 +172,7 @@ function ConversationItem({
             onClick={onClick}
             className={`
                 group
+                relative
                 flex
                 w-full
                 items-center
@@ -175,11 +181,19 @@ function ConversationItem({
                 px-3
                 py-3
                 text-left
-                transition-colors
+                transition-all
+                duration-200
                 ${
                     active
-                        ? "bg-muted"
-                        : "hover:bg-muted/60"
+                        ? "bg-muted border-l-4 border-l-primary"
+                        : isUnread
+                            ? "border-l-4 border-l-black bg-black/[0.04] shadow-sm hover:bg-black/[0.07] dark:border-l-emerald-500 dark:bg-emerald-500/[0.09] dark:hover:bg-emerald-500/[0.14]"
+                            : "border-l-4 border-l-transparent hover:bg-muted/60"
+                }
+                ${
+                    isNewlyArrived && !active
+                        ? "animate-conversation-pulse ring-2 ring-black/20 dark:ring-emerald-500/40"
+                        : ""
                 }
             `}
         >
@@ -190,7 +204,11 @@ function ConversationItem({
 
             <div className="relative shrink-0">
 
-                <Avatar className="size-11">
+                <Avatar className={`size-11 transition-all ${
+                    isUnread
+                        ? "ring-2 ring-black/30 dark:ring-emerald-500/50"
+                        : ""
+                }`}>
 
                     <AvatarImage
                         src={
@@ -241,33 +259,49 @@ function ConversationItem({
                         truncate
                         text-sm
                         ${
-                            hasUnreadMessage &&
-                            !active
-                                ? "font-bold text-foreground"
-                                : "font-semibold"
+                            isUnread
+                                ? "font-bold text-black dark:text-emerald-400"
+                                : "font-semibold text-foreground"
                         }
                     `}>
                         {name}
                     </p>
 
-                    {formattedDate && (
+                    <div className="flex items-center gap-1.5 shrink-0">
 
-                        <span
-                            className={`
-                                shrink-0
-                                text-[11px]
-                                ${
-                                    hasUnreadMessage &&
-                                    !active
-                                        ? "font-semibold text-primary"
-                                        : "text-muted-foreground"
-                                }
-                            `}
-                        >
-                            {formattedDate}
-                        </span>
+                        {formattedDate && (
 
-                    )}
+                            <span
+                                className={`
+                                    shrink-0
+                                    text-[11px]
+                                    ${
+                                        isUnread
+                                            ? "font-bold text-black dark:text-emerald-400"
+                                            : "text-muted-foreground"
+                                    }
+                                `}
+                            >
+                                {formattedDate}
+                            </span>
+
+                        )}
+
+                        {/* HIGHLIGHT UNREAD BADGE: BLACK FOR WHITE THEME, GREEN FOR DARK THEME */}
+                        {isUnread && (
+                            unreadCount > 1 ? (
+                                <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-black px-1.5 text-[10px] font-bold text-white shadow-sm dark:bg-emerald-500 dark:text-neutral-950">
+                                    {unreadCount > 99 ? "99+" : unreadCount}
+                                </span>
+                            ) : (
+                                <span
+                                    className="size-2.5 rounded-full bg-black shadow-sm ring-2 ring-black/20 animate-pulse dark:bg-emerald-500 dark:ring-emerald-500/40"
+                                    title="New message"
+                                />
+                            )
+                        )}
+
+                    </div>
 
                 </div>
 
@@ -285,15 +319,41 @@ function ConversationItem({
                             Typing...
                         </p>
 
+                    ) : online && isUnread ? (
+
+                        <div className="
+                            inline-flex
+                            items-center
+                            gap-1.5
+                            max-w-full
+                            rounded-xl
+                            border
+                            border-black/30
+                            bg-white
+                            px-2
+                            py-0.5
+                            text-xs
+                            font-semibold
+                            text-black
+                            shadow-xs
+                            dark:border-emerald-500/50
+                            dark:bg-neutral-900
+                            dark:text-emerald-300
+                        ">
+                            <span className="size-1.5 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
+                            <span className="truncate">
+                                {lastMessage || "New message"}
+                            </span>
+                        </div>
+
                     ) : (
 
                         <p className={`
                             truncate
                             text-xs
                             ${
-                                hasUnreadMessage &&
-                                !active
-                                    ? "font-bold text-foreground"
+                                isUnread
+                                    ? "font-semibold text-black/90 dark:text-emerald-300"
                                     : "text-muted-foreground"
                             }
                         `}>

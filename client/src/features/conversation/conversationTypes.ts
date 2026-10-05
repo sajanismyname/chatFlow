@@ -34,5 +34,7 @@ export interface ConversationItemProps {
     avatar?: string | null;
     isTyping?: boolean;
     lastMessageDate?: string | null;
+    unreadCount?: number;
+    isNewlyArrived?: boolean;
     onClick?: () => void;
 }
