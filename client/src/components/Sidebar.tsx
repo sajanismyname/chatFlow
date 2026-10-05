@@ -528,17 +528,17 @@ function Sidebar({
                         style={{ scrollbarWidth: "none" }}
                     >
                         {/* 1. MY OWN AVATAR AT FIRST */}
-                        <div className="flex flex-col items-center shrink-0 w-[4.75rem]">
+                        <div className="flex flex-col items-center shrink-0 w-19">
                             {/* Note Bubble Slot (Fixed height for alignment) */}
                             <div className="h-10 flex items-end justify-center mb-1 w-full">
                                 {myProfile.note ? (
                                     <button
                                         type="button"
                                         onClick={handleOpenMyNoteModal}
-                                        className="group/note relative max-w-[76px] cursor-pointer rounded-2xl border border-gray-200/90 bg-white px-2 py-0.5 text-center text-[10px] font-medium leading-tight text-gray-900 shadow-sm transition-transform hover:scale-105"
+                                        className="group/note relative max-w-19 cursor-pointer rounded-2xl border border-gray-200/90 bg-white px-2 py-0.5 text-center text-[10px] font-medium leading-tight text-gray-900 shadow-sm transition-transform hover:scale-105"
                                         title="Click to edit your note"
                                     >
-                                        <p className="line-clamp-2 break-words">
+                                        <p className="line-clamp-2 wrap-break-word">
                                             {myProfile.note}
                                         </p>
                                         <div className="absolute -bottom-1 left-1/2 size-1.5 -translate-x-1/2 rotate-45 border-b border-r border-gray-200/90 bg-white" />
@@ -586,7 +586,7 @@ function Sidebar({
                         {connectionProfiles.map((user) => (
                             <div
                                 key={user.id}
-                                className="flex flex-col items-center shrink-0 w-[4.75rem]"
+                                className="flex flex-col items-center shrink-0 w-19"
                             >
                                 {/* Note Bubble Slot */}
                                 <div className="h-10 flex items-end justify-center mb-1 w-full">
@@ -594,10 +594,10 @@ function Sidebar({
                                         <button
                                             type="button"
                                             onClick={(e) => handleOpenOtherUserNoteModal(user, e)}
-                                            className="group/note relative max-w-[76px] cursor-pointer rounded-2xl border border-gray-200/90 bg-white px-2 py-0.5 text-center text-[10px] font-medium leading-tight text-gray-900 shadow-sm transition-transform hover:scale-105"
+                                            className="group/note relative max-w-19 cursor-pointer rounded-2xl border border-gray-200/90 bg-white px-2 py-0.5 text-center text-[10px] font-medium leading-tight text-gray-900 shadow-sm transition-transform hover:scale-105"
                                             title="Click to view full note"
                                         >
-                                            <p className="line-clamp-2 break-words">
+                                            <p className="line-clamp-2 wrap-break-word">
                                                 {user.note}
                                             </p>
                                             <div className="absolute -bottom-1 left-1/2 size-1.5 -translate-x-1/2 rotate-45 border-b border-r border-gray-200/90 bg-white" />
