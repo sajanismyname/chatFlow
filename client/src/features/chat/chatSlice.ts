@@ -557,34 +557,28 @@ const chatSlice = createSlice({
 
         addMessage: (
             state,
-            action: PayloadAction<Message>
+            action: PayloadAction<Message | { message: Message; isIncoming?: boolean }>
         ) => {
+            const payload = action.payload;
+            const message = "message" in payload ? payload.message : payload;
+            const isIncoming = "isIncoming" in payload ? (payload.isIncoming ?? true) : true;
 
-            const message =
-                action.payload;
-
-
-            const conversationId =
-                message.conversationId;
-
+            const conversationId = message.conversationId;
 
             if (
                 !state.messages[
                     conversationId
                 ]
             ) {
-
                 state.messages[
                     conversationId
                 ] = [];
             }
 
-
             const messages =
                 state.messages[
                     conversationId
                 ];
-
 
             const existing =
                 messages.find(
@@ -593,22 +587,16 @@ const chatSlice = createSlice({
                         message.id
                 );
 
-
             if (!existing) {
-
                 messages.push(
                     message
                 );
-
             } else {
-
                 Object.assign(
                     existing,
                     message
                 );
-
             }
-
 
             const conversation =
                 state.conversations.find(
@@ -617,17 +605,14 @@ const chatSlice = createSlice({
                         conversationId
                 );
 
-
             if (!conversation) {
                 return;
             }
-
 
             updateConversationPreview(
                 conversation,
                 message
             );
-
 
             moveConversationToTop(
                 state,
@@ -635,16 +620,18 @@ const chatSlice = createSlice({
                 message.id
             );
 
-            // Track newly arrived message and conversation for highlight
-            if (!state.newlyArrivedMessageIds.includes(message.id)) {
-                state.newlyArrivedMessageIds.push(message.id);
-            }
-            state.newlyArrivedConversationId = conversationId;
+            if (isIncoming) {
+                // Track newly arrived message and conversation for highlight
+                if (!state.newlyArrivedMessageIds.includes(message.id)) {
+                    state.newlyArrivedMessageIds.push(message.id);
+                }
+                state.newlyArrivedConversationId = conversationId;
 
-            // Increment unread count if the conversation is not currently open
-            if (state.activeConversationId !== conversationId) {
-                state.unreadCounts[conversationId] =
-                    (state.unreadCounts[conversationId] || 0) + 1;
+                // Increment unread count if the conversation is not currently open
+                if (state.activeConversationId !== conversationId) {
+                    state.unreadCounts[conversationId] =
+                        (state.unreadCounts[conversationId] || 0) + 1;
+                }
             }
         },
 

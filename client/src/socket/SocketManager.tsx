@@ -20,6 +20,8 @@ import {
 import { updateCurrentUserNote } from "@/features/auth/authSlice";
 
 import type { RootState } from "../app/store";
+import { store } from "../app/store";
+import { fetchConversations } from "../features/conversation/conversationSlice";
 
 import type {
     Message,
@@ -61,6 +63,12 @@ const SocketManager = () => {
     }, [currentUser]);
 
 
+    const conversations =
+        useAppSelector(
+            (state: RootState) =>
+                state.chat.conversations
+        );
+
     const dispatch =
         useAppDispatch();
 
@@ -81,6 +89,13 @@ const SocketManager = () => {
                 "Socket connected:",
                 socket.id
             );
+
+            // Re-join all conversation rooms on connect / reconnect
+            const currentConversations =
+                store.getState().chat.conversations;
+            currentConversations.forEach((conv) => {
+                socket.emit("join_conversation", conv.id);
+            });
         };
 
 
@@ -110,14 +125,28 @@ const SocketManager = () => {
             message: Message
         ) => {
 
-            dispatch(
-                addMessage(message)
-            );
-
-            // Play notification sound on incoming new messages
             const isIncoming =
                 !currentUserRef.current ||
                 message.sender?.id !== currentUserRef.current.id;
+
+            dispatch(
+                addMessage({
+                    message,
+                    isIncoming,
+                })
+            );
+
+            // If the conversation is not yet in the conversations list, fetch conversations
+            const currentConversations =
+                store.getState().chat.conversations;
+            const convExists = currentConversations.some(
+                (c) => c.id === message.conversationId
+            );
+            if (!convExists) {
+                dispatch(fetchConversations());
+            }
+
+            // Play notification sound on incoming new messages
             if (isIncoming) {
                 playNotificationSound();
 
@@ -435,8 +464,31 @@ const SocketManager = () => {
 
 
     /* =========================
-       CONVERSATION ROOM
+       CONVERSATION ROOMS
+       Keep user joined to all their conversation
+       rooms so incoming messages update the sidebar live.
     ========================= */
+
+    useEffect(() => {
+
+        if (
+            !socket.connected ||
+            conversations.length === 0
+        ) {
+            return;
+        }
+
+        conversations.forEach((conv) => {
+            socket.emit(
+                "join_conversation",
+                conv.id
+            );
+        });
+
+    }, [
+        conversations,
+    ]);
+
 
     useEffect(() => {
 
@@ -447,64 +499,10 @@ const SocketManager = () => {
             return;
         }
 
-
         socket.emit(
             "join_conversation",
             activeConversationId
         );
-
-
-        return () => {
-
-            if (socket.connected) {
-
-                socket.emit(
-                    "leave_conversation",
-                    activeConversationId
-                );
-            }
-        };
-
-    }, [
-        activeConversationId,
-    ]);
-
-
-    /*
-     * When the socket connects after the
-     * conversation effect ran, join the room.
-     */
-    useEffect(() => {
-
-        if (
-            activeConversationId === null
-        ) {
-            return;
-        }
-
-
-        const handleConnect = () => {
-
-            socket.emit(
-                "join_conversation",
-                activeConversationId
-            );
-        };
-
-
-        socket.on(
-            "connect",
-            handleConnect
-        );
-
-
-        return () => {
-
-            socket.off(
-                "connect",
-                handleConnect
-            );
-        };
 
     }, [
         activeConversationId,

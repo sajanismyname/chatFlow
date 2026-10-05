@@ -127,6 +127,12 @@ export const initializeSocketServer = (
                 socket.id
             );
 
+            /*
+             * Join user-specific room for real-time
+             * direct events & cross-conversation updates.
+             */
+            socket.join(`user:${userId}`);
+
 
             /*
              * Tell the newly connected client
@@ -494,8 +500,31 @@ export const initializeSocketServer = (
                          * undefined !== null as an
                          * unsent message.
                          */
+                        const members =
+                            await AppDataSource
+                                .getRepository(
+                                    ConversationMember
+                                )
+                                .find({
+                                    where: {
+                                        conversation: {
+                                            id: conversationId,
+                                        },
+                                    },
+                                    relations: {
+                                        user: true,
+                                    },
+                                });
+
+                        const targetRooms: string[] = [
+                            `conversation:${conversationId}`,
+                            ...members.map(
+                                (m) => `user:${m.user.id}`
+                            ),
+                        ];
+
                         io.to(
-                            `conversation:${conversationId}`
+                            targetRooms
                         ).emit(
                             "new_message",
                             {
@@ -582,12 +611,31 @@ export const initializeSocketServer = (
                             });
 
 
-                        /*
-                         * The service already returns
-                         * conversationId.
-                         */
+                        const members =
+                            await AppDataSource
+                                .getRepository(
+                                    ConversationMember
+                                )
+                                .find({
+                                    where: {
+                                        conversation: {
+                                            id: message.conversationId,
+                                        },
+                                    },
+                                    relations: {
+                                        user: true,
+                                    },
+                                });
+
+                        const targetRooms = [
+                            `conversation:${message.conversationId}`,
+                            ...members.map(
+                                (m) => `user:${m.user.id}`
+                            ),
+                        ];
+
                         io.to(
-                            `conversation:${message.conversationId}`
+                            targetRooms
                         ).emit(
                             "message_unsent",
                             {

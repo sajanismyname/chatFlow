@@ -22,7 +22,6 @@ import UserSearch from "./UserSearch";
 
 import {
     setActiveConversation,
-    clearNewlyArrivedHighlight,
 } from "../features/chat/chatSlice";
 
 import {
@@ -30,7 +29,6 @@ import {
     Plus,
     ChevronLeft,
     ChevronRight,
-    X,
 } from "lucide-react";
 
 import {
@@ -199,9 +197,6 @@ function Sidebar({
             isOnline: boolean;
             note: string | null;
             conversationId: number;
-            incomingMessage: string | null;
-            isIncomingUnread: boolean;
-            isNewlyArrived: boolean;
         }> = [];
         const seenIds = new Set<number>();
 
@@ -223,15 +218,6 @@ function Sidebar({
 
                 const isOnline = onlineUsers.includes(otherUser.id);
 
-                const lastMsg = conversation.lastMessage;
-                const isFromOtherUser =
-                    Boolean(lastMsg && otherUser && lastMsg.sender?.id === otherUser.id);
-                const incomingMessage = isFromOtherUser && lastMsg ? lastMsg.content : null;
-                const isIncomingUnread =
-                    Boolean(isFromOtherUser && (unreadCounts[conversation.id] || 0) > 0);
-                const isNewlyArrived =
-                    newlyArrivedConversationId === conversation.id;
-
                 profiles.push({
                     id: otherUser.id,
                     name: displayName.split(" ")[0],
@@ -241,20 +227,12 @@ function Sidebar({
                     isOnline,
                     note: otherUser.note ?? null,
                     conversationId: conversation.id,
-                    incomingMessage,
-                    isIncomingUnread,
-                    isNewlyArrived,
                 });
             }
         });
 
-        // Sort: online users with incoming messages first, then profiles with note, then online users, then others
+        // Sort: profiles with note first, then online users, then others
         profiles.sort((a, b) => {
-            const aHasLive = a.isOnline && (a.isNewlyArrived || a.isIncomingUnread || !!a.incomingMessage);
-            const bHasLive = b.isOnline && (b.isNewlyArrived || b.isIncomingUnread || !!b.incomingMessage);
-            if (aHasLive && !bHasLive) return -1;
-            if (!aHasLive && bHasLive) return 1;
-
             if (a.note && !b.note) return -1;
             if (!a.note && b.note) return 1;
             if (a.isOnline && !b.isOnline) return -1;
@@ -263,7 +241,7 @@ function Sidebar({
         });
 
         return profiles;
-    }, [conversations, onlineUsers, getOtherMember, unreadCounts, newlyArrivedConversationId]);
+    }, [conversations, onlineUsers, getOtherMember]);
 
     const profilesWithNotes = useMemo(() => {
         return connectionProfiles
@@ -276,24 +254,6 @@ function Sidebar({
                 conversationId: p.conversationId,
             }));
     }, [connectionProfiles]);
-
-    const liveNewlyArrivedConv = useMemo(() => {
-        if (!newlyArrivedConversationId) return null;
-        const conv = conversations.find((c) => c.id === newlyArrivedConversationId);
-        if (!conv) return null;
-        const otherMember = getOtherMember(conv);
-        if (!otherMember) return null;
-        const isOnline = onlineUsers.includes(otherMember.user.id);
-        const isIncoming = conv.lastMessage?.sender?.id === otherMember.user.id;
-        if (!isOnline || !isIncoming) return null;
-
-        return {
-            conversation: conv,
-            otherUser: otherMember.user,
-            displayName: otherMember.nickname || otherMember.user.name || "User",
-            messageContent: conv.lastMessage?.content || "New message",
-        };
-    }, [newlyArrivedConversationId, conversations, onlineUsers, getOtherMember]);
 
     const handleSlideLeft = () => {
         profilesScrollRef.current?.scrollBy({ left: -160, behavior: "smooth" });
@@ -640,36 +600,9 @@ function Sidebar({
                                 key={user.id}
                                 className="flex flex-col items-center shrink-0 w-19"
                             >
-                                {/* Incoming Message or Note Bubble Slot */}
+                                {/* Note Bubble Slot */}
                                 <div className="h-10 flex items-end justify-center mb-1 w-full">
-                                    {/* LIVE INCOMING MESSAGE BUBBLE WHEN OTHER USER IS ONLINE */}
-                                    {user.isOnline && user.incomingMessage ? (
-                                        <button
-                                            type="button"
-                                            onClick={() => handleSelectConversation(user.conversationId)}
-                                            className={`group/incoming-bubble relative max-w-19 cursor-pointer rounded-2xl border px-2 py-0.5 text-center text-[10px] font-semibold leading-tight shadow-md transition-all hover:scale-105 ${
-                                                user.isNewlyArrived
-                                                    ? "animate-message-arrival"
-                                                    : ""
-                                            } ${
-                                                user.isIncomingUnread
-                                                    ? "border-black bg-white text-black ring-1 ring-black/20 dark:border-emerald-500 dark:bg-neutral-900 dark:text-emerald-400 dark:ring-1 dark:ring-emerald-500/40 dark:shadow-emerald-500/25"
-                                                    : "border-gray-200 bg-white text-gray-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200"
-                                            }`}
-                                            title={`Live message from ${user.fullName}: "${user.incomingMessage}"`}
-                                        >
-                                            <p className="line-clamp-2 wrap-break-word">
-                                                {user.incomingMessage}
-                                            </p>
-                                            <div
-                                                className={`absolute -bottom-1 left-1/2 size-1.5 -translate-x-1/2 rotate-45 border-b border-r ${
-                                                    user.isIncomingUnread
-                                                        ? "border-black bg-white dark:border-emerald-500 dark:bg-neutral-900"
-                                                        : "border-gray-200 bg-white dark:border-neutral-700 dark:bg-neutral-900"
-                                                }`}
-                                            />
-                                        </button>
-                                    ) : user.note ? (
+                                    {user.note ? (
                                         <button
                                             type="button"
                                             onClick={(e) => handleOpenOtherUserNoteModal(user, e)}
@@ -739,47 +672,6 @@ function Sidebar({
                 "
             >
 
-                {/* LIVE INCOMING MESSAGE BUBBLE WHEN THE OTHER USER IS ONLINE */}
-                {liveNewlyArrivedConv && (
-                    <div className="mb-2 shrink-0">
-                        <div className="relative flex items-center justify-between gap-2.5 rounded-2xl border-2 border-black bg-white p-2.5 shadow-lg transition-all dark:border-emerald-500 dark:bg-neutral-900 animate-message-arrival">
-                            <button
-                                type="button"
-                                onClick={() => handleSelectConversation(liveNewlyArrivedConv.conversation.id)}
-                                className="flex min-w-0 flex-1 items-center gap-2.5 text-left focus:outline-none"
-                            >
-                                <div className="relative shrink-0">
-                                    <Avatar className="size-9 border-2 border-black dark:border-emerald-500">
-                                        <AvatarImage src={liveNewlyArrivedConv.otherUser.avatar || undefined} />
-                                        <AvatarFallback>{liveNewlyArrivedConv.displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
-                                    </Avatar>
-                                    <span className="absolute bottom-0 right-0 size-2.5 rounded-full border-2 border-background bg-emerald-500" />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-1.5">
-                                        <span className="truncate text-xs font-bold text-black dark:text-emerald-400">
-                                            {liveNewlyArrivedConv.displayName}
-                                        </span>
-                                        <span className="inline-flex shrink-0 items-center rounded-full bg-emerald-500/15 px-1.5 py-0.2 text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
-                                            Online
-                                        </span>
-                                    </div>
-                                    <p className="truncate text-xs font-medium text-black/90 dark:text-emerald-300">
-                                        {liveNewlyArrivedConv.messageContent}
-                                    </p>
-                                </div>
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => dispatch(clearNewlyArrivedHighlight())}
-                                className="flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-                                aria-label="Dismiss alert"
-                            >
-                                <X className="size-3.5" />
-                            </button>
-                        </div>
-                    </div>
-                )}
 
                 {filteredConversations.length > 0 ? (
 

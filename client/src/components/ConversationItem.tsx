@@ -306,7 +306,7 @@ function ConversationItem({
                 </div>
 
 
-                <div className="mt-0.5 flex items-center justify-between gap-2">
+                <div className="mt-1 flex items-center justify-between gap-2 min-h-6">
 
                     {isTyping ? (
 
@@ -319,44 +319,40 @@ function ConversationItem({
                             Typing...
                         </p>
 
-                    ) : online && isUnread ? (
+                    ) : online && (isUnread || isNewlyArrived) ? (
 
-                        <div className="
-                            inline-flex
-                            items-center
-                            gap-1.5
-                            max-w-full
-                            rounded-xl
-                            border
-                            border-black/30
-                            bg-white
-                            px-2
-                            py-0.5
-                            text-xs
-                            font-semibold
-                            text-black
-                            shadow-xs
-                            dark:border-emerald-500/50
-                            dark:bg-neutral-900
-                            dark:text-emerald-300
-                        ">
-                            <span className="size-1.5 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
-                            <span className="truncate">
+                        /* INCOMING MESSAGE BUBBLE AS LAST MESSAGE IN SIDEBAR (ONLINE) */
+                        <div
+                            className={`
+                                relative inline-flex items-center gap-1.5 max-w-full rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-xs transition-all
+                                border-2 border-black bg-white text-black ring-1 ring-black/20
+                                dark:border-emerald-500 dark:bg-neutral-900 dark:text-emerald-400 dark:ring-1 dark:ring-emerald-500/40 dark:shadow-emerald-500/20
+                                ${isNewlyArrived ? "animate-message-arrival" : ""}
+                            `}
+                            title={`Live incoming message: ${lastMessage || ""}`}
+                        >
+                            <span className="size-2 rounded-full bg-emerald-500 shrink-0 animate-pulse ring-1 ring-white dark:ring-neutral-900" />
+                            <span className="truncate max-w-[190px] sm:max-w-[220px]">
+                                {lastMessage || "New message"}
+                            </span>
+                        </div>
+
+                    ) : isUnread ? (
+
+                        <div className={`
+                            inline-flex items-center gap-1.5 max-w-full rounded-full px-2 py-0.5 text-xs font-semibold
+                            border border-black/30 bg-black/5 text-black
+                            dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-400
+                            ${isNewlyArrived ? "animate-message-arrival" : ""}
+                        `}>
+                            <span className="truncate max-w-[190px] sm:max-w-[220px]">
                                 {lastMessage || "New message"}
                             </span>
                         </div>
 
                     ) : (
 
-                        <p className={`
-                            truncate
-                            text-xs
-                            ${
-                                isUnread
-                                    ? "font-semibold text-black/90 dark:text-emerald-300"
-                                    : "text-muted-foreground"
-                            }
-                        `}>
+                        <p className="truncate text-xs text-muted-foreground">
                             {lastMessage ||
                                 "No messages yet"}
                         </p>
