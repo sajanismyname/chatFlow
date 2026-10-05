@@ -88,7 +88,7 @@ function ConversationItem({
     ]);
 
 
-    const isUnread = (hasUnreadMessage || unreadCount > 0) && !active;
+    const isUnread = (hasUnreadMessage || unreadCount > 0 || isNewlyArrived) && !active;
 
 
     /* =========================
@@ -185,15 +185,10 @@ function ConversationItem({
                 duration-200
                 ${
                     active
-                        ? "bg-muted border-l-4 border-l-primary"
+                        ? "bg-muted"
                         : isUnread
-                            ? "border-l-4 border-l-black bg-black/[0.04] shadow-sm hover:bg-black/[0.07] dark:border-l-emerald-500 dark:bg-emerald-500/[0.09] dark:hover:bg-emerald-500/[0.14]"
-                            : "border-l-4 border-l-transparent hover:bg-muted/60"
-                }
-                ${
-                    isNewlyArrived && !active
-                        ? "animate-conversation-pulse ring-2 ring-black/20 dark:ring-emerald-500/40"
-                        : ""
+                            ? "bg-black/[0.03] hover:bg-black/[0.06] dark:bg-emerald-500/[0.08] dark:hover:bg-emerald-500/[0.12]"
+                            : "hover:bg-muted/60"
                 }
             `}
         >
@@ -204,11 +199,7 @@ function ConversationItem({
 
             <div className="relative shrink-0">
 
-                <Avatar className={`size-11 transition-all ${
-                    isUnread
-                        ? "ring-2 ring-black/30 dark:ring-emerald-500/50"
-                        : ""
-                }`}>
+                <Avatar className="size-11">
 
                     <AvatarImage
                         src={
@@ -290,12 +281,12 @@ function ConversationItem({
                         {/* HIGHLIGHT UNREAD BADGE: BLACK FOR WHITE THEME, GREEN FOR DARK THEME */}
                         {isUnread && (
                             unreadCount > 1 ? (
-                                <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-black px-1.5 text-[10px] font-bold text-white shadow-sm dark:bg-emerald-500 dark:text-neutral-950">
+                                <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-black px-1.5 text-[10px] font-bold text-white shadow-xs dark:bg-emerald-500 dark:text-neutral-950">
                                     {unreadCount > 99 ? "99+" : unreadCount}
                                 </span>
                             ) : (
                                 <span
-                                    className="size-2.5 rounded-full bg-black shadow-sm ring-2 ring-black/20 animate-pulse dark:bg-emerald-500 dark:ring-emerald-500/40"
+                                    className="size-2 rounded-full bg-black dark:bg-emerald-500"
                                     title="New message"
                                 />
                             )
@@ -306,7 +297,7 @@ function ConversationItem({
                 </div>
 
 
-                <div className="mt-1 flex items-center justify-between gap-2 min-h-6">
+                <div className="mt-0.5 flex items-center justify-between gap-2">
 
                     {isTyping ? (
 
@@ -319,40 +310,17 @@ function ConversationItem({
                             Typing...
                         </p>
 
-                    ) : online && (isUnread || isNewlyArrived) ? (
-
-                        /* INCOMING MESSAGE BUBBLE AS LAST MESSAGE IN SIDEBAR (ONLINE) */
-                        <div
-                            className={`
-                                relative inline-flex items-center gap-1.5 max-w-full rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-xs transition-all
-                                border-2 border-black bg-white text-black ring-1 ring-black/20
-                                dark:border-emerald-500 dark:bg-neutral-900 dark:text-emerald-400 dark:ring-1 dark:ring-emerald-500/40 dark:shadow-emerald-500/20
-                                ${isNewlyArrived ? "animate-message-arrival" : ""}
-                            `}
-                            title={`Live incoming message: ${lastMessage || ""}`}
-                        >
-                            <span className="size-2 rounded-full bg-emerald-500 shrink-0 animate-pulse ring-1 ring-white dark:ring-neutral-900" />
-                            <span className="truncate max-w-[190px] sm:max-w-[220px]">
-                                {lastMessage || "New message"}
-                            </span>
-                        </div>
-
-                    ) : isUnread ? (
-
-                        <div className={`
-                            inline-flex items-center gap-1.5 max-w-full rounded-full px-2 py-0.5 text-xs font-semibold
-                            border border-black/30 bg-black/5 text-black
-                            dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-400
-                            ${isNewlyArrived ? "animate-message-arrival" : ""}
-                        `}>
-                            <span className="truncate max-w-[190px] sm:max-w-[220px]">
-                                {lastMessage || "New message"}
-                            </span>
-                        </div>
-
                     ) : (
 
-                        <p className="truncate text-xs text-muted-foreground">
+                        <p className={`
+                            truncate
+                            text-xs
+                            ${
+                                isUnread
+                                    ? "font-bold text-black dark:text-emerald-400"
+                                    : "text-muted-foreground"
+                            }
+                        `}>
                             {lastMessage ||
                                 "No messages yet"}
                         </p>

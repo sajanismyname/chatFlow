@@ -1,6 +1,5 @@
 import {
     useCallback,
-    useEffect,
     useLayoutEffect,
     useRef,
 } from "react";
@@ -14,9 +13,6 @@ import type {
     Message,
 } from "../features/messages/messageType";
 
-import {
-    clearNewlyArrivedHighlight,
-} from "../features/chat/chatSlice";
 
 import {
     Avatar,
@@ -83,18 +79,6 @@ function MessageList({
     const loadingOlder =
         pagination?.loadingOlder ?? false;
 
-    const newlyArrivedMessageIds = useAppSelector(
-        (state) => state.chat.newlyArrivedMessageIds ?? []
-    );
-
-    useEffect(() => {
-        if (newlyArrivedMessageIds.length > 0) {
-            const timer = setTimeout(() => {
-                dispatch(clearNewlyArrivedHighlight());
-            }, 6000);
-            return () => clearTimeout(timer);
-        }
-    }, [newlyArrivedMessageIds, dispatch]);
 
 
     const scrollRef =
@@ -493,8 +477,6 @@ function MessageList({
                             message.sender.id ===
                             currentUser?.id;
 
-                        const isNewArrival =
-                            newlyArrivedMessageIds.includes(message.id);
 
 
                         const isUnsent =
@@ -694,30 +676,19 @@ function MessageList({
 
                                             ) : (
 
-                                                <>
-                                                    {isNewArrival && !mine && (
-                                                        <span className="mb-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-black text-white shadow-sm dark:bg-emerald-500 dark:text-neutral-950">
-                                                            New message
-                                                        </span>
-                                                    )}
                                                     <div
                                                         className={`
                                                             max-w-full
                                                             overflow-hidden
                                                             rounded-2xl
                                                             border
+                                                            border-border
                                                             bg-background
                                                             px-4
                                                             py-2.5
                                                             text-sm
+                                                            text-foreground
                                                             shadow-sm
-                                                            transition-all
-                                                            duration-300
-                                                            ${
-                                                                isNewArrival && !mine
-                                                                    ? "border-black ring-2 ring-black/25 shadow-md shadow-black/10 animate-message-arrival dark:border-emerald-500 dark:ring-emerald-500/40 dark:shadow-emerald-500/20 text-foreground"
-                                                                    : "border-border text-foreground"
-                                                            }
                                                             ${
                                                                 mine
                                                                     ? "rounded-br-md"
@@ -803,7 +774,6 @@ function MessageList({
                                                     )}
 
                                                     </div>
-                                                </>
 
                                             )}
 

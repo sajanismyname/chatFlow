@@ -3,19 +3,18 @@ import {
     X,
     Trash2,
     Send,
-    MessageSquare,
     ChevronLeft,
     ChevronRight,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { parseNoteText, getNoteTimeRemaining } from "@/utils/noteUtils";
 
 export interface NoteItem {
     id: number;
     name: string;
     avatar?: string | null;
     note?: string | null;
-    conversationId?: number;
 }
 
 interface NoteModalProps {
@@ -29,7 +28,6 @@ interface NoteModalProps {
     user?: NoteItem | null;
     notesList?: NoteItem[];
     initialIndex?: number;
-    onOpenConversation?: (conversationId: number) => void;
 }
 
 const MAX_WORDS = 250;
@@ -49,7 +47,6 @@ export const NoteModal: React.FC<NoteModalProps> = ({
     user,
     notesList = [],
     initialIndex = 0,
-    onOpenConversation,
 }) => {
     const [noteText, setNoteText] = useState("");
     const [saving, setSaving] = useState(false);
@@ -58,7 +55,7 @@ export const NoteModal: React.FC<NoteModalProps> = ({
 
     useEffect(() => {
         if (isOpen) {
-            setNoteText(initialNote || "");
+            setNoteText(parseNoteText(initialNote) || "");
             setError(null);
             setSaving(false);
             if (notesList.length > 0 && initialIndex >= 0 && initialIndex < notesList.length) {
@@ -85,7 +82,15 @@ export const NoteModal: React.FC<NoteModalProps> = ({
             setError(null);
             const trimmed = noteText.trim();
             if (onSaveNote) {
-                await onSaveNote(trimmed.length > 0 ? trimmed : null);
+                if (trimmed.length > 0) {
+                    const payload = JSON.stringify({
+                        text: trimmed,
+                        createdAt: Date.now(),
+                    });
+                    await onSaveNote(payload);
+                } else {
+                    await onSaveNote(null);
+                }
             }
             onClose();
         } catch (err: any) {
@@ -164,8 +169,12 @@ export const NoteModal: React.FC<NoteModalProps> = ({
                             <h3 className="text-base font-semibold leading-none">{displayName}</h3>
                             <p className="mt-1 text-xs text-muted-foreground">
                                 {isCurrentUser
-                                    ? "Share a thought visible to people you chat with"
-                                    : "Shared note"}
+                                    ? (initialNote && getNoteTimeRemaining(initialNote)
+                                        ? `Notes disappear after 24h (${getNoteTimeRemaining(initialNote)})`
+                                        : "Notes disappear after 24 hours")
+                                    : (currentViewUser?.note && getNoteTimeRemaining(currentViewUser.note)
+                                        ? `Shared note • ${getNoteTimeRemaining(currentViewUser.note)}`
+                                        : "Shared note")}
                             </p>
                         </div>
                     </div>
@@ -297,7 +306,7 @@ export const NoteModal: React.FC<NoteModalProps> = ({
                         <div className="relative">
                             <div className="max-h-56 overflow-y-auto rounded-2xl border border-gray-200 bg-white p-4.5 text-sm font-medium leading-relaxed text-gray-900 shadow-sm [scrollbar-color:var(--foreground)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-foreground/40 hover:[&::-webkit-scrollbar-thumb]:bg-foreground [&::-webkit-scrollbar-thumb]:rounded-full">
                                 <p className="whitespace-pre-wrap">
-                                    {currentViewUser?.note || "No note shared."}
+                                    {parseNoteText(currentViewUser?.note) || "No note shared."}
                                 </p>
                             </div>
                         </div>
@@ -344,7 +353,7 @@ export const NoteModal: React.FC<NoteModalProps> = ({
                         )}
 
                         {/* Actions */}
-                        <div className="flex items-center justify-between gap-2 pt-2">
+                        <div className="flex items-center justify-end gap-2 pt-2">
                             <Button
                                 type="button"
                                 variant="outline"
@@ -353,20 +362,6 @@ export const NoteModal: React.FC<NoteModalProps> = ({
                             >
                                 Close
                             </Button>
-                            {currentViewUser?.conversationId && onOpenConversation && (
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    className="gap-1.5"
-                                    onClick={() => {
-                                        onOpenConversation(currentViewUser.conversationId!);
-                                        onClose();
-                                    }}
-                                >
-                                    <MessageSquare className="size-4" />
-                                    Message {displayName.split(" ")[0]}
-                                </Button>
-                            )}
                         </div>
                     </div>
                 )}

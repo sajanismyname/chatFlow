@@ -51,6 +51,7 @@ import api from "../api/axios";
 import { socket } from "../socket/socket";
 import { updateCurrentUserNote } from "../features/auth/authSlice";
 import NoteModal from "./NoteModal";
+import { parseNoteText } from "@/utils/noteUtils";
 
 
 function Sidebar({
@@ -162,7 +163,6 @@ function Sidebar({
         name: string;
         avatar?: string | null;
         note?: string | null;
-        conversationId?: number;
     } | null>(null);
 
     const profilesScrollRef = useRef<HTMLDivElement>(null);
@@ -177,13 +177,15 @@ function Sidebar({
             .slice(0, 2)
             .toUpperCase();
 
+        const activeNote = parseNoteText(currentUser.note) ? (currentUser.note ?? null) : null;
+
         return {
             id: currentUser.id,
             name: "Your note",
             fullName: displayName,
             avatar: currentUser.avatar ?? null,
             initials,
-            note: currentUser.note ?? null,
+            note: activeNote,
         };
     }, [currentUser]);
 
@@ -217,6 +219,7 @@ function Sidebar({
                     .toUpperCase();
 
                 const isOnline = onlineUsers.includes(otherUser.id);
+                const activeNote = parseNoteText(otherUser.note) ? (otherUser.note ?? null) : null;
 
                 profiles.push({
                     id: otherUser.id,
@@ -225,7 +228,7 @@ function Sidebar({
                     avatar: otherUser.avatar ?? null,
                     initials,
                     isOnline,
-                    note: otherUser.note ?? null,
+                    note: activeNote,
                     conversationId: conversation.id,
                 });
             }
@@ -251,7 +254,6 @@ function Sidebar({
                 name: p.fullName,
                 avatar: p.avatar,
                 note: p.note,
-                conversationId: p.conversationId,
             }));
     }, [connectionProfiles]);
 
@@ -280,7 +282,6 @@ function Sidebar({
             fullName: string;
             avatar: string | null;
             note: string | null;
-            conversationId: number;
         },
         e: React.MouseEvent
     ) => {
@@ -293,7 +294,6 @@ function Sidebar({
             name: profile.fullName,
             avatar: profile.avatar,
             note: profile.note,
-            conversationId: profile.conversationId,
         });
         setNoteModalOpen(true);
     };
@@ -551,7 +551,7 @@ function Sidebar({
                                         title="Click to edit your note"
                                     >
                                         <p className="line-clamp-2 wrap-break-word">
-                                            {myProfile.note}
+                                            {parseNoteText(myProfile.note)}
                                         </p>
                                         <div className="absolute -bottom-1 left-1/2 size-1.5 -translate-x-1/2 rotate-45 border-b border-r border-gray-200/90 bg-white" />
                                     </button>
@@ -610,7 +610,7 @@ function Sidebar({
                                             title="Click to view full note"
                                         >
                                             <p className="line-clamp-2 wrap-break-word">
-                                                {user.note}
+                                                {parseNoteText(user.note)}
                                             </p>
                                             <div className="absolute -bottom-1 left-1/2 size-1.5 -translate-x-1/2 rotate-45 border-b border-r border-gray-200/90 bg-white dark:border-neutral-700 dark:bg-neutral-900" />
                                         </button>
@@ -624,16 +624,11 @@ function Sidebar({
                                     className="relative transition-transform hover:scale-105 focus:outline-none"
                                     title={`Chat with ${user.fullName}`}
                                 >
-                                    {((unreadCounts[user.conversationId] || 0) > 0) && (
-                                        <span className="absolute -top-1 -right-1 z-10 size-3.5 rounded-full bg-black ring-2 ring-background shadow-sm dark:bg-emerald-500 animate-pulse" />
-                                    )}
                                     <Avatar
                                         className={`size-12 shadow-sm border-2 ${
-                                            (unreadCounts[user.conversationId] || 0) > 0
-                                                ? "border-black ring-2 ring-black/20 dark:border-emerald-500 dark:ring-emerald-500/40"
-                                                : user.isOnline
-                                                    ? "border-emerald-500"
-                                                    : "border-border"
+                                            user.isOnline
+                                                ? "border-emerald-500"
+                                                : "border-border"
                                         }`}
                                     >
                                         <AvatarImage
@@ -891,7 +886,6 @@ function Sidebar({
                 user={selectedUserForNote}
                 notesList={profilesWithNotes}
                 initialIndex={activeNoteIndex}
-                onOpenConversation={handleSelectConversation}
             />
 
         </aside>
