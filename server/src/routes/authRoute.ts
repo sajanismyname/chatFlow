@@ -8,6 +8,9 @@ import {
     logout,
     login,
     register,
+    getRegistrationFee,
+    initiateRegistrationPayment,
+    verifyRegistrationPayment,
     updateProfile,
     getUserProfile,
     forgotPassword,
@@ -23,6 +26,11 @@ router.get("/google/callback", googleCallback)
 router.post("/refresh", refreshAccessToken);
 router.post("/logout", logout);
 router.post("/login", login);
+router.get("/register/fee", getRegistrationFee);
+router.post("/register/initiate", initiateRegistrationPayment);
+router.post("/payment/initiate", authenticate, initiateRegistrationPayment);
+router.post("/register/verify", verifyRegistrationPayment);
+router.post("/payment/verify", verifyRegistrationPayment);
 router.post("/register", register);
 router.get("/profile",authenticate, getCurrentUser)
 router.patch("/myProfile",authenticate, updateProfile)

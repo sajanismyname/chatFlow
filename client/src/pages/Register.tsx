@@ -1,15 +1,13 @@
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "../app/store";
-import { register } from "../features/auth/authSlice";
-import { useNavigate } from "react-router-dom";
+import { initiateRegisterPayment } from "../features/auth/authSlice";
 import { Eye, EyeOff } from "lucide-react";
 import { registerSchema } from "../validators/authSchema";
 
 function Register() {
 
     const dispatch = useDispatch<AppDispatch>();
-    const navigate = useNavigate();
     const [validationError, setValidationError] =
     useState<string | null>(null);
 
@@ -21,10 +19,12 @@ function Register() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
+    const [gateway, setGateway] = useState<"khalti" | "esewa">("esewa");
+    const [initiating, setInitiating] = useState(false);
 
 
     /* =========================
-       REGISTER
+       REGISTER & INITIATE PAYMENT
     ========================= */
 
 const handleSubmit = async (
@@ -51,12 +51,48 @@ const handleSubmit = async (
         return;
     }
 
-    const response = await dispatch(
-        register(result.data)
-    );
+    setInitiating(true);
 
-    if (register.fulfilled.match(response)) {
-        navigate("/");
+    try {
+        const response = await dispatch(
+            initiateRegisterPayment({
+                ...result.data,
+                gateway,
+            })
+        );
+
+        if (initiateRegisterPayment.fulfilled.match(response)) {
+            const payload = response.payload;
+
+            if (payload.gateway === "esewa" && payload.params) {
+                // Post form directly to eSewa epay
+                const form = document.createElement("form");
+                form.method = "POST";
+                form.action = payload.paymentUrl;
+
+                Object.entries(payload.params).forEach(([key, value]) => {
+                    const input = document.createElement("input");
+                    input.type = "hidden";
+                    input.name = key;
+                    input.value = String(value);
+                    form.appendChild(input);
+                });
+
+                document.body.appendChild(form);
+                form.submit();
+            } else if (payload.paymentUrl) {
+                // Redirect to Khalti checkout
+                window.location.href = payload.paymentUrl;
+            }
+        } else if (initiateRegisterPayment.rejected.match(response)) {
+            setValidationError(
+                response.payload || "Failed to initiate payment. Please try again."
+            );
+        }
+    } catch {
+        setValidationError("An unexpected error occurred while processing registration.");
+    } finally {
+        setInitiating(false);
     }
 };
 
@@ -315,12 +351,82 @@ const handleSubmit = async (
 
 
                     {/* =========================
+                        REGISTRATION FEE & PAYMENT
+                    ========================= */}
+
+                    <div className="rounded-xl border border-border bg-muted/40 p-4 space-y-3">
+
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                    Registration Fee
+                                </span>
+                                <p className="text-base font-bold text-foreground">
+                                    NPR 100 <span className="text-xs font-normal text-muted-foreground">(One-time)</span>
+                                </p>
+                            </div>
+
+                            <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+                                Required
+                            </span>
+                        </div>
+
+                        <p className="text-xs text-muted-foreground">
+                            Choose your payment gateway to activate your account:
+                        </p>
+
+                        <div className="grid grid-cols-2 gap-3 pt-1">
+
+                            {/* eSewa Option */}
+                            <button
+                                type="button"
+                                onClick={() => setGateway("esewa")}
+                                className={`flex flex-col items-center justify-center gap-2 rounded-xl border p-3 text-center transition-all ${
+                                    gateway === "esewa"
+                                        ? "border-emerald-500 bg-emerald-500/10 shadow-sm ring-1 ring-emerald-500/50"
+                                        : "border-border bg-background hover:bg-accent"
+                                }`}
+                            >
+                                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#60BB46] text-white font-bold text-sm shadow-sm">
+                                    e
+                                </div>
+                                <div>
+                                    <p className="text-xs font-bold text-foreground">eSewa</p>
+                                    <p className="text-[10px] text-muted-foreground">ePay Gateway</p>
+                                </div>
+                            </button>
+
+                            {/* Khalti Option */}
+                            <button
+                                type="button"
+                                onClick={() => setGateway("khalti")}
+                                className={`flex flex-col items-center justify-center gap-2 rounded-xl border p-3 text-center transition-all ${
+                                    gateway === "khalti"
+                                        ? "border-purple-600 bg-purple-600/10 shadow-sm ring-1 ring-purple-600/50"
+                                        : "border-border bg-background hover:bg-accent"
+                                }`}
+                            >
+                                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#5C2D91] text-white font-bold text-sm shadow-sm">
+                                    K
+                                </div>
+                                <div>
+                                    <p className="text-xs font-bold text-foreground">Khalti</p>
+                                    <p className="text-[10px] text-muted-foreground">ePayment v2</p>
+                                </div>
+                            </button>
+
+                        </div>
+
+                    </div>
+
+
+                    {/* =========================
                         SUBMIT
                     ========================= */}
 
                     <button
                         type="submit"
-                        disabled={loading}
+                        disabled={loading || initiating}
                         className="
                             w-full
                             rounded-lg
@@ -334,9 +440,11 @@ const handleSubmit = async (
                             disabled:opacity-50
                         "
                     >
-                        {loading
-                            ? "Creating account..."
-                            : "Create account"}
+                        {initiating || loading
+                            ? "Redirecting to Payment..."
+                            : `Pay NPR 100 & Register with ${
+                                  gateway === "esewa" ? "eSewa" : "Khalti"
+                              }`}
                     </button>
 
                 </form>

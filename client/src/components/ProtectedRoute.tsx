@@ -21,6 +21,7 @@ function ProtectedRoute({
     const {
         isAuthenticated,
         initialized,
+        user,
     } = useAppSelector(
         (state) => state.auth
     );
@@ -90,7 +91,23 @@ function ProtectedRoute({
 
 
     /* =========================
-       AUTHENTICATED
+       UNPAID REGISTRATION
+    ========================= */
+
+    if (user && user.isPaid === false) {
+
+        return (
+            <Navigate
+                to="/payment"
+                replace
+            />
+        );
+
+    }
+
+
+    /* =========================
+       AUTHENTICATED & PAID
     ========================= */
 
     return <>{children}</>;

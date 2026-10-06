@@ -1,9 +1,15 @@
-import type { Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import crypto from "crypto";
+import { fileURLToPath } from "url";
+import multer from "multer";
 
-const uploadDirectory = path.resolve(process.cwd(), "uploads");
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const uploadDirectory = process.env.UPLOAD_DIR
+    ? path.resolve(process.env.UPLOAD_DIR)
+    : path.resolve(__dirname, "../../uploads");
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 const allowedTypes: Record<string, string> = {
@@ -49,7 +55,66 @@ const hasValidSignature = (buffer: Buffer, mimeType: string): boolean => {
     }
 };
 
-export const uploadFile = async (
+const storage = multer.memoryStorage();
+
+const fileFilter: multer.Options["fileFilter"] = (
+    _req,
+    file,
+    cb
+) => {
+    if (!allowedTypes[file.mimetype]) {
+        cb(new Error("Unsupported file type"));
+        return;
+    }
+    cb(null, true);
+};
+
+export const upload = multer({
+    storage,
+    limits: {
+        fileSize: MAX_FILE_SIZE,
+    },
+    fileFilter,
+});
+
+export const uploadMiddleware = (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): void => {
+    upload.single("file")(req, res, (err: unknown) => {
+        if (err) {
+            if (err instanceof multer.MulterError) {
+                if (err.code === "LIMIT_FILE_SIZE") {
+                    res.status(413).json({
+                        message: "Files must be 10 MB or smaller",
+                    });
+                    return;
+                }
+                res.status(400).json({
+                    message: err.message,
+                });
+                return;
+            }
+
+            if (err instanceof Error) {
+                res.status(400).json({
+                    message: err.message,
+                });
+                return;
+            }
+
+            res.status(500).json({
+                message: "Failed to upload file",
+            });
+            return;
+        }
+
+        next();
+    });
+};
+
+const handleUploadedFile = async (
     req: Request,
     res: Response
 ): Promise<void> => {
@@ -59,45 +124,30 @@ export const uploadFile = async (
             return;
         }
 
-        const { data, fileName, mimeType } = req.body as {
-            data?: string;
-            fileName?: string;
-            mimeType?: string;
-        };
+        const file = req.file;
 
-        if (!data || !fileName || !mimeType) {
+        if (!file) {
             res.status(400).json({
                 message: "File data, name and type are required",
             });
             return;
         }
 
-        if (!allowedTypes[mimeType]) {
+        if (!allowedTypes[file.mimetype]) {
             res.status(400).json({
                 message: "Unsupported file type",
             });
             return;
         }
 
-        const match = data.match(/^data:[^;]+;base64,(.+)$/s);
-
-        if (!match) {
-            res.status(400).json({
-                message: "Invalid file data",
-            });
-            return;
-        }
-
-        const buffer = Buffer.from(match[1], "base64");
-
-        if (buffer.length === 0) {
+        if (!file.buffer || file.buffer.length === 0) {
             res.status(400).json({
                 message: "Empty files are not allowed",
             });
             return;
         }
 
-        if (buffer.length > MAX_FILE_SIZE) {
+        if (file.size > MAX_FILE_SIZE || file.buffer.length > MAX_FILE_SIZE) {
             res.status(413).json({
                 message: "Files must be 10 MB or smaller",
             });
@@ -110,8 +160,8 @@ export const uploadFile = async (
          * text/plain does not have a reliable magic number,
          * so it is handled separately.
          */
-        if (mimeType !== "text/plain") {
-            if (!hasValidSignature(buffer, mimeType)) {
+        if (file.mimetype !== "text/plain") {
+            if (!hasValidSignature(file.buffer, file.mimetype)) {
                 res.status(400).json({
                     message: "File content does not match its declared type",
                 });
@@ -122,21 +172,21 @@ export const uploadFile = async (
         await mkdir(uploadDirectory, { recursive: true });
 
         // Extension comes ONLY from our trusted MIME map.
-        const extension = allowedTypes[mimeType];
+        const extension = allowedTypes[file.mimetype];
 
         // Never use the client's filename for the stored filename.
         const storedName = `${crypto.randomUUID()}${extension}`;
 
         await writeFile(
             path.join(uploadDirectory, storedName),
-            buffer
+            file.buffer
         );
 
         res.status(201).json({
             url: `${req.protocol}://${req.get("host")}/uploads/${storedName}`,
-            fileName: path.basename(fileName),
-            mimeType,
-            size: buffer.length,
+            fileName: path.basename(file.originalname || `file${extension}`),
+            mimeType: file.mimetype,
+            size: file.size,
         });
     } catch (error) {
         console.error("File upload failed:", error);
@@ -145,4 +195,18 @@ export const uploadFile = async (
             message: "Failed to upload file",
         });
     }
+};
+
+export const uploadFile = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    if (!req.file) {
+        uploadMiddleware(req, res, () => {
+            void handleUploadedFile(req, res);
+        });
+        return;
+    }
+
+    await handleUploadedFile(req, res);
 };

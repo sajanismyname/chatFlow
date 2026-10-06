@@ -11,6 +11,9 @@ import type {
     AuthResponse,
     LoginCredentials,
     RegisterCredentials,
+    RegisterPaymentInitiatePayload,
+    PaymentInitiateResponse,
+    PaymentVerifyPayload,
     User,
 } from "./authTypes";
 
@@ -82,6 +85,52 @@ export const register = createAsyncThunk<
             return rejectWithValue(
                 error.response?.data?.message ||
                 "Registration failed"
+            );
+        }
+    }
+);
+
+export const initiateRegisterPayment = createAsyncThunk<
+    PaymentInitiateResponse,
+    RegisterPaymentInitiatePayload,
+    { rejectValue: string }
+>(
+    "auth/initiateRegisterPayment",
+    async (payload, { rejectWithValue }) => {
+        try {
+            const response = await api.post<PaymentInitiateResponse>(
+                "/auth/register/initiate",
+                payload
+            );
+
+            return response.data;
+        } catch (error: any) {
+            return rejectWithValue(
+                error.response?.data?.message ||
+                "Failed to initiate payment"
+            );
+        }
+    }
+);
+
+export const verifyRegisterPayment = createAsyncThunk<
+    AuthResponse,
+    PaymentVerifyPayload,
+    { rejectValue: string }
+>(
+    "auth/verifyRegisterPayment",
+    async (payload, { rejectWithValue }) => {
+        try {
+            const response = await api.post<AuthResponse>(
+                "/auth/register/verify",
+                payload
+            );
+
+            return response.data;
+        } catch (error: any) {
+            return rejectWithValue(
+                error.response?.data?.message ||
+                "Payment verification failed"
             );
         }
     }
@@ -284,6 +333,29 @@ const authSlice = createSlice({
                 state.error =
                     action.payload ||
                     "Registration failed";
+            })
+
+            /* =========================
+            VERIFY REGISTER PAYMENT
+            ========================= */
+
+            .addCase(verifyRegisterPayment.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+
+            .addCase(verifyRegisterPayment.fulfilled, (state, action) => {
+                state.loading = false;
+                state.user = action.payload.user;
+                state.accessToken = action.payload.accessToken;
+                state.isAuthenticated = true;
+            })
+
+            .addCase(verifyRegisterPayment.rejected, (state, action) => {
+                state.loading = false;
+                state.error =
+                    action.payload ||
+                    "Payment verification failed";
             })
 
 

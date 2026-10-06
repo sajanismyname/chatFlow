@@ -11,12 +11,23 @@ import { generateAccessToken } from "../utils/jwt.js";
 import { createRefreshToken } from "../services/refreshTokenService.js";
 import {sendPasswordResetEmail} from "../services/emailServices.js";
 import { QueryFailedError } from "typeorm/browser/error/index.js";
-
+import { RegistrationPayment } from "../entities/RegistrationPayment.js";
+import {
+    getRegistrationFeeNpr,
+    initiateEsewaPayment,
+    initiateKhaltiPayment,
+    verifyEsewaResponseData,
+    checkEsewaStatusApi,
+    verifyKhaltiPayment,
+    getEsewaConfig,
+} from "../services/paymentService.js";
 
 const userRepository = AppDataSource.getRepository(User)
 const refreshTokenRepository = AppDataSource.getRepository(RefreshToken);
 const passwordResetTokenRepository =
     AppDataSource.getRepository(PasswordResetToken);
+const registrationPaymentRepository =
+    AppDataSource.getRepository(RegistrationPayment);
 
 export const login = async (
     req: Request,
@@ -99,17 +110,111 @@ export const login = async (
     }
 };
 
-export const register = async (
+export const getRegistrationFee = async (
+    _req: Request,
+    res: Response
+): Promise<void> => {
+    const fee = getRegistrationFeeNpr();
+    res.json({
+        fee,
+        currency: "NPR",
+        gateways: ["khalti", "esewa"],
+    });
+};
+
+export const initiateRegistrationPayment = async (
     req: Request,
     res: Response
 ): Promise<void> => {
     try {
-        const { name, email, password } = req.body;
+        const { name, email, password, gateway } = req.body;
+
+        // If the user is already authenticated (e.g. Google OAuth user needing payment)
+        if (req.user?.id) {
+            const loggedInUser = await userRepository.findOne({
+                where: { id: req.user.id },
+            });
+
+            if (loggedInUser) {
+                if (!gateway || (gateway !== "khalti" && gateway !== "esewa")) {
+                    res.status(400).json({
+                        message: "Invalid payment gateway. Must be 'khalti' or 'esewa'",
+                    });
+                    return;
+                }
+
+                if (loggedInUser.isPaid) {
+                    res.status(400).json({
+                        message: "You have already paid the registration fee",
+                    });
+                    return;
+                }
+
+                const amount = getRegistrationFeeNpr();
+                const transactionUuid = `${crypto.randomUUID()}`;
+
+                const payment = registrationPaymentRepository.create({
+                    transactionUuid,
+                    gateway,
+                    amount,
+                    status: "PENDING",
+                    name: loggedInUser.name,
+                    email: loggedInUser.email,
+                    password: "",
+                    userId: loggedInUser.id,
+                });
+
+                if (gateway === "esewa") {
+                    const esewaResult = initiateEsewaPayment(amount, transactionUuid);
+                    await registrationPaymentRepository.save(payment);
+
+                    res.status(200).json({
+                        message: "Payment initiated",
+                        gateway: "esewa",
+                        amount,
+                        transactionUuid,
+                        paymentUrl: esewaResult.paymentUrl,
+                        params: esewaResult.params,
+                    });
+                    return;
+                }
+
+                if (gateway === "khalti") {
+                    const khaltiResult = await initiateKhaltiPayment(
+                        amount,
+                        transactionUuid,
+                        loggedInUser.name,
+                        loggedInUser.email
+                    );
+                    payment.pidx = khaltiResult.pidx;
+                    await registrationPaymentRepository.save(payment);
+
+                    res.status(200).json({
+                        message: "Payment initiated",
+                        gateway: "khalti",
+                        amount,
+                        transactionUuid,
+                        pidx: khaltiResult.pidx,
+                        paymentUrl: khaltiResult.paymentUrl,
+                        isSimulated: khaltiResult.isSimulated,
+                    });
+                    return;
+                }
+            }
+        }
+
         const normalEmail = email?.trim().toLowerCase();
 
-        if (!name || !email || !password) {
+        if (!name || !email || !password || !gateway) {
             res.status(400).json({
-                message: "Name, email and password are required",
+                message: "Name, email, password, and payment gateway are required",
+            });
+            return;
+        }
+
+        if (gateway !== "khalti" && gateway !== "esewa") {
+            res.status(400).json({
+                message: "Invalid payment gateway. Must be 'khalti' or 'esewa'",
             });
             return;
         }
@@ -140,45 +245,281 @@ export const register = async (
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
+        const amount = getRegistrationFeeNpr();
+        const transactionUuid = `${crypto.randomUUID()}`;
 
-        const user = userRepository.create({
-            name,
+        const payment = registrationPaymentRepository.create({
+            transactionUuid,
+            gateway,
+            amount,
+            status: "PENDING",
+            name: name.trim(),
             email: normalEmail,
             password: hashedPassword,
         });
 
-        const savedUser = await userRepository.save(user);
+        if (gateway === "esewa") {
+            const esewaResult = initiateEsewaPayment(amount, transactionUuid);
+            await registrationPaymentRepository.save(payment);
 
-        const accessToken = generateAccessToken(savedUser.id);
+            res.status(200).json({
+                message: "Payment initiated",
+                gateway: "esewa",
+                amount,
+                transactionUuid,
+                paymentUrl: esewaResult.paymentUrl,
+                params: esewaResult.params,
+            });
+            return;
+        }
 
-        const { rawToken } = await createRefreshToken(
-            savedUser.id
-        );
+        if (gateway === "khalti") {
+            const khaltiResult = await initiateKhaltiPayment(
+                amount,
+                transactionUuid,
+                name.trim(),
+                normalEmail
+            );
+            payment.pidx = khaltiResult.pidx;
+            await registrationPaymentRepository.save(payment);
+
+            res.status(200).json({
+                message: "Payment initiated",
+                gateway: "khalti",
+                amount,
+                transactionUuid,
+                pidx: khaltiResult.pidx,
+                paymentUrl: khaltiResult.paymentUrl,
+                isSimulated: khaltiResult.isSimulated,
+            });
+            return;
+        }
+    } catch (error) {
+        console.error("Failed to initiate registration payment:", error);
+        res.status(500).json({
+            message: "Failed to initiate registration payment",
+        });
+    }
+};
+
+export const verifyRegistrationPayment = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    try {
+        const { gateway, transactionUuid, pidx, data } = req.body;
+
+        if (!gateway) {
+            res.status(400).json({
+                message: "Gateway is required",
+            });
+            return;
+        }
+
+        let payment: RegistrationPayment | null = null;
+
+        if (pidx) {
+            payment = await registrationPaymentRepository.findOne({
+                where: { pidx },
+            });
+        }
+
+        if (!payment && transactionUuid) {
+            payment = await registrationPaymentRepository.findOne({
+                where: { transactionUuid },
+            });
+        }
+
+        if (!payment && data) {
+            try {
+                const decodedJson = Buffer.from(data, "base64").toString("utf-8");
+                const parsed = JSON.parse(decodedJson);
+                if (parsed.transaction_uuid) {
+                    payment = await registrationPaymentRepository.findOne({
+                        where: { transactionUuid: parsed.transaction_uuid },
+                    });
+                }
+            } catch {}
+        }
+
+        if (!payment) {
+            res.status(404).json({
+                message: "Registration payment record not found",
+            });
+            return;
+        }
+
+        if (payment.status === "COMPLETED" && payment.userId) {
+            const user = await userRepository.findOne({
+                where: { id: payment.userId },
+            });
+
+            if (user) {
+                const accessToken = generateAccessToken(user.id);
+                const { rawToken } = await createRefreshToken(user.id);
+
+                res.cookie("refreshToken", rawToken, {
+                    httpOnly: true,
+                    secure: process.env.NODE_ENV === "production",
+                    sameSite: "lax",
+                    path: "/",
+                    maxAge: 7 * 24 * 60 * 60 * 1000,
+                });
+
+                res.status(200).json({
+                    message: "Registration and payment already completed",
+                    accessToken,
+                    user,
+                });
+                return;
+            }
+        }
+
+        let isVerified = false;
+        let refId: string | undefined;
+
+        if (gateway === "khalti") {
+            const lookupPidx = pidx || payment.pidx;
+            if (!lookupPidx) {
+                res.status(400).json({
+                    message: "Khalti pidx is missing",
+                });
+                return;
+            }
+
+            const result = await verifyKhaltiPayment(lookupPidx);
+            if (result.success) {
+                isVerified = true;
+                refId = result.transactionId;
+            } else {
+                payment.status = "FAILED";
+                await registrationPaymentRepository.save(payment);
+                res.status(400).json({
+                    message: `Khalti payment verification failed: ${result.status || "Unknown"}`,
+                });
+                return;
+            }
+        } else if (gateway === "esewa") {
+            const config = getEsewaConfig();
+
+            if (data) {
+                const verification = verifyEsewaResponseData(
+                    data,
+                    config.secretKey
+                );
+                if (verification.valid && verification.decoded?.status === "COMPLETE") {
+                    isVerified = true;
+                    refId = verification.decoded.transaction_code;
+                } else if (verification.decoded?.status === "COMPLETE") {
+                    const statusCheck = await checkEsewaStatusApi(
+                        config.productCode,
+                        Number(payment.amount),
+                        payment.transactionUuid
+                    );
+                    if (statusCheck.success) {
+                        isVerified = true;
+                        refId = statusCheck.refId || verification.decoded.transaction_code;
+                    }
+                }
+            }
+
+            if (!isVerified) {
+                const statusCheck = await checkEsewaStatusApi(
+                    config.productCode,
+                    Number(payment.amount),
+                    payment.transactionUuid
+                );
+                if (statusCheck.success) {
+                    isVerified = true;
+                    refId = statusCheck.refId;
+                }
+            }
+
+            if (!isVerified) {
+                payment.status = "FAILED";
+                await registrationPaymentRepository.save(payment);
+                res.status(400).json({
+                    message: "eSewa payment verification failed",
+                });
+                return;
+            }
+        } else {
+            res.status(400).json({
+                message: "Unsupported gateway",
+            });
+            return;
+        }
+
+        if (!isVerified) {
+            res.status(400).json({
+                message: "Payment could not be verified",
+            });
+            return;
+        }
+
+        let user = await userRepository.findOne({
+            where: { email: payment.email },
+        });
+
+        if (!user) {
+            const newUser = userRepository.create({
+                name: payment.name,
+                email: payment.email,
+                password: payment.password,
+                isPaid: true,
+            });
+            user = await userRepository.save(newUser);
+        } else {
+            user.isPaid = true;
+            await userRepository.save(user);
+        }
+
+        payment.status = "COMPLETED";
+        payment.userId = user.id;
+        payment.gatewayRefId = refId || null;
+        await registrationPaymentRepository.save(payment);
+
+        const accessToken = generateAccessToken(user.id);
+        const { rawToken } = await createRefreshToken(user.id);
 
         res.cookie("refreshToken", rawToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "lax",
-            path:"/",
+            path: "/",
             maxAge: 7 * 24 * 60 * 60 * 1000,
         });
 
         res.status(201).json({
-            message: "Registration successful",
+            message: "Registration and payment successful",
             accessToken,
-            user: savedUser,
+            user,
         });
     } catch (error) {
-        if(
-            error instanceof QueryFailedError &&
-            (error as any).code === "23505"
-        ) {
-            res.status(409).json({
-                message: "User already exists",
-            });
-            return;
-        }
+        console.error("Payment verification failed:", error);
+        res.status(500).json({
+            message: "Failed to verify registration payment",
+        });
     }
+};
+
+export const register = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    // If request contains a payment gateway, delegate to initiateRegistrationPayment
+    if (req.body?.gateway) {
+        await initiateRegistrationPayment(req, res);
+        return;
+    }
+
+    // Require payment to register
+    const fee = getRegistrationFeeNpr();
+    res.status(402).json({
+        message: `Registration requires payment of ${fee} NPR via Khalti or eSewa. Please choose a payment method.`,
+        fee,
+        gateways: ["khalti", "esewa"],
+    });
 };
 
 export const getCurrentUser = async (
@@ -205,7 +546,8 @@ export const getCurrentUser = async (
                 email:true,
                 name:true,
                 avatar:true,
-                note:true
+                note:true,
+                isPaid:true
             }
         })
 
@@ -372,14 +714,18 @@ export const googleCallback = async (
                 }
             }
 
+            let isNewUser = false;
+
             // If neither Google ID nor email exists,
             // create a completely new account.
             if (!user) {
+                isNewUser = true;
                 const newUser = userRepository.create({
                     googleId: data.id,
                     email: email,
                     name: data.name!,
                     avatar: data.picture,
+                    isPaid: false,
                 });
 
                 user = await userRepository.save(newUser);
@@ -395,7 +741,12 @@ export const googleCallback = async (
             maxAge: 7 * 24 * 60 * 60 * 1000,
         });
 
-        res.redirect(`${process.env.FRONTEND_URL}/auth/callback`);
+        const redirectUrl =
+            isNewUser || user.isPaid === false
+                ? `${process.env.FRONTEND_URL}/auth/callback?needsPayment=true`
+                : `${process.env.FRONTEND_URL}/auth/callback`;
+
+        res.redirect(redirectUrl);
         
     } catch (error) {
         console.error(error);

@@ -263,7 +263,7 @@ function Profile() {
                                 accept="image/*"
                                 className="hidden"
                                 aria-label="Choose profile picture"
-                                onChange={(event) => {
+                                onChange={async (event) => {
 
                                     const file =
                                         event.target.files?.[0];
@@ -288,32 +288,21 @@ function Profile() {
                                     }
 
 
-                                    const reader = new FileReader();
+                                    try {
+                                        const formData = new FormData();
+                                        formData.append("file", file);
 
-                                    reader.onload = async () => {
-                                        if (typeof reader.result !== "string") {
-                                            return;
-                                        }
+                                        const response = await api.post<{
+                                            url: string;
+                                        }>("/uploads", formData);
 
-                                        try {
-                                            const response = await api.post<{
-                                                url: string;
-                                            }>("/uploads", {
-                                                data: reader.result,
-                                                fileName: file.name,
-                                                mimeType: file.type,
-                                            });
-
-                                            setAvatar(response.data.url);
-                                        } catch (error: any) {
-                                            window.alert(
-                                                error.response?.data?.message ||
-                                                "Failed to upload profile picture."
-                                            );
-                                        }
-                                    };
-
-                                    reader.readAsDataURL(file);
+                                        setAvatar(response.data.url);
+                                    } catch (error: any) {
+                                        window.alert(
+                                            error.response?.data?.message ||
+                                            "Failed to upload profile picture."
+                                        );
+                                    }
 
                                 }}
                             />
