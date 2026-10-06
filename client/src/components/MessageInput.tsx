@@ -107,39 +107,23 @@ function MessageInput({
             return;
         }
 
-        const reader = new FileReader();
-
         setUploading(true);
 
-        reader.onload = async () => {
-            try {
-                if (typeof reader.result !== "string") {
-                    throw new Error("Unable to read the selected file.");
-                }
+        try {
+            const formData = new FormData();
+            formData.append("file", file);
 
-                const response = await api.post<PendingAttachment>("/uploads", {
-                    data: reader.result,
-                    fileName: file.name,
-                    mimeType: file.type || "application/octet-stream",
-                });
+            const response = await api.post<PendingAttachment>("/uploads", formData);
 
-                setAttachment(response.data);
-            } catch (error: any) {
-                setUploadError(
-                    error.response?.data?.message ||
-                    "Failed to upload file."
-                );
-            } finally {
-                setUploading(false);
-            }
-        };
-
-        reader.onerror = () => {
+            setAttachment(response.data);
+        } catch (error: any) {
+            setUploadError(
+                error.response?.data?.message ||
+                "Failed to upload file."
+            );
+        } finally {
             setUploading(false);
-            setUploadError("Failed to read the selected file.");
-        };
-
-        reader.readAsDataURL(file);
+        }
     };
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
