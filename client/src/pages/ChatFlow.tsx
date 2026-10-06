@@ -151,13 +151,60 @@ function ChatFlow() {
 
 
     /* =========================
+       RESET ON USER CHANGE OR INVALID CONVERSATION
+    ========================= */
+
+    useEffect(() => {
+
+        dispatch(
+            setActiveConversation(
+                null
+            )
+        );
+
+    }, [
+        currentUser?.id,
+        dispatch,
+    ]);
+
+
+    useEffect(() => {
+
+        if (
+            activeConversationId !== null &&
+            !conversations.some(
+                (conv) =>
+                    conv.id ===
+                    activeConversationId
+            )
+        ) {
+            dispatch(
+                setActiveConversation(
+                    null
+                )
+            );
+        }
+
+    }, [
+        conversations,
+        activeConversationId,
+        dispatch,
+    ]);
+
+
+    /* =========================
        LOAD MESSAGES
     ========================= */
 
     useEffect(() => {
 
         if (
-            activeConversationId === null
+            activeConversationId === null ||
+            !conversations.some(
+                (conv) =>
+                    conv.id ===
+                    activeConversationId
+            )
         ) {
             return;
         }
@@ -171,6 +218,7 @@ function ChatFlow() {
 
     }, [
         activeConversationId,
+        conversations,
         dispatch,
     ]);
 

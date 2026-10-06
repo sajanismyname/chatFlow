@@ -10,6 +10,7 @@ import {
     updateProfileThunk,
     deleteAccountThunk,
 } from "@/features/auth/authSlice";
+import { clearChat } from "@/features/chat/chatSlice";
 import { disconnectSocket } from "@/socket/socket";
 import api from "@/api/axios";
 
@@ -71,6 +72,7 @@ function Profile() {
         setIsDeleting(true);
         try {
             disconnectSocket();
+            dispatch(clearChat());
             await dispatch(deleteAccountThunk()).unwrap();
             navigate("/login", { replace: true });
         } catch (err: any) {

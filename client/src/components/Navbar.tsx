@@ -9,6 +9,9 @@ import type {
 import {
     logout,
 } from "../features/auth/authSlice";
+import {
+    clearChat,
+} from "../features/chat/chatSlice";
 
 import api from "../api/axios";
 
@@ -75,6 +78,7 @@ function Navbar() {
 
         } finally {
 
+            dispatch(clearChat());
             dispatch(logout());
 
             navigate(

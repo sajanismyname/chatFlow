@@ -494,7 +494,8 @@ const SocketManager = () => {
 
         if (
             activeConversationId === null ||
-            !socket.connected
+            !socket.connected ||
+            !conversations.some((conv) => conv.id === activeConversationId)
         ) {
             return;
         }
@@ -506,6 +507,7 @@ const SocketManager = () => {
 
     }, [
         activeConversationId,
+        conversations,
     ]);
 
 

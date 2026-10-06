@@ -255,6 +255,17 @@ const chatSlice = createSlice({
 
             state.conversations =
                 action.payload;
+
+            if (
+                state.activeConversationId !== null &&
+                !action.payload.some(
+                    (conversation) =>
+                        conversation.id ===
+                        state.activeConversationId
+                )
+            ) {
+                state.activeConversationId = null;
+            }
         },
 
 
@@ -1025,6 +1036,16 @@ const chatSlice = createSlice({
             state.newlyArrivedMessageIds =
                 [];
         },
+    },
+
+    extraReducers: (builder) => {
+        builder.addMatcher(
+            (action) =>
+                action.type === "auth/logout" ||
+                action.type === "auth/logoutUser/fulfilled" ||
+                action.type === "auth/deleteAccount/fulfilled",
+            () => initialState
+        );
     },
 });
 

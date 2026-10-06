@@ -424,6 +424,14 @@ const messageSlice = createSlice({
                         action.payload ||
                         "Failed to send message";
                 }
+            )
+
+            .addMatcher(
+                (action) =>
+                    action.type === "auth/logout" ||
+                    action.type === "auth/logoutUser/fulfilled" ||
+                    action.type === "auth/deleteAccount/fulfilled",
+                () => initialState
             );
     },
 });
