@@ -5,6 +5,10 @@ import { AppDataSource } from "../config/dataSource.js";
 import { RefreshToken } from "../entities/refreshToken.js";
 import { PasswordResetToken } from "../entities/PasswordResetToken.js";
 import { User } from "../entities/User.js";
+import { Message } from "../entities/Message.js";
+import { MessageDeletion } from "../entities/MessageDeletion.js";
+import { ConversationMember } from "../entities/ConversationMember.js";
+import { ConversationNickname } from "../entities/ConversationNickname.js";
 import {google} from "googleapis"
 import { googleClient } from "../config/google.js";
 import { generateAccessToken } from "../utils/jwt.js";
@@ -1427,6 +1431,111 @@ export const resetPassword = async (
 
         res.status(500).json({
             message: "Failed to reset password",
+        });
+    }
+};
+
+export const deleteAccount = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    try {
+        const userId = req.user?.id;
+
+        if (!userId) {
+            res.status(401).json({
+                message: "Unauthorized",
+            });
+            return;
+        }
+
+        const user = await userRepository.findOne({
+            where: { id: userId },
+        });
+
+        if (!user) {
+            res.status(404).json({
+                message: "User not found",
+            });
+            return;
+        }
+
+        await AppDataSource.transaction(async (manager) => {
+            // 1. Delete refresh tokens for this user
+            await manager.getRepository(RefreshToken).delete({ userId });
+
+            // 2. Delete password reset tokens for this user
+            await manager.getRepository(PasswordResetToken).delete({ userId });
+
+            // 3. Delete message deletions created by this user
+            await manager.getRepository(MessageDeletion).delete({ user: { id: userId } });
+
+            // 4. Delete conversation nicknames associated with this user
+            await manager.getRepository(ConversationNickname).delete({ user: { id: userId } });
+
+            // 5. Query user's sent messages
+            const userMessages = await manager.getRepository(Message).find({
+                where: { sender: { id: userId } },
+                select: { id: true },
+            });
+            const userMessageIds = userMessages.map((m) => m.id);
+
+            if (userMessageIds.length > 0) {
+                // Clear replyToMessage references pointing to these messages
+                await manager
+                    .createQueryBuilder()
+                    .update(Message)
+                    .set({ replyToMessage: null })
+                    .where("reply_to_message_id IN (:...ids)", { ids: userMessageIds })
+                    .execute();
+
+                // Delete any message deletions referencing these messages
+                await manager
+                    .createQueryBuilder()
+                    .delete()
+                    .from(MessageDeletion)
+                    .where("message_id IN (:...ids)", { ids: userMessageIds })
+                    .execute();
+
+                // Delete the messages sent by this user
+                await manager
+                    .createQueryBuilder()
+                    .delete()
+                    .from(Message)
+                    .where("id IN (:...ids)", { ids: userMessageIds })
+                    .execute();
+            }
+
+            // 6. Delete conversation memberships for this user
+            await manager.getRepository(ConversationMember).delete({ user: { id: userId } });
+
+            // 7. Unlink user from registration payments
+            await manager
+                .createQueryBuilder()
+                .update(RegistrationPayment)
+                .set({ user: null, userId: null })
+                .where("userId = :userId", { userId })
+                .execute();
+
+            // 8. Delete user record
+            await manager.getRepository(User).delete({ id: userId });
+        });
+
+        // 9. Clear refresh token cookie
+        res.clearCookie("refreshToken", {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            path: "/",
+        });
+
+        res.status(200).json({
+            message: "Account deleted successfully",
+        });
+    } catch (error) {
+        console.error("Delete account error:", error);
+        res.status(500).json({
+            message: "Failed to delete account",
         });
     }
 };

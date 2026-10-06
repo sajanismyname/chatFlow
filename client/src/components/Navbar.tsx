@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
@@ -14,17 +13,9 @@ import {
 import api from "../api/axios";
 
 import {
-    Bell,
-    BellOff,
     LogOut,
     User,
 } from "lucide-react";
-
-import {
-    playNotificationSound,
-    isSoundNotificationEnabled,
-    setSoundNotificationEnabled,
-} from "../utils/notificationSound";
 
 import {
     Avatar,
@@ -55,21 +46,6 @@ function Navbar() {
     const { user } = useSelector(
         (state: RootState) => state.auth
     );
-
-    const [soundEnabled, setSoundEnabled] = useState(
-        isSoundNotificationEnabled
-    );
-
-    const handleToggleSound = () => {
-        if (soundEnabled) {
-            setSoundNotificationEnabled(false);
-            setSoundEnabled(false);
-        } else {
-            setSoundNotificationEnabled(true);
-            setSoundEnabled(true);
-            playNotificationSound();
-        }
-    };
 
 
     /* =========================
@@ -177,40 +153,6 @@ function Navbar() {
             ========================= */}
 
             <div className="flex items-center gap-2.5 sm:gap-3">
-
-                <button
-                    type="button"
-                    onClick={handleToggleSound}
-                    className="
-                        relative
-                        flex
-                        size-9
-                        items-center
-                        justify-center
-                        rounded-full
-                        border
-                        bg-muted/50
-                        text-muted-foreground
-                        transition-colors
-                        hover:bg-muted
-                        hover:text-foreground
-                        focus:outline-none
-                        focus-visible:ring-2
-                        focus-visible:ring-ring
-                    "
-                    title={
-                        soundEnabled
-                            ? "Notification sound: Enabled (Click to mute)"
-                            : "Notification sound: Muted (Click to enable & test)"
-                    }
-                    aria-label="Toggle notification sound"
-                >
-                    {soundEnabled ? (
-                        <Bell className="size-4 text-foreground" />
-                    ) : (
-                        <BellOff className="size-4 text-muted-foreground" />
-                    )}
-                </button>
 
                 <ThemeToggle />
 

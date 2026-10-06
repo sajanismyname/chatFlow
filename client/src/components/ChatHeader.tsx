@@ -16,14 +16,6 @@ import {
     Button,
 } from "@/components/ui/button";
 
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-
 
 interface ChatHeaderProps {
     name: string;
@@ -32,7 +24,8 @@ interface ChatHeaderProps {
     isTyping?: boolean;
     userId?: number;
     conversationId?: number;
-    onDeleteConversation: () => void;
+    isSideMenuOpen?: boolean;
+    onToggleSideMenu?: () => void;
 }
 
 
@@ -43,7 +36,8 @@ function ChatHeader({
     isTyping = false,
     userId,
     conversationId,
-    onDeleteConversation,
+    isSideMenuOpen = false,
+    onToggleSideMenu,
 }: ChatHeaderProps) {
 
     const navigate = useNavigate();
@@ -65,19 +59,6 @@ function ChatHeader({
         }
 
         navigate(`/profile/${conversationId}/${userId}`);
-    };
-
-
-    const handleDeleteConversation = () => {
-        const confirmed = window.confirm(
-            `Delete your conversation with ${name}?`
-        );
-
-        if (!confirmed) {
-            return;
-        }
-
-        onDeleteConversation();
     };
 
 
@@ -210,49 +191,27 @@ function ChatHeader({
                 </Button>
 
 
-                {/* MORE MENU */}
+                {/* MORE OPTIONS (TOGGLES SIDE MENU) */}
 
-                <DropdownMenu>
-
-                    <DropdownMenuTrigger
-                        render={
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="rounded-full"
-                                aria-label="More options"
-                            >
-                                <MoreVertical className="size-4" />
-                            </Button>
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className={`
+                        rounded-full
+                        transition-colors
+                        ${
+                            isSideMenuOpen
+                                ? "bg-muted text-foreground"
+                                : ""
                         }
-                    />
-
-                    <DropdownMenuContent align="end">
-
-                        {/* <DropdownMenuItem
-                            disabled={!userId}
-                            onClick={handleViewProfile}
-                        >
-                            View profile
-                        </DropdownMenuItem> */}
-
-
-                        <DropdownMenuSeparator />
-
-
-                        <DropdownMenuItem
-                            onClick={
-                                handleDeleteConversation
-                            }
-                            className="text-destructive focus:text-destructive"
-                        >
-                            Delete conversation
-                        </DropdownMenuItem>
-
-                    </DropdownMenuContent>
-
-                </DropdownMenu>
+                    `}
+                    aria-label="Conversation options"
+                    title="Conversation options"
+                    onClick={onToggleSideMenu}
+                >
+                    <MoreVertical className="size-4" />
+                </Button>
 
             </div>
 

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import {
     ArrowLeft,
@@ -14,6 +14,7 @@ import Sidebar from "../components/Sidebar";
 import ChatHeader from "../components/ChatHeader";
 import MessageList from "../components/MessageList";
 import MessageInput from "../components/MessageInput";
+import ConversationSideMenu from "../components/ConversationSideMenu";
 
 import { socket } from "@/socket/socket";
 
@@ -42,6 +43,9 @@ function ChatFlow() {
 
     const dispatch =
         useAppDispatch();
+
+    const [isSideMenuOpen, setIsSideMenuOpen] =
+        useState(false);
 
 
     const conversations =
@@ -193,6 +197,8 @@ function ChatFlow() {
 
     const handleBackToConversations = () => {
 
+        setIsSideMenuOpen(false);
+
         dispatch(
             setActiveConversation(
                 null
@@ -328,6 +334,7 @@ function ChatFlow() {
                     );
                 }
 
+                setIsSideMenuOpen(false);
 
                 dispatch(
                     setActiveConversation(
@@ -568,8 +575,14 @@ function ChatFlow() {
                                         activeConversationId
                                     }
 
-                                    onDeleteConversation={
-                                        handleDeleteConversation
+                                    isSideMenuOpen={
+                                        isSideMenuOpen
+                                    }
+
+                                    onToggleSideMenu={() =>
+                                        setIsSideMenuOpen(
+                                            (prev) => !prev
+                                        )
                                     }
                                 />
 
@@ -639,6 +652,39 @@ function ChatFlow() {
                     )}
 
                 </main>
+
+                {/* =========================
+                    CONVERSATION SIDE MENU
+                    (Takes space half of sidebar)
+                ========================= */}
+                {isSideMenuOpen && activeConversationId !== null && (
+                    <ConversationSideMenu
+                        conversationId={
+                            activeConversationId
+                        }
+                        name={
+                            otherUserNickname ||
+                            otherUser?.name ||
+                            "Conversation"
+                        }
+                        avatar={
+                            otherUser?.avatar ??
+                            null
+                        }
+                        online={
+                            otherUserOnline
+                        }
+                        userId={
+                            otherUser?.id
+                        }
+                        onClose={() =>
+                            setIsSideMenuOpen(false)
+                        }
+                        onDeleteConversation={
+                            handleDeleteConversation
+                        }
+                    />
+                )}
 
             </div>
 

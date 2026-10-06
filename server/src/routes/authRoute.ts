@@ -14,7 +14,8 @@ import {
     updateProfile,
     getUserProfile,
     forgotPassword,
-    resetPassword
+    resetPassword,
+    deleteAccount
     } from "../controllers/authController.js";
 import { authenticate } from "../middleware/authMiddleware.js";
 
@@ -38,5 +39,6 @@ router.patch("/profile",authenticate, updateProfile)
 router.get("/:id/profile",authenticate, getUserProfile)
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);
+router.delete("/account", authenticate, deleteAccount);
 
 export default router
