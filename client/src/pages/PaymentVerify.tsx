@@ -10,7 +10,7 @@ function PaymentVerify() {
     const navigate = useNavigate();
     const dispatch = useDispatch<AppDispatch>();
 
-    const { loading, error, isAuthenticated } = useSelector(
+    const { loading, error, isAuthenticated, user } = useSelector(
         (state: RootState) => state.auth
     );
 
@@ -55,8 +55,15 @@ function PaymentVerify() {
     };
 
     useEffect(() => {
-        if (isAuthenticated && !verified) {
-            navigate("/");
+        // If user already paid, take them straight to dashboard
+        if (isAuthenticated && user?.isPaid === true && !verified) {
+            navigate("/", { replace: true });
+            return;
+        }
+
+        // If no payment params are present in URL, redirect back to payment or login
+        if (!txn && !pidx && !data && !isSimulated && !isFailed) {
+            navigate(isAuthenticated ? "/payment" : "/login", { replace: true });
             return;
         }
 
@@ -65,7 +72,7 @@ function PaymentVerify() {
             setHasAttempted(true);
             void handleVerify();
         }
-    }, [isFailed, isSimulated, hasAttempted, isAuthenticated]);
+    }, [isFailed, isSimulated, hasAttempted, isAuthenticated, user?.isPaid, verified, txn, pidx, data, navigate]);
 
     return (
         <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -113,10 +120,10 @@ function PaymentVerify() {
                             </button>
                             <button
                                 type="button"
-                                onClick={() => navigate("/register")}
+                                onClick={() => navigate(isAuthenticated ? "/payment" : "/register")}
                                 className="w-full rounded-lg border border-input py-3 font-medium text-foreground hover:bg-accent"
                             >
-                                Return to Register
+                                {isAuthenticated ? "Return to Payment" : "Return to Register"}
                             </button>
                         </div>
                     </div>
@@ -167,7 +174,7 @@ function PaymentVerify() {
                             </button>
                             <button
                                 type="button"
-                                onClick={() => navigate("/register")}
+                                onClick={() => navigate(isAuthenticated ? "/payment" : "/register")}
                                 className="w-full rounded-lg border border-input py-3 font-medium text-foreground hover:bg-accent"
                             >
                                 Cancel

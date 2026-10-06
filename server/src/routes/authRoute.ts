@@ -30,6 +30,7 @@ router.get("/register/fee", getRegistrationFee);
 router.post("/register/initiate", initiateRegistrationPayment);
 router.post("/payment/initiate", authenticate, initiateRegistrationPayment);
 router.post("/register/verify", verifyRegistrationPayment);
+router.post("/payment/verify", verifyRegistrationPayment);
 router.post("/register", register);
 router.get("/profile",authenticate, getCurrentUser)
 router.patch("/myProfile",authenticate, updateProfile)

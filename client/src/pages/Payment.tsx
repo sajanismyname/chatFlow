@@ -63,8 +63,14 @@ function Payment() {
                 document.body.appendChild(form);
                 form.submit();
             } else if (payload.paymentUrl) {
-                // Redirect to Khalti checkout
-                window.location.href = payload.paymentUrl;
+                // If paymentUrl is on current origin (e.g. simulated payment during dev), navigate directly
+                if (payload.paymentUrl.startsWith(window.location.origin)) {
+                    const relativeUrl = payload.paymentUrl.slice(window.location.origin.length);
+                    navigate(relativeUrl);
+                } else {
+                    // Redirect to external Khalti checkout
+                    window.location.href = payload.paymentUrl;
+                }
             }
         } catch (err: any) {
             setError(
@@ -210,8 +216,8 @@ function Payment() {
                     {loading
                         ? "Redirecting to Payment Portal..."
                         : `Pay NPR 100 & Activate with ${
-                              gateway === "esewa" ? "eSewa" : "Khalti"
-                          }`}
+                            gateway === "esewa" ? "eSewa" : "Khalti"
+                        }`}
                 </button>
 
                 {/* Logout link */}

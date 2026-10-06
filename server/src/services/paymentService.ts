@@ -199,17 +199,25 @@ export const initiateKhaltiPayment = async (
     const config = getKhaltiConfig();
     const amountInPaisa = Math.round(amount * 100);
 
-    // If Khalti secret key is provided and not dummy, call live/sandbox Khalti API
-    if (config.secretKey && !config.secretKey.startsWith("test_secret")) {
+    const isPlaceholderKey =
+        !config.secretKey ||
+        config.secretKey === "test_secret_key" ||
+        config.secretKey === "YOUR_KHALTI_SECRET_KEY" ||
+        config.secretKey.trim() === "";
+
+    // If Khalti secret key is provided and not a dummy placeholder, call live/sandbox Khalti API
+    if (!isPlaceholderKey) {
         try {
+            const authHeader = config.secretKey.startsWith("Key ")
+                ? config.secretKey
+                : `Key ${config.secretKey}`;
+
             const response = await fetch(
                 `${config.apiUrl}/epayment/initiate/`,
                 {
                     method: "POST",
                     headers: {
-                        Authorization: config.secretKey.startsWith("Key ")
-                            ? config.secretKey
-                            : `Key ${config.secretKey}`,
+                        Authorization: authHeader,
                         "Content-Type": "application/json",
                     },
                     body: JSON.stringify({
@@ -219,8 +227,8 @@ export const initiateKhaltiPayment = async (
                         purchase_order_id: transactionUuid,
                         purchase_order_name: "ChatFlow Registration Fee",
                         customer_info: {
-                            name,
-                            email,
+                            name: name || "ChatFlow User",
+                            email: email || undefined,
                         },
                     }),
                 }
@@ -240,7 +248,7 @@ export const initiateKhaltiPayment = async (
             } else {
                 const errText = await response.text();
                 console.warn(
-                    "Khalti initiate failed, falling back to simulation if in dev:",
+                    `Khalti initiate failed (status ${response.status}), falling back to simulation:`,
                     errText
                 );
             }
@@ -274,7 +282,13 @@ export const verifyKhaltiPayment = async (
         };
     }
 
-    if (!config.secretKey) {
+    const isPlaceholderKey =
+        !config.secretKey ||
+        config.secretKey === "test_secret_key" ||
+        config.secretKey === "YOUR_KHALTI_SECRET_KEY" ||
+        config.secretKey.trim() === "";
+
+    if (isPlaceholderKey) {
         return { success: false, status: "Missing Khalti secret key" };
     }
 
