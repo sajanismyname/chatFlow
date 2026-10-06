@@ -17,6 +17,7 @@ import {
 
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import Payment from "./pages/Payment";
 import PaymentVerify from "./pages/PaymentVerify";
 import AuthCallback from "./pages/AuthCallback";
 import ChatFlow from "./pages/ChatFlow";
@@ -106,6 +107,11 @@ function App() {
                     <Route
                         path="/register"
                         element={<Register />}
+                    />
+
+                    <Route
+                        path="/payment"
+                        element={<Payment />}
                     />
 
                     <Route

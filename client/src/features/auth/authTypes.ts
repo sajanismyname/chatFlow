@@ -6,6 +6,7 @@ export interface User {
     avatar: string | null;
     online?:boolean,
     note?: string | null;
+    isPaid?: boolean;
 }
 
 export interface AuthResponse {

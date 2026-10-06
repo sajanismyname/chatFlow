@@ -128,6 +128,81 @@ export const initiateRegistrationPayment = async (
 ): Promise<void> => {
     try {
         const { name, email, password, gateway } = req.body;
+
+        // If the user is already authenticated (e.g. Google OAuth user needing payment)
+        if (req.user?.id) {
+            const loggedInUser = await userRepository.findOne({
+                where: { id: req.user.id },
+            });
+
+            if (loggedInUser) {
+                if (!gateway || (gateway !== "khalti" && gateway !== "esewa")) {
+                    res.status(400).json({
+                        message: "Invalid payment gateway. Must be 'khalti' or 'esewa'",
+                    });
+                    return;
+                }
+
+                if (loggedInUser.isPaid) {
+                    res.status(400).json({
+                        message: "You have already paid the registration fee",
+                    });
+                    return;
+                }
+
+                const amount = getRegistrationFeeNpr();
+                const transactionUuid = `${crypto.randomUUID()}`;
+
+                const payment = registrationPaymentRepository.create({
+                    transactionUuid,
+                    gateway,
+                    amount,
+                    status: "PENDING",
+                    name: loggedInUser.name,
+                    email: loggedInUser.email,
+                    password: "",
+                    userId: loggedInUser.id,
+                });
+
+                if (gateway === "esewa") {
+                    const esewaResult = initiateEsewaPayment(amount, transactionUuid);
+                    await registrationPaymentRepository.save(payment);
+
+                    res.status(200).json({
+                        message: "Payment initiated",
+                        gateway: "esewa",
+                        amount,
+                        transactionUuid,
+                        paymentUrl: esewaResult.paymentUrl,
+                        params: esewaResult.params,
+                    });
+                    return;
+                }
+
+                if (gateway === "khalti") {
+                    const khaltiResult = await initiateKhaltiPayment(
+                        amount,
+                        transactionUuid,
+                        loggedInUser.name,
+                        loggedInUser.email
+                    );
+                    payment.pidx = khaltiResult.pidx;
+                    await registrationPaymentRepository.save(payment);
+
+                    res.status(200).json({
+                        message: "Payment initiated",
+                        gateway: "khalti",
+                        amount,
+                        transactionUuid,
+                        pidx: khaltiResult.pidx,
+                        paymentUrl: khaltiResult.paymentUrl,
+                        isSimulated: khaltiResult.isSimulated,
+                    });
+                    return;
+                }
+            }
+        }
+
         const normalEmail = email?.trim().toLowerCase();
 
         if (!name || !email || !password || !gateway) {
@@ -471,7 +546,8 @@ export const getCurrentUser = async (
                 email:true,
                 name:true,
                 avatar:true,
-                note:true
+                note:true,
+                isPaid:true
             }
         })
 
@@ -638,14 +714,18 @@ export const googleCallback = async (
                 }
             }
 
+            let isNewUser = false;
+
             // If neither Google ID nor email exists,
             // create a completely new account.
             if (!user) {
+                isNewUser = true;
                 const newUser = userRepository.create({
                     googleId: data.id,
                     email: email,
                     name: data.name!,
                     avatar: data.picture,
+                    isPaid: false,
                 });
 
                 user = await userRepository.save(newUser);
@@ -661,7 +741,12 @@ export const googleCallback = async (
             maxAge: 7 * 24 * 60 * 60 * 1000,
         });
 
-        res.redirect(`${process.env.FRONTEND_URL}/auth/callback`);
+        const redirectUrl =
+            isNewUser || user.isPaid === false
+                ? `${process.env.FRONTEND_URL}/auth/callback?needsPayment=true`
+                : `${process.env.FRONTEND_URL}/auth/callback`;
+
+        res.redirect(redirectUrl);
         
     } catch (error) {
         console.error(error);

@@ -22,6 +22,7 @@ function AuthCallback() {
         initialized,
         isAuthenticated,
         loading,
+        user,
     } = useAppSelector(
         (state) => state.auth
     );
@@ -48,9 +49,21 @@ function AuthCallback() {
 
         if (isAuthenticated) {
 
-            navigate("/", {
-                replace: true,
-            });
+            // New user registered with Google needs payment -> redirect to payment page
+            // Old user already paid -> redirect to dashboard
+            if (user && user.isPaid === false) {
+
+                navigate("/payment", {
+                    replace: true,
+                });
+
+            } else {
+
+                navigate("/", {
+                    replace: true,
+                });
+
+            }
 
         } else {
 
@@ -64,6 +77,7 @@ function AuthCallback() {
         initialized,
         loading,
         isAuthenticated,
+        user,
         navigate,
     ]);
 
