@@ -32,6 +32,9 @@ export class User {
     @Column({ type: "text", nullable: true })
     note!: string | null;
 
+    @Column({ type: "boolean", default: true })
+    isPaid!: boolean;
+
     @OneToMany(() => Message, (message) => message.sender)
     messages!: Message[];
 

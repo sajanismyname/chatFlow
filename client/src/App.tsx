@@ -17,6 +17,7 @@ import {
 
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import PaymentVerify from "./pages/PaymentVerify";
 import AuthCallback from "./pages/AuthCallback";
 import ChatFlow from "./pages/ChatFlow";
 import Profile from "./components/Profile";
@@ -86,7 +87,8 @@ function App() {
         <BrowserRouter>
 
             {!initialized &&
-            window.location.pathname !== "/auth/callback" ? (
+            window.location.pathname !== "/auth/callback" &&
+            window.location.pathname !== "/payment/verify" ? (
 
                 <div className="flex min-h-screen items-center justify-center">
                     <p>Loading...</p>
@@ -104,6 +106,11 @@ function App() {
                     <Route
                         path="/register"
                         element={<Register />}
+                    />
+
+                    <Route
+                        path="/payment/verify"
+                        element={<PaymentVerify />}
                     />
 
                     <Route
