@@ -170,71 +170,52 @@ function ChatFlow() {
     ========================= */
 
     useEffect(() => {
+        // Case 1: Route has no conversation ID (e.g. "/")
+        if (!routeConversationId) {
+            if (activeConversationId !== null) {
+                dispatch(setActiveConversation(null));
+            }
+            return;
+        }
 
+        // Case 2: Route has conversation ID (e.g. "/conversation/:id")
         if (
             parsedRouteId !== null &&
             !isNaN(parsedRouteId) &&
             parsedRouteId > 0
         ) {
-            if (activeConversationId !== parsedRouteId) {
-                dispatch(
-                    setActiveConversation(
-                        parsedRouteId
-                    )
+            // Check if conversations list has loaded
+            if (conversations.length > 0) {
+                const conversationExists = conversations.some(
+                    (conv) => conv.id === parsedRouteId
                 );
-            }
-        }
 
+                // If conversation does NOT exist in loaded list (e.g. deleted or invalid)
+                if (!conversationExists) {
+                    if (activeConversationId !== null) {
+                        dispatch(setActiveConversation(null));
+                    }
+                    navigate("/", { replace: true });
+                    return;
+                }
+            }
+
+            // Conversation exists or conversations are still loading
+            if (activeConversationId !== parsedRouteId) {
+                dispatch(setActiveConversation(parsedRouteId));
+            }
+        } else {
+            // Malformed ID in URL
+            if (activeConversationId !== null) {
+                dispatch(setActiveConversation(null));
+            }
+            navigate("/", { replace: true });
+        }
     }, [
+        routeConversationId,
         parsedRouteId,
         activeConversationId,
-        dispatch,
-    ]);
-
-
-    /* =========================
-       RESET ON USER CHANGE OR INVALID CONVERSATION
-    ========================= */
-
-    useEffect(() => {
-
-        if (!routeConversationId) {
-            dispatch(
-                setActiveConversation(
-                    null
-                )
-            );
-        }
-
-    }, [
-        currentUser?.id,
-        routeConversationId,
-        dispatch,
-    ]);
-
-
-    useEffect(() => {
-
-        if (
-            activeConversationId !== null &&
-            conversations.length > 0 &&
-            !conversations.some(
-                (conv) =>
-                    conv.id ===
-                    activeConversationId
-            )
-        ) {
-            dispatch(
-                setActiveConversation(
-                    null
-                )
-            );
-            navigate("/");
-        }
-
-    }, [
         conversations,
-        activeConversationId,
         dispatch,
         navigate,
     ]);
@@ -303,7 +284,7 @@ function ChatFlow() {
             )
         );
 
-        navigate("/");
+        navigate("/", { replace: true });
     };
 
 
@@ -419,6 +400,16 @@ function ChatFlow() {
 
 
             try {
+                setIsSideMenuOpen(false);
+
+                if (socket.connected) {
+                    socket.emit(
+                        "leave_conversation",
+                        conversationId
+                    );
+                }
+
+                navigate("/", { replace: true });
 
                 await dispatch(
                     deleteConversation(
@@ -426,24 +417,11 @@ function ChatFlow() {
                     )
                 ).unwrap();
 
-
-                if (socket.connected) {
-
-                    socket.emit(
-                        "leave_conversation",
-                        conversationId
-                    );
-                }
-
-                setIsSideMenuOpen(false);
-
                 dispatch(
                     setActiveConversation(
                         null
                     )
                 );
-
-                navigate("/");
 
             } catch {
                 // Deletion failed.

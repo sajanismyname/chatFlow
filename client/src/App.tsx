@@ -32,6 +32,7 @@ import {
     disconnectSocket
 } from "./socket/socket"
 import UserProfile from "./components/UserProfile";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 
 function App() {
@@ -138,7 +139,9 @@ function App() {
                         path="/"
                         element={
                             <ProtectedRoute>
-                                <ChatFlow />
+                                <ErrorBoundary>
+                                    <ChatFlow />
+                                </ErrorBoundary>
                             </ProtectedRoute>
                         }
                     />
@@ -147,7 +150,9 @@ function App() {
                         path="/conversation/:conversationId"
                         element={
                             <ProtectedRoute>
-                                <ChatFlow />
+                                <ErrorBoundary>
+                                    <ChatFlow />
+                                </ErrorBoundary>
                             </ProtectedRoute>
                         }
                     />
