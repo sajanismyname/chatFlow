@@ -50,6 +50,10 @@ function Navbar() {
         (state: RootState) => state.auth
     );
 
+    const activeConversationId = useSelector(
+        (state: RootState) => state.chat.activeConversationId
+    );
+
 
     /* =========================
        LOGOUT
@@ -275,7 +279,12 @@ function Navbar() {
 
                             <DropdownMenuItem
                                 onClick={() =>
-                                    navigate("/profile")
+                                    navigate("/profile", {
+                                        state: {
+                                            conversationId:
+                                                activeConversationId,
+                                        },
+                                    })
                                 }
                             >
 

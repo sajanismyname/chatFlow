@@ -27,6 +27,7 @@ interface ConversationSideMenuProps {
     avatar?: string | null;
     online?: boolean;
     userId?: number;
+    isDeleted?: boolean;
     onClose: () => void;
     onDeleteConversation: () => void;
 }
@@ -37,12 +38,15 @@ function ConversationSideMenu({
     avatar,
     online = false,
     userId,
+    isDeleted = false,
     onClose,
     onDeleteConversation,
 }: ConversationSideMenuProps) {
     const navigate = useNavigate();
 
     const [soundEnabled, setSoundEnabled] = useState(isSoundNotificationEnabled);
+
+    const displayName = isDeleted ? "Unknown User" : name;
 
     const handleToggleMute = () => {
         if (soundEnabled) {
@@ -56,8 +60,12 @@ function ConversationSideMenu({
     };
 
     const handleViewProfile = () => {
-        if (!userId || !conversationId) return;
-        navigate(`/profile/${conversationId}/${userId}`);
+        if (!userId || !conversationId || isDeleted) return;
+        navigate(`/profile/${userId}`, {
+            state: {
+                conversationId,
+            },
+        });
     };
 
     const handleDelete = () => {
@@ -70,12 +78,12 @@ function ConversationSideMenu({
         onClose();
     };
 
-    const initials = name
+    const initials = displayName
         .split(" ")
         .map((word) => word.charAt(0))
         .join("")
         .slice(0, 2)
-        .toUpperCase();
+        .toUpperCase() || "U";
 
     return (
         <aside
@@ -121,32 +129,38 @@ function ConversationSideMenu({
                     <div className="relative">
                         <Avatar className="size-16 ring-2 ring-border">
                             <AvatarImage
-                                src={avatar ?? undefined}
-                                alt={name}
+                                src={isDeleted ? undefined : (avatar ?? undefined)}
+                                alt={displayName}
                             />
                             <AvatarFallback className="text-base font-semibold">
                                 {initials}
                             </AvatarFallback>
                         </Avatar>
-                        <span
-                            className={`
-                                absolute
-                                bottom-0
-                                right-0
-                                size-3.5
-                                rounded-full
-                                border-2
-                                border-background
-                                ${online ? "bg-emerald-500" : "bg-gray-400"}
-                            `}
-                        />
+                        {!isDeleted && (
+                            <span
+                                className={`
+                                    absolute
+                                    bottom-0
+                                    right-0
+                                    size-3.5
+                                    rounded-full
+                                    border-2
+                                    border-background
+                                    ${online ? "bg-emerald-500" : "bg-gray-400"}
+                                `}
+                            />
+                        )}
                     </div>
                     <div className="min-w-0 px-2 w-full">
                         <p className="truncate text-sm font-semibold text-foreground">
-                            {name}
+                            {displayName}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                            {online ? "Active now" : "Offline"}
+                            {isDeleted
+                                ? "Account deleted"
+                                : online
+                                    ? "Active now"
+                                    : "Offline"}
                         </p>
                     </div>
                 </div>
@@ -258,7 +272,7 @@ function ConversationSideMenu({
                     </span>
 
                     <div className="space-y-1.5">
-                        {userId && (
+                        {userId && !isDeleted && (
                             <button
                                 type="button"
                                 onClick={handleViewProfile}

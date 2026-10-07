@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 import {
     useAppDispatch,
@@ -48,6 +48,23 @@ function Profile() {
 
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
+    const location = useLocation();
+    const activeConversationId = useAppSelector(
+        (state) => state.chat.activeConversationId
+    );
+    const targetConversationId =
+        location.state?.conversationId ||
+        (activeConversationId ? String(activeConversationId) : undefined);
+
+    const handleGoBack = () => {
+        if (targetConversationId) {
+            navigate(`/conversation/${targetConversationId}`);
+        } else if (window.history.length > 1) {
+            navigate(-1);
+        } else {
+            navigate("/");
+        }
+    };
 
     const {
         user,
@@ -193,7 +210,7 @@ function Profile() {
                     type="button"
                     variant="ghost"
                     size="icon"
-                    onClick={() => navigate("/")}
+                    onClick={handleGoBack}
                     aria-label="Go back"
                 >
                     <ArrowLeft className="size-5" />

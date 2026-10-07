@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
 
 import api from "../api/axios";
+import { useAppSelector } from "../app/hooks";
 
 import {
     Avatar,
@@ -25,13 +26,21 @@ interface User {
     id: number;
     name: string;
     avatar: string | null;
+    isDeleted?: boolean;
 }
 
 function UserProfile() {
-    const {
-        conversationId,
-        id,
-    } = useParams();
+    const params = useParams();
+    const id = params.id;
+    const location = useLocation();
+    const activeConversationId = useAppSelector(
+        (state) => state.chat.activeConversationId
+    );
+
+    const targetConversationId =
+        params.conversationId ||
+        location.state?.conversationId ||
+        (activeConversationId ? String(activeConversationId) : undefined);
 
     const navigate = useNavigate();
 
@@ -41,22 +50,31 @@ function UserProfile() {
     const [loading, setLoading] = useState(true);
     const [savingNickname, setSavingNickname] = useState(false);
 
+    const handleGoBack = () => {
+        if (targetConversationId) {
+            navigate(`/conversation/${targetConversationId}`);
+        } else if (window.history.length > 1) {
+            navigate(-1);
+        } else {
+            navigate("/");
+        }
+    };
+
     useEffect(() => {
         const fetchProfile = async () => {
-            if (!id || !conversationId) {
+            if (!id) {
                 return;
             }
 
             try {
-                const [
-                    profileResponse,
-                    nicknameResponse,
-                ] = await Promise.all([
-                    api.get(`/users/${id}/profile`),
+                const profilePromise = api.get(`/users/${id}/profile`);
+                const nicknamePromise = targetConversationId
+                    ? api.get(`/users/${targetConversationId}/nickname/${id}`)
+                    : Promise.resolve({ data: { nickname: "" } });
 
-                    api.get(
-                        `/users/${conversationId}/nickname/${id}`
-                    ),
+                const [profileResponse, nicknameResponse] = await Promise.all([
+                    profilePromise,
+                    nicknamePromise,
                 ]);
 
                 setUser(profileResponse.data.user);
@@ -75,10 +93,10 @@ function UserProfile() {
         };
 
         fetchProfile();
-    }, [id, conversationId]);
+    }, [id, targetConversationId]);
 
     const handleSaveNickname = async () => {
-        if (!conversationId || !id) {
+        if (!targetConversationId || !id) {
             return;
         }
 
@@ -90,7 +108,7 @@ function UserProfile() {
             setSavingNickname(true);
 
             const response = await api.put(
-                `/users/${conversationId}/nickname/${id}`,
+                `/users/${targetConversationId}/nickname/${id}`,
                 {
                     nickname: nickname.trim(),
                 }
@@ -109,7 +127,7 @@ function UserProfile() {
     };
 
     const handleDeleteNickname = async () => {
-        if (!conversationId || !id) {
+        if (!targetConversationId || !id) {
             return;
         }
 
@@ -117,7 +135,7 @@ function UserProfile() {
             setSavingNickname(true);
 
             await api.delete(
-                `/users/${conversationId}/nickname/${id}`
+                `/users/${targetConversationId}/nickname/${id}`
             );
 
             setNickname("");
@@ -147,19 +165,22 @@ function UserProfile() {
                     User not found
                 </p>
 
-                <Button onClick={() => navigate(-1)}>
+                <Button onClick={handleGoBack}>
                     Go Back
                 </Button>
             </div>
         );
     }
 
-    const initials = user.name
+    const isDeletedUser = Boolean(user.isDeleted) || user.name === "Unknown User";
+    const displayName = isDeletedUser ? "Unknown User" : user.name;
+
+    const initials = displayName
         .split(" ")
         .map((word) => word.charAt(0))
         .join("")
         .slice(0, 2)
-        .toUpperCase();
+        .toUpperCase() || "U";
 
     return (
         <div className="flex min-h-screen items-center justify-center bg-background p-6">
@@ -169,21 +190,23 @@ function UserProfile() {
                         variant="ghost"
                         size="icon"
                         className="mb-2 w-fit"
-                        onClick={() => navigate(-1)}
+                        onClick={handleGoBack}
                     >
                         <ArrowLeft />
                     </Button>
 
                     <CardTitle>
-                        {user.name}'s Profile
+                        {isDeletedUser
+                            ? "Unknown User"
+                            : `${displayName}'s Profile`}
                     </CardTitle>
                 </CardHeader>
 
                 <CardContent className="flex flex-col items-center gap-6">
                     <Avatar className="size-24">
                         <AvatarImage
-                            src={user.avatar ?? undefined}
-                            alt={user.name}
+                            src={isDeletedUser ? undefined : (user.avatar ?? undefined)}
+                            alt={displayName}
                         />
 
                         <AvatarFallback className="text-xl">
@@ -193,15 +216,21 @@ function UserProfile() {
 
                     <div className="text-center">
                         <h2 className="text-xl font-semibold">
-                            {user.name}
+                            {displayName}
                         </h2>
+                        {isDeletedUser && (
+                            <p className="mt-1 text-sm text-muted-foreground italic">
+                                This account has been deleted.
+                            </p>
+                        )}
                     </div>
 
-                    <div className="w-full space-y-2">
-                        <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium">
-                                Nickname
-                            </span>
+                    {!isDeletedUser && targetConversationId && (
+                        <div className="w-full space-y-2">
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium">
+                                    Nickname
+                                </span>
 
                             {!editingNickname && (
                                 <Button
@@ -286,6 +315,7 @@ function UserProfile() {
                             </Button>
                         )}
                     </div>
+                )}
                 </CardContent>
             </Card>
         </div>

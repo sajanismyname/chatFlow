@@ -39,17 +39,22 @@ export const searchUser = async (
                 id: true,
                 name: true,
                 avatar: true,
+                isDeleted: true,
             },
 
             where: {
                 name: ILike(`%${query.trim()}%`),
+                isDeleted: false,
             },
 
             take: 20,
         });
 
         const filteredUsers = users.filter(
-            (user) => user.id !== currentUserId
+            (user) =>
+                user.id !== currentUserId &&
+                !user.isDeleted &&
+                user.name !== "Unknown User"
         );
 
         res.status(200).json({

@@ -140,12 +140,18 @@ function Sidebar({
                         conversation
                     );
 
+                const otherUser = otherMember?.user;
+                const isOtherUserDeleted =
+                    Boolean(otherUser?.isDeleted) ||
+                    otherUser?.name === "Unknown User";
 
                 const name =
                     (
-                        otherMember?.nickname ||
-                        otherMember?.user.name ||
-                        ""
+                        isOtherUserDeleted
+                            ? "Unknown User"
+                            : (otherMember?.nickname ||
+                               otherMember?.user.name ||
+                               "")
                     ).toLowerCase();
 
 
@@ -205,8 +211,11 @@ function Sidebar({
         conversations.forEach((conversation) => {
             const otherMember = getOtherMember(conversation);
             const otherUser = otherMember?.user;
+            const isOtherUserDeleted =
+                Boolean(otherUser?.isDeleted) ||
+                otherUser?.name === "Unknown User";
 
-            if (otherUser && !seenIds.has(otherUser.id)) {
+            if (otherUser && !seenIds.has(otherUser.id) && !isOtherUserDeleted) {
                 seenIds.add(otherUser.id);
 
                 const displayName =
@@ -686,11 +695,16 @@ function Sidebar({
                                 const otherUser =
                                     otherMember?.user;
 
+                                const isOtherUserDeleted =
+                                    Boolean(otherUser?.isDeleted) ||
+                                    otherUser?.name === "Unknown User";
 
                                 const displayName =
-                                    otherMember?.nickname ||
-                                    otherUser?.name ||
-                                    "Unknown user";
+                                    isOtherUserDeleted
+                                        ? "Unknown User"
+                                        : (otherMember?.nickname ||
+                                            otherUser?.name ||
+                                            "Unknown user");
 
 
                                 const isActive =
@@ -699,6 +713,7 @@ function Sidebar({
 
 
                                 const isOnline =
+                                    !isOtherUserDeleted &&
                                     otherUser?.id !==
                                         undefined &&
                                     onlineUsers.includes(
@@ -731,6 +746,7 @@ function Sidebar({
                                     ] ?? [];
 
                                 const isOtherUserTyping =
+                                    !isOtherUserDeleted &&
                                     otherUser?.id !== undefined &&
                                     conversationTypingUsers.includes(
                                         otherUser.id
@@ -748,8 +764,10 @@ function Sidebar({
                                         }
 
                                         avatar={
-                                            otherUser?.avatar ||
-                                            undefined
+                                            isOtherUserDeleted
+                                                ? undefined
+                                                : (otherUser?.avatar ||
+                                                    undefined)
                                         }
 
                                         lastMessage={

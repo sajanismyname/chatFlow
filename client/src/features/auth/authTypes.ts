@@ -7,6 +7,7 @@ export interface User {
     online?:boolean,
     note?: string | null;
     isPaid?: boolean;
+    isDeleted?: boolean;
 }
 
 export interface AuthResponse {

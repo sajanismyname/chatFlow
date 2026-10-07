@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 
 import {
     ArrowLeft,
@@ -43,6 +44,14 @@ function ChatFlow() {
 
     const dispatch =
         useAppDispatch();
+    const navigate =
+        useNavigate();
+
+    const { conversationId: routeConversationId } =
+        useParams();
+
+    const parsedRouteId =
+        routeConversationId ? Number(routeConversationId) : null;
 
     const [isSideMenuOpen, setIsSideMenuOpen] =
         useState(false);
@@ -108,12 +117,17 @@ function ChatFlow() {
     const otherUser =
         otherMember?.user;
 
+    const isOtherUserDeleted =
+        Boolean(otherUser?.isDeleted) ||
+        otherUser?.name === "Unknown User";
+
 
     const otherUserNickname =
         otherMember?.nickname ?? null;
 
 
     const otherUserOnline =
+        !isOtherUserDeleted &&
         otherUser?.id !== undefined &&
         onlineUsers.includes(
             otherUser.id
@@ -128,6 +142,7 @@ function ChatFlow() {
 
 
     const otherUserTyping =
+        !isOtherUserDeleted &&
         otherUser?.id !== undefined &&
         activeConversationId !== null &&
         typingUsers[activeConversationId]?.includes(
@@ -151,19 +166,49 @@ function ChatFlow() {
 
 
     /* =========================
+       SYNC ROUTE WITH ACTIVE CONVERSATION
+    ========================= */
+
+    useEffect(() => {
+
+        if (
+            parsedRouteId !== null &&
+            !isNaN(parsedRouteId) &&
+            parsedRouteId > 0
+        ) {
+            if (activeConversationId !== parsedRouteId) {
+                dispatch(
+                    setActiveConversation(
+                        parsedRouteId
+                    )
+                );
+            }
+        }
+
+    }, [
+        parsedRouteId,
+        activeConversationId,
+        dispatch,
+    ]);
+
+
+    /* =========================
        RESET ON USER CHANGE OR INVALID CONVERSATION
     ========================= */
 
     useEffect(() => {
 
-        dispatch(
-            setActiveConversation(
-                null
-            )
-        );
+        if (!routeConversationId) {
+            dispatch(
+                setActiveConversation(
+                    null
+                )
+            );
+        }
 
     }, [
         currentUser?.id,
+        routeConversationId,
         dispatch,
     ]);
 
@@ -172,6 +217,7 @@ function ChatFlow() {
 
         if (
             activeConversationId !== null &&
+            conversations.length > 0 &&
             !conversations.some(
                 (conv) =>
                     conv.id ===
@@ -183,12 +229,14 @@ function ChatFlow() {
                     null
                 )
             );
+            navigate("/");
         }
 
     }, [
         conversations,
         activeConversationId,
         dispatch,
+        navigate,
     ]);
 
 
@@ -236,6 +284,8 @@ function ChatFlow() {
                 conversationId
             )
         );
+
+        navigate(`/conversation/${conversationId}`);
     };
 
 
@@ -252,6 +302,8 @@ function ChatFlow() {
                 null
             )
         );
+
+        navigate("/");
     };
 
 
@@ -265,7 +317,8 @@ function ChatFlow() {
 
         if (
             activeConversationId === null ||
-            !content.trim()
+            !content.trim() ||
+            isOtherUserDeleted
         ) {
             return;
         }
@@ -389,6 +442,8 @@ function ChatFlow() {
                         null
                     )
                 );
+
+                navigate("/");
 
             } catch {
                 // Deletion failed.
@@ -597,14 +652,17 @@ function ChatFlow() {
 
                                 <ChatHeader
                                     name={
-                                        otherUserNickname ||
-                                        otherUser?.name ||
-                                        "Select a conversation"
+                                        isOtherUserDeleted
+                                            ? "Unknown User"
+                                            : (otherUserNickname ||
+                                                otherUser?.name ||
+                                                "Select a conversation")
                                     }
 
                                     avatar={
-                                        otherUser?.avatar ??
-                                        null
+                                        isOtherUserDeleted
+                                            ? null
+                                            : (otherUser?.avatar ?? null)
                                     }
 
                                     online={
@@ -625,6 +683,10 @@ function ChatFlow() {
 
                                     isSideMenuOpen={
                                         isSideMenuOpen
+                                    }
+
+                                    isDeleted={
+                                        isOtherUserDeleted
                                     }
 
                                     onToggleSideMenu={() =>
@@ -690,7 +752,12 @@ function ChatFlow() {
                                         handleSendMessage
                                     }
                                     disabled={
-                                        false
+                                        isOtherUserDeleted
+                                    }
+                                    disabledPlaceholder={
+                                        isOtherUserDeleted
+                                            ? "You cannot send messages because this user's account has been deleted."
+                                            : undefined
                                     }
                                 />
 
@@ -711,19 +778,25 @@ function ChatFlow() {
                             activeConversationId
                         }
                         name={
-                            otherUserNickname ||
-                            otherUser?.name ||
-                            "Conversation"
+                            isOtherUserDeleted
+                                ? "Unknown User"
+                                : (otherUserNickname ||
+                                    otherUser?.name ||
+                                    "Conversation")
                         }
                         avatar={
-                            otherUser?.avatar ??
-                            null
+                            isOtherUserDeleted
+                                ? null
+                                : (otherUser?.avatar ?? null)
                         }
                         online={
                             otherUserOnline
                         }
                         userId={
                             otherUser?.id
+                        }
+                        isDeleted={
+                            isOtherUserDeleted
                         }
                         onClose={() =>
                             setIsSideMenuOpen(false)

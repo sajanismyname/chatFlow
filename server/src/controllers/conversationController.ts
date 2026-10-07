@@ -469,11 +469,10 @@ export const createConversation =
                 });
 
 
-            if (!targetUser) {
-
+            if (!targetUser || targetUser.isDeleted || targetUser.name === "Unknown User") {
                 res.status(404).json({
                     message:
-                        "User not found",
+                        "User not found or account deleted",
                 });
 
                 return;

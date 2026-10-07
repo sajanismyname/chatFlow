@@ -144,6 +144,15 @@ function App() {
                     />
 
                     <Route
+                        path="/conversation/:conversationId"
+                        element={
+                            <ProtectedRoute>
+                                <ChatFlow />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    <Route
                         path="/profile"
                         element={
                             <ProtectedRoute>
@@ -153,8 +162,21 @@ function App() {
                     />
 
                     <Route
+                        path="/profile/:id"
+                        element={
+                            <ProtectedRoute>
+                                <UserProfile />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    <Route
                         path="/profile/:conversationId/:id"
-                        element={<UserProfile />}
+                        element={
+                            <ProtectedRoute>
+                                <UserProfile />
+                            </ProtectedRoute>
+                        }
                     />
 
                     <Route

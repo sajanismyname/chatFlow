@@ -24,6 +24,7 @@ import api from "@/api/axios";
 interface MessageInputProps {
     onSend: (message: string) => void;
     disabled?: boolean;
+    disabledPlaceholder?: string;
     conversationId: number | null;
 }
 
@@ -37,6 +38,7 @@ interface PendingAttachment {
 function MessageInput({
     onSend,
     disabled = false,
+    disabledPlaceholder,
     conversationId,
 }: MessageInputProps) {
     const [message, setMessage] = useState("");
@@ -278,12 +280,12 @@ function MessageInput({
                         disabled={disabled || uploading}
                         placeholder={
                             disabled
-                                ? "Select a conversation..."
+                                ? (disabledPlaceholder || "Select a conversation...")
                                 : attachment
                                     ? "Add a caption..."
                                     : "Type a message..."
                         }
-                        className="h-11 rounded-full bg-muted/40 pr-11 focus-visible:bg-background"
+                        className="h-11 rounded-full bg-muted/40 pr-11 focus-visible:bg-background disabled:cursor-not-allowed disabled:text-muted-foreground"
                     />
 
                     {showEmojiPicker && !disabled && (

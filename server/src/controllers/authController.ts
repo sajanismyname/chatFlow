@@ -595,7 +595,8 @@ export const getUserProfile = async(
                 id:true,
                 name:true,
                 avatar: true,
-                note: true
+                note: true,
+                isDeleted: true,
             }
         })
 
@@ -604,6 +605,13 @@ export const getUserProfile = async(
                 message: "User not found",
             })
             return;
+        }
+
+        if (user.isDeleted || user.name === "Unknown User") {
+            user.name = "Unknown User";
+            user.avatar = null;
+            user.note = null;
+            user.isDeleted = true;
         }
 
         res.status(200).json({
@@ -1467,49 +1475,10 @@ export const deleteAccount = async (
             // 2. Delete password reset tokens for this user
             await manager.getRepository(PasswordResetToken).delete({ userId });
 
-            // 3. Delete message deletions created by this user
-            await manager.getRepository(MessageDeletion).delete({ user: { id: userId } });
-
-            // 4. Delete conversation nicknames associated with this user
+            // 3. Delete conversation nicknames created by or for this user
             await manager.getRepository(ConversationNickname).delete({ user: { id: userId } });
 
-            // 5. Query user's sent messages
-            const userMessages = await manager.getRepository(Message).find({
-                where: { sender: { id: userId } },
-                select: { id: true },
-            });
-            const userMessageIds = userMessages.map((m) => m.id);
-
-            if (userMessageIds.length > 0) {
-                // Clear replyToMessage references pointing to these messages
-                await manager
-                    .createQueryBuilder()
-                    .update(Message)
-                    .set({ replyToMessage: null })
-                    .where("reply_to_message_id IN (:...ids)", { ids: userMessageIds })
-                    .execute();
-
-                // Delete any message deletions referencing these messages
-                await manager
-                    .createQueryBuilder()
-                    .delete()
-                    .from(MessageDeletion)
-                    .where("message_id IN (:...ids)", { ids: userMessageIds })
-                    .execute();
-
-                // Delete the messages sent by this user
-                await manager
-                    .createQueryBuilder()
-                    .delete()
-                    .from(Message)
-                    .where("id IN (:...ids)", { ids: userMessageIds })
-                    .execute();
-            }
-
-            // 6. Delete conversation memberships for this user
-            await manager.getRepository(ConversationMember).delete({ user: { id: userId } });
-
-            // 7. Unlink user from registration payments
+            // 4. Unlink user from registration payments
             await manager
                 .createQueryBuilder()
                 .update(RegistrationPayment)
@@ -1517,8 +1486,18 @@ export const deleteAccount = async (
                 .where("userId = :userId", { userId })
                 .execute();
 
-            // 8. Delete user record
-            await manager.getRepository(User).delete({ id: userId });
+            // 5. Anonymize user and mark as deleted, freeing email & googleId
+            // Messages and conversation memberships are deliberately preserved
+            // so the other chat participants do not lose conversation history.
+            user.name = "Unknown User";
+            user.avatar = null;
+            user.password = null;
+            user.googleId = null;
+            user.note = null;
+            user.email = `deleted_${userId}_${Date.now()}@chatflow.internal`;
+            user.isDeleted = true;
+
+            await manager.save(user);
         });
 
         // 9. Clear refresh token cookie

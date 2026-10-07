@@ -246,6 +246,32 @@ export const sendMessage = async (
             return;
         }
 
+        const members = await conversationMemberRepository.find({
+            where: {
+                conversation: {
+                    id: conversationId,
+                },
+            },
+            relations: {
+                user: true,
+            },
+        });
+
+        const otherMembers = members.filter(
+            (m) => m.user.id !== userId
+        );
+
+        const hasDeletedMember = otherMembers.some(
+            (m) => m.user.isDeleted || m.user.name === "Unknown User"
+        );
+
+        if (hasDeletedMember) {
+            res.status(400).json({
+                message: "Cannot send message. This user's account has been deleted.",
+            });
+            return;
+        }
+
         const completeMessage =
             await createMessage({
                 userId,
