@@ -479,27 +479,6 @@ export const initializeSocketServer = (
                             return;
                         }
 
-
-                        const message =
-                            await createMessage({
-                                userId,
-                                conversationId,
-                                content,
-                            });
-
-
-                        /*
-                         * Broadcast the COMPLETE
-                         * frontend message shape.
-                         *
-                         * Important:
-                         * deletedAt and
-                         * deletedForEveryone must
-                         * be included. Otherwise
-                         * the frontend can interpret
-                         * undefined !== null as an
-                         * unsent message.
-                         */
                         const members =
                             await AppDataSource
                                 .getRepository(
@@ -515,6 +494,33 @@ export const initializeSocketServer = (
                                         user: true,
                                     },
                                 });
+
+                        const otherMembers = members.filter(
+                            (m) => m.user.id !== userId
+                        );
+
+                        const hasDeletedMember = otherMembers.some(
+                            (m) => m.user.isDeleted || m.user.name === "Unknown User"
+                        );
+
+                        if (hasDeletedMember) {
+                            socket.emit(
+                                "socket_error",
+                                {
+                                    message:
+                                        "Cannot send message. This user's account has been deleted.",
+                                }
+                            );
+
+                            return;
+                        }
+
+                        const message =
+                            await createMessage({
+                                userId,
+                                conversationId,
+                                content,
+                            });
 
                         const targetRooms: string[] = [
                             `conversation:${conversationId}`,

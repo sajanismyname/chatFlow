@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 
 import {
     ArrowLeft,
@@ -14,6 +15,7 @@ import Sidebar from "../components/Sidebar";
 import ChatHeader from "../components/ChatHeader";
 import MessageList from "../components/MessageList";
 import MessageInput from "../components/MessageInput";
+import ConversationSideMenu from "../components/ConversationSideMenu";
 
 import { socket } from "@/socket/socket";
 
@@ -42,6 +44,17 @@ function ChatFlow() {
 
     const dispatch =
         useAppDispatch();
+    const navigate =
+        useNavigate();
+
+    const { conversationId: routeConversationId } =
+        useParams();
+
+    const parsedRouteId =
+        routeConversationId ? Number(routeConversationId) : null;
+
+    const [isSideMenuOpen, setIsSideMenuOpen] =
+        useState(false);
 
 
     const conversations =
@@ -104,12 +117,17 @@ function ChatFlow() {
     const otherUser =
         otherMember?.user;
 
+    const isOtherUserDeleted =
+        Boolean(otherUser?.isDeleted) ||
+        otherUser?.name === "Unknown User";
+
 
     const otherUserNickname =
         otherMember?.nickname ?? null;
 
 
     const otherUserOnline =
+        !isOtherUserDeleted &&
         otherUser?.id !== undefined &&
         onlineUsers.includes(
             otherUser.id
@@ -124,6 +142,7 @@ function ChatFlow() {
 
 
     const otherUserTyping =
+        !isOtherUserDeleted &&
         otherUser?.id !== undefined &&
         activeConversationId !== null &&
         typingUsers[activeConversationId]?.includes(
@@ -147,13 +166,74 @@ function ChatFlow() {
 
 
     /* =========================
+       SYNC ROUTE WITH ACTIVE CONVERSATION
+    ========================= */
+
+    useEffect(() => {
+        // Case 1: Route has no conversation ID (e.g. "/")
+        if (!routeConversationId) {
+            if (activeConversationId !== null) {
+                dispatch(setActiveConversation(null));
+            }
+            return;
+        }
+
+        // Case 2: Route has conversation ID (e.g. "/conversation/:id")
+        if (
+            parsedRouteId !== null &&
+            !isNaN(parsedRouteId) &&
+            parsedRouteId > 0
+        ) {
+            // Check if conversations list has loaded
+            if (conversations.length > 0) {
+                const conversationExists = conversations.some(
+                    (conv) => conv.id === parsedRouteId
+                );
+
+                // If conversation does NOT exist in loaded list (e.g. deleted or invalid)
+                if (!conversationExists) {
+                    if (activeConversationId !== null) {
+                        dispatch(setActiveConversation(null));
+                    }
+                    navigate("/", { replace: true });
+                    return;
+                }
+            }
+
+            // Conversation exists or conversations are still loading
+            if (activeConversationId !== parsedRouteId) {
+                dispatch(setActiveConversation(parsedRouteId));
+            }
+        } else {
+            // Malformed ID in URL
+            if (activeConversationId !== null) {
+                dispatch(setActiveConversation(null));
+            }
+            navigate("/", { replace: true });
+        }
+    }, [
+        routeConversationId,
+        parsedRouteId,
+        activeConversationId,
+        conversations,
+        dispatch,
+        navigate,
+    ]);
+
+
+    /* =========================
        LOAD MESSAGES
     ========================= */
 
     useEffect(() => {
 
         if (
-            activeConversationId === null
+            activeConversationId === null ||
+            !conversations.some(
+                (conv) =>
+                    conv.id ===
+                    activeConversationId
+            )
         ) {
             return;
         }
@@ -167,6 +247,7 @@ function ChatFlow() {
 
     }, [
         activeConversationId,
+        conversations,
         dispatch,
     ]);
 
@@ -184,6 +265,8 @@ function ChatFlow() {
                 conversationId
             )
         );
+
+        navigate(`/conversation/${conversationId}`);
     };
 
 
@@ -193,11 +276,15 @@ function ChatFlow() {
 
     const handleBackToConversations = () => {
 
+        setIsSideMenuOpen(false);
+
         dispatch(
             setActiveConversation(
                 null
             )
         );
+
+        navigate("/", { replace: true });
     };
 
 
@@ -211,7 +298,8 @@ function ChatFlow() {
 
         if (
             activeConversationId === null ||
-            !content.trim()
+            !content.trim() ||
+            isOtherUserDeleted
         ) {
             return;
         }
@@ -312,22 +400,22 @@ function ChatFlow() {
 
 
             try {
-
-                await dispatch(
-                    deleteConversation(
-                        conversationId
-                    )
-                ).unwrap();
-
+                setIsSideMenuOpen(false);
 
                 if (socket.connected) {
-
                     socket.emit(
                         "leave_conversation",
                         conversationId
                     );
                 }
 
+                navigate("/", { replace: true });
+
+                await dispatch(
+                    deleteConversation(
+                        conversationId
+                    )
+                ).unwrap();
 
                 dispatch(
                     setActiveConversation(
@@ -542,14 +630,17 @@ function ChatFlow() {
 
                                 <ChatHeader
                                     name={
-                                        otherUserNickname ||
-                                        otherUser?.name ||
-                                        "Select a conversation"
+                                        isOtherUserDeleted
+                                            ? "Unknown User"
+                                            : (otherUserNickname ||
+                                                otherUser?.name ||
+                                                "Select a conversation")
                                     }
 
                                     avatar={
-                                        otherUser?.avatar ??
-                                        null
+                                        isOtherUserDeleted
+                                            ? null
+                                            : (otherUser?.avatar ?? null)
                                     }
 
                                     online={
@@ -568,8 +659,18 @@ function ChatFlow() {
                                         activeConversationId
                                     }
 
-                                    onDeleteConversation={
-                                        handleDeleteConversation
+                                    isSideMenuOpen={
+                                        isSideMenuOpen
+                                    }
+
+                                    isDeleted={
+                                        isOtherUserDeleted
+                                    }
+
+                                    onToggleSideMenu={() =>
+                                        setIsSideMenuOpen(
+                                            (prev) => !prev
+                                        )
                                     }
                                 />
 
@@ -629,7 +730,12 @@ function ChatFlow() {
                                         handleSendMessage
                                     }
                                     disabled={
-                                        false
+                                        isOtherUserDeleted
+                                    }
+                                    disabledPlaceholder={
+                                        isOtherUserDeleted
+                                            ? "You cannot send messages because this user's account has been deleted."
+                                            : undefined
                                     }
                                 />
 
@@ -639,6 +745,45 @@ function ChatFlow() {
                     )}
 
                 </main>
+
+                {/* =========================
+                    CONVERSATION SIDE MENU
+                    (Takes space half of sidebar)
+                ========================= */}
+                {isSideMenuOpen && activeConversationId !== null && (
+                    <ConversationSideMenu
+                        conversationId={
+                            activeConversationId
+                        }
+                        name={
+                            isOtherUserDeleted
+                                ? "Unknown User"
+                                : (otherUserNickname ||
+                                    otherUser?.name ||
+                                    "Conversation")
+                        }
+                        avatar={
+                            isOtherUserDeleted
+                                ? null
+                                : (otherUser?.avatar ?? null)
+                        }
+                        online={
+                            otherUserOnline
+                        }
+                        userId={
+                            otherUser?.id
+                        }
+                        isDeleted={
+                            isOtherUserDeleted
+                        }
+                        onClose={() =>
+                            setIsSideMenuOpen(false)
+                        }
+                        onDeleteConversation={
+                            handleDeleteConversation
+                        }
+                    />
+                )}
 
             </div>
 

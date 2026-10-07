@@ -35,6 +35,9 @@ export class User {
     @Column({ type: "boolean", default: true })
     isPaid!: boolean;
 
+    @Column({ type: "boolean", default: false })
+    isDeleted!: boolean;
+
     @OneToMany(() => Message, (message) => message.sender)
     messages!: Message[];
 

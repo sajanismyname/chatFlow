@@ -5,6 +5,10 @@ import { AppDataSource } from "../config/dataSource.js";
 import { RefreshToken } from "../entities/refreshToken.js";
 import { PasswordResetToken } from "../entities/PasswordResetToken.js";
 import { User } from "../entities/User.js";
+import { Message } from "../entities/Message.js";
+import { MessageDeletion } from "../entities/MessageDeletion.js";
+import { ConversationMember } from "../entities/ConversationMember.js";
+import { ConversationNickname } from "../entities/ConversationNickname.js";
 import {google} from "googleapis"
 import { googleClient } from "../config/google.js";
 import { generateAccessToken } from "../utils/jwt.js";
@@ -591,7 +595,8 @@ export const getUserProfile = async(
                 id:true,
                 name:true,
                 avatar: true,
-                note: true
+                note: true,
+                isDeleted: true,
             }
         })
 
@@ -600,6 +605,13 @@ export const getUserProfile = async(
                 message: "User not found",
             })
             return;
+        }
+
+        if (user.isDeleted || user.name === "Unknown User") {
+            user.name = "Unknown User";
+            user.avatar = null;
+            user.note = null;
+            user.isDeleted = true;
         }
 
         res.status(200).json({
@@ -1427,6 +1439,82 @@ export const resetPassword = async (
 
         res.status(500).json({
             message: "Failed to reset password",
+        });
+    }
+};
+
+export const deleteAccount = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    try {
+        const userId = req.user?.id;
+
+        if (!userId) {
+            res.status(401).json({
+                message: "Unauthorized",
+            });
+            return;
+        }
+
+        const user = await userRepository.findOne({
+            where: { id: userId },
+        });
+
+        if (!user) {
+            res.status(404).json({
+                message: "User not found",
+            });
+            return;
+        }
+
+        await AppDataSource.transaction(async (manager) => {
+            // 1. Delete refresh tokens for this user
+            await manager.getRepository(RefreshToken).delete({ userId });
+
+            // 2. Delete password reset tokens for this user
+            await manager.getRepository(PasswordResetToken).delete({ userId });
+
+            // 3. Delete conversation nicknames created by or for this user
+            await manager.getRepository(ConversationNickname).delete({ user: { id: userId } });
+
+            // 4. Unlink user from registration payments
+            await manager
+                .createQueryBuilder()
+                .update(RegistrationPayment)
+                .set({ user: null, userId: null })
+                .where("userId = :userId", { userId })
+                .execute();
+
+            // 5. Anonymize user and mark as deleted, freeing email & googleId
+            // Messages and conversation memberships are deliberately preserved
+            // so the other chat participants do not lose conversation history.
+            user.name = "Unknown User";
+            user.avatar = null;
+            user.password = null;
+            user.googleId = null;
+            user.note = null;
+            user.email = `deleted_${userId}_${Date.now()}@chatflow.internal`;
+            user.isDeleted = true;
+
+            await manager.save(user);
+        });
+
+        // 9. Clear refresh token cookie
+        res.clearCookie("refreshToken", {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            path: "/",
+        });
+
+        res.status(200).json({
+            message: "Account deleted successfully",
+        });
+    } catch (error) {
+        console.error("Delete account error:", error);
+        res.status(500).json({
+            message: "Failed to delete account",
         });
     }
 };

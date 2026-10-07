@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 import {
     useAppDispatch,
@@ -8,13 +8,19 @@ import {
 
 import {
     updateProfileThunk,
+    deleteAccountThunk,
 } from "@/features/auth/authSlice";
+import { clearChat } from "@/features/chat/chatSlice";
+import { disconnectSocket } from "@/socket/socket";
 import api from "@/api/axios";
 
 import {
     ArrowLeft,
     Camera,
     Save,
+    Trash2,
+    AlertTriangle,
+    Loader2,
 } from "lucide-react";
 
 import {
@@ -42,6 +48,23 @@ function Profile() {
 
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
+    const location = useLocation();
+    const activeConversationId = useAppSelector(
+        (state) => state.chat.activeConversationId
+    );
+    const targetConversationId =
+        location.state?.conversationId ||
+        (activeConversationId ? String(activeConversationId) : undefined);
+
+    const handleGoBack = () => {
+        if (targetConversationId) {
+            navigate(`/conversation/${targetConversationId}`);
+        } else if (window.history.length > 1) {
+            navigate(-1);
+        } else {
+            navigate("/");
+        }
+    };
 
     const {
         user,
@@ -54,9 +77,26 @@ function Profile() {
 
     const [name, setName] = useState("");
     const [avatar, setAvatar] = useState("");
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [confirmText, setConfirmText] = useState("");
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const avatarInputRef =
         useRef<HTMLInputElement>(null);
+
+    const handleDeleteAccount = async () => {
+        if (confirmText !== "DELETE") return;
+        setIsDeleting(true);
+        try {
+            disconnectSocket();
+            dispatch(clearChat());
+            await dispatch(deleteAccountThunk()).unwrap();
+            navigate("/login", { replace: true });
+        } catch (err: any) {
+            window.alert(err || "Failed to delete account");
+            setIsDeleting(false);
+        }
+    };
 
 
     /* =========================
@@ -170,7 +210,7 @@ function Profile() {
                     type="button"
                     variant="ghost"
                     size="icon"
-                    onClick={() => navigate("/")}
+                    onClick={handleGoBack}
                     aria-label="Go back"
                 >
                     <ArrowLeft className="size-5" />
@@ -449,6 +489,100 @@ function Profile() {
                     </form>
 
                 </div>
+
+                {/* =========================
+                    DANGER ZONE
+                ========================= */}
+                <div className="mt-8 rounded-xl border border-destructive/20 bg-destructive/5 p-6">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <h3 className="text-base font-semibold text-destructive">
+                                Delete Account
+                            </h3>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                                Permanently delete your ChatFlow account, profile, conversations, and all message history. This action cannot be undone.
+                            </p>
+                        </div>
+
+                        <Button
+                            type="button"
+                            variant="destructive"
+                            onClick={() => {
+                                setShowDeleteModal(true);
+                                setConfirmText("");
+                            }}
+                            className="shrink-0"
+                        >
+                            <Trash2 className="size-4 mr-2" />
+                            <span>Delete Account</span>
+                        </Button>
+                    </div>
+                </div>
+
+                {/* =========================
+                    DELETE ACCOUNT MODAL
+                ========================= */}
+                {showDeleteModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                        <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl space-y-5 animate-in fade-in-0 zoom-in-95 duration-150">
+                            <div className="flex items-center gap-3 text-destructive">
+                                <div className="flex size-10 items-center justify-center rounded-full bg-destructive/10">
+                                    <AlertTriangle className="size-5" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-foreground">Delete Account?</h3>
+                                    <p className="text-xs text-muted-foreground">This action is permanent and irreversible</p>
+                                </div>
+                            </div>
+
+                            <p className="text-sm text-muted-foreground leading-relaxed">
+                                Are you absolutely sure you want to delete your account? All your messages, profile information, and chat history will be permanently erased.
+                            </p>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-medium text-muted-foreground block">
+                                    Type <span className="font-bold text-foreground select-all">DELETE</span> to confirm:
+                                </label>
+                                <Input
+                                    value={confirmText}
+                                    onChange={(e) => setConfirmText(e.target.value)}
+                                    placeholder="DELETE"
+                                    className="border-destructive/30 focus-visible:ring-destructive font-mono"
+                                    autoFocus
+                                />
+                            </div>
+
+                            <div className="flex justify-end gap-3 pt-2">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => {
+                                        setShowDeleteModal(false);
+                                        setConfirmText("");
+                                    }}
+                                    disabled={isDeleting}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="destructive"
+                                    disabled={confirmText !== "DELETE" || isDeleting}
+                                    onClick={handleDeleteAccount}
+                                >
+                                    {isDeleting ? (
+                                        <span className="flex items-center gap-2">
+                                            <Loader2 className="animate-spin size-4" />
+                                            Deleting...
+                                        </span>
+                                    ) : (
+                                        "Permanently Delete"
+                                    )}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
             </main>
 

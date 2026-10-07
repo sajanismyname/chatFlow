@@ -13,11 +13,19 @@ const io = initializeSocketServer(httpServer);
 const PORT=process.env.PORT || 5000;
 
 AppDataSource.initialize()
-    .then(() => {
+    .then(async () => {
         console.log("TypeORM connected successfully");
 
+        try {
+            await AppDataSource.query(
+                'ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "isDeleted" boolean NOT NULL DEFAULT false;'
+            );
+        } catch (err) {
+            console.warn("Could not ensure isDeleted column:", err);
+        }
+
         httpServer.listen(PORT, () => {
-        console.log(`Server running on http://localhost:${PORT}`);
+            console.log(`Server running on http://localhost:${PORT}`);
         });
     })
     .catch((error) => {

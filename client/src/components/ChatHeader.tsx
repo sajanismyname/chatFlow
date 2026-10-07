@@ -16,14 +16,6 @@ import {
     Button,
 } from "@/components/ui/button";
 
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-
 
 interface ChatHeaderProps {
     name: string;
@@ -32,7 +24,9 @@ interface ChatHeaderProps {
     isTyping?: boolean;
     userId?: number;
     conversationId?: number;
-    onDeleteConversation: () => void;
+    isSideMenuOpen?: boolean;
+    isDeleted?: boolean;
+    onToggleSideMenu?: () => void;
 }
 
 
@@ -43,41 +37,35 @@ function ChatHeader({
     isTyping = false,
     userId,
     conversationId,
-    onDeleteConversation,
+    isSideMenuOpen = false,
+    isDeleted = false,
+    onToggleSideMenu,
 }: ChatHeaderProps) {
 
     const navigate = useNavigate();
 
+    const displayName = isDeleted ? "Unknown User" : name;
 
-    const initials = name
+    const initials = displayName
         .split(" ")
         .map((word) =>
             word.charAt(0)
         )
         .join("")
         .slice(0, 2)
-        .toUpperCase();
+        .toUpperCase() || "U";
 
 
     const handleViewProfile = () => {
-        if (!userId || !conversationId) {
+        if (!userId || isDeleted) {
             return;
         }
 
-        navigate(`/profile/${conversationId}/${userId}`);
-    };
-
-
-    const handleDeleteConversation = () => {
-        const confirmed = window.confirm(
-            `Delete your conversation with ${name}?`
-        );
-
-        if (!confirmed) {
-            return;
-        }
-
-        onDeleteConversation();
+        navigate(`/profile/${userId}`, {
+            state: {
+                conversationId,
+            },
+        });
     };
 
 
@@ -102,16 +90,21 @@ function ChatHeader({
                 <div className="relative shrink-0">
 
                     <Avatar
-                        className="size-10"
-                        onClick={handleViewProfile}
+                        className={`size-10 ${
+                            isDeleted
+                                ? "cursor-default opacity-80"
+                                : "cursor-pointer"
+                        }`}
+                        onClick={isDeleted ? undefined : handleViewProfile}
                     >
 
                         <AvatarImage
                             src={
-                                avatar ??
-                                undefined
+                                isDeleted
+                                    ? undefined
+                                    : (avatar ?? undefined)
                             }
-                            alt={name}
+                            alt={displayName}
                         />
 
                         <AvatarFallback>
@@ -120,49 +113,62 @@ function ChatHeader({
 
                     </Avatar>
 
-                    <span
-                        className={`
-                            absolute
-                            bottom-0
-                            right-0
-                            size-3
-                            rounded-full
-                            border-2
-                            border-background
-                            ${
-                                online
-                                    ? "bg-emerald-500"
-                                    : "bg-gray-500"
-                            }
-                        `}
-                    />
+                    {!isDeleted && (
+                        <span
+                            className={`
+                                absolute
+                                bottom-0
+                                right-0
+                                size-3
+                                rounded-full
+                                border-2
+                                border-background
+                                ${
+                                    online
+                                        ? "bg-emerald-500"
+                                        : "bg-gray-500"
+                                }
+                            `}
+                        />
+                    )}
 
                 </div>
 
 
                 <div className="min-w-0">
 
-                    <h2 className="truncate text-sm font-semibold">
-                        {name}
+                    <h2
+                        className={`truncate text-sm font-semibold ${
+                            !isDeleted && userId
+                                ? "cursor-pointer hover:underline"
+                                : ""
+                        }`}
+                        onClick={isDeleted ? undefined : handleViewProfile}
+                    >
+                        {displayName}
                     </h2>
 
                     <p
                         className={`
                             text-xs
                             ${
-                                isTyping
-                                    ? "text-emerald-500 font-medium"
-                                    : online
-                                        ? "text-emerald-600"
-                                        : "text-muted-foreground"
+                                isDeleted
+                                    ? "text-muted-foreground italic"
+                                    : isTyping
+                                        ? "text-emerald-500 font-medium"
+                                        : online
+                                            ? "text-emerald-600"
+                                            : "text-muted-foreground"
                             }
                         `}
                     >
-                        {isTyping
-                            ? "Typing..."
-                            : online
-                                ? "Online"
-                                : "Offline"}
+                        {isDeleted
+                            ? "Account deleted"
+                            : isTyping
+                                ? "Typing..."
+                                : online
+                                    ? "Online"
+                                    : "Offline"}
                     </p>
 
                 </div>
@@ -181,12 +187,14 @@ function ChatHeader({
                     variant="ghost"
                     size="icon"
                     className="rounded-full"
+                    disabled={isDeleted}
                     aria-label="Start voice call"
-                    onClick={() =>
+                    onClick={() => {
+                        if (isDeleted) return;
                         window.alert(
                             "Voice calling is not configured yet."
-                        )
-                    }
+                        );
+                    }}
                 >
                     <Phone className="size-4" />
                 </Button>
@@ -199,60 +207,40 @@ function ChatHeader({
                     variant="ghost"
                     size="icon"
                     className="rounded-full"
+                    disabled={isDeleted}
                     aria-label="Start video call"
-                    onClick={() =>
+                    onClick={() => {
+                        if (isDeleted) return;
                         window.alert(
                             "Video calling is not configured yet."
-                        )
-                    }
+                        );
+                    }}
                 >
                     <Video className="size-4" />
                 </Button>
 
 
-                {/* MORE MENU */}
+                {/* MORE OPTIONS (TOGGLES SIDE MENU) */}
 
-                <DropdownMenu>
-
-                    <DropdownMenuTrigger
-                        render={
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="rounded-full"
-                                aria-label="More options"
-                            >
-                                <MoreVertical className="size-4" />
-                            </Button>
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className={`
+                        rounded-full
+                        transition-colors
+                        ${
+                            isSideMenuOpen
+                                ? "bg-muted text-foreground"
+                                : ""
                         }
-                    />
-
-                    <DropdownMenuContent align="end">
-
-                        {/* <DropdownMenuItem
-                            disabled={!userId}
-                            onClick={handleViewProfile}
-                        >
-                            View profile
-                        </DropdownMenuItem> */}
-
-
-                        <DropdownMenuSeparator />
-
-
-                        <DropdownMenuItem
-                            onClick={
-                                handleDeleteConversation
-                            }
-                            className="text-destructive focus:text-destructive"
-                        >
-                            Delete conversation
-                        </DropdownMenuItem>
-
-                    </DropdownMenuContent>
-
-                </DropdownMenu>
+                    `}
+                    aria-label="Conversation options"
+                    title="Conversation options"
+                    onClick={onToggleSideMenu}
+                >
+                    <MoreVertical className="size-4" />
+                </Button>
 
             </div>
 

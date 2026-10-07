@@ -221,6 +221,24 @@ export const logoutUser = createAsyncThunk(
     }
 );
 
+export const deleteAccountThunk = createAsyncThunk<
+    void,
+    void,
+    { rejectValue: string }
+>(
+    "auth/deleteAccount",
+    async (_, { rejectWithValue }) => {
+        try {
+            await api.delete("/auth/account");
+        } catch (error: any) {
+            return rejectWithValue(
+                error.response?.data?.message ||
+                "Failed to delete account"
+            );
+        }
+    }
+);
+
 
 /* =========================
     AUTH SLICE
@@ -411,6 +429,25 @@ const authSlice = createSlice({
                 state.error =
                     action.payload ||
                     "Failed to update profile";
+            })
+
+            .addCase(deleteAccountThunk.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+
+            .addCase(deleteAccountThunk.fulfilled, (state) => {
+                state.loading = false;
+                state.user = null;
+                state.accessToken = null;
+                state.isAuthenticated = false;
+            })
+
+            .addCase(deleteAccountThunk.rejected, (state, action) => {
+                state.loading = false;
+                state.error =
+                    action.payload ||
+                    "Failed to delete account";
             })
 
             .addCase(getMe.fulfilled, (state, action) => {
